@@ -1,0 +1,45 @@
+# Python / Backend
+backend/venv/
+backend/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+backend/database.db
+backend/temp_tts_out/
+backend/ffmpeg_extracted/
+backend/ffmpeg_temp/
+backend/audio_queue/
+
+# Large Binaries / Executables
+backend/ffmpeg.exe
+backend/ffprobe.exe
+backend/ffmpeg.zip
+backend/cloudflared.exe
+*.exe
+*.zip
+*.rar
+*.tar.gz
+
+# Machine Learning / AI Models
+*.pt
+*.pth
+*.bin
+*.onnx
+*.safetensors
+backend/models/
+tts_models/
+xtts/
+
+# Node / Web / Frontend
+node_modules/
+dist/
+build/
+.env
+.env.*.local
+.env.local
+.firebase/
+
+# OS Files
+.DS_Store
+Thumbs.db

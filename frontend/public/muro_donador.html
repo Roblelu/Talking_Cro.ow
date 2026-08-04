@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Talking Crow - Muro del Donador</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #070709;
+      --panel-bg: #0d0c14;
+      --neon-green: #39FF14;
+      --neon-purple: #9D00FF;
+      --neon-orange: #FF7518;
+      --neon-red: #ff003c;
+      --text-primary: #f0f0f0;
+      --text-secondary: #a8a8b0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: 'Space Grotesk', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Ambient Glow */
+    body::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 100vw;
+      height: 100vh;
+      background: radial-gradient(circle at center, rgba(157, 0, 255, 0.15) 0%, transparent 60%);
+      transform: translate(-50%, -50%);
+      z-index: -1;
+    }
+
+    h1, h2, h3 { font-family: 'Orbitron', sans-serif; }
+    
+    .neon-text-green { color: var(--neon-green); text-shadow: 0 0 8px rgba(57, 255, 20, 0.3); }
+    .neon-text-purple { color: var(--neon-purple); text-shadow: 0 0 8px rgba(157, 0, 255, 0.3); }
+    .neon-text-orange { color: var(--neon-orange); text-shadow: 0 0 8px rgba(255, 117, 24, 0.3); }
+
+    .container {
+      width: 100%;
+      max-width: 400px;
+      padding: 20px;
+    }
+
+    .panel {
+      background-color: var(--panel-bg);
+      border: 1px solid rgba(157, 0, 255, 0.4);
+      border-radius: 16px;
+      padding: 30px 20px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(157, 0, 255, 0.05);
+      position: relative;
+      overflow: hidden;
+      animation: fadeIn 0.5s ease-out;
+    }
+    
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--neon-purple), var(--neon-green), var(--neon-orange));
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Buttons */
+    .btn-giant {
+      display: block;
+      width: 100%;
+      background: rgba(57, 255, 20, 0.1);
+      color: var(--neon-green);
+      border: 2px solid var(--neon-green);
+      padding: 18px 20px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 15px rgba(57, 255, 20, 0.2);
+      margin-top: 25px;
+    }
+
+    .btn-giant:hover, .btn-giant:active {
+      background: rgba(57, 255, 20, 0.2);
+      box-shadow: 0 0 25px rgba(57, 255, 20, 0.4);
+      transform: scale(1.02);
+    }
+
+    .btn-record {
+      background: rgba(255, 0, 60, 0.1);
+      color: var(--neon-red);
+      border: 2px solid var(--neon-red);
+      box-shadow: 0 0 15px rgba(255, 0, 60, 0.2);
+    }
+    .btn-record:active, .btn-record.recording {
+      background: rgba(255, 0, 60, 0.3);
+      box-shadow: 0 0 30px rgba(255, 0, 60, 0.6);
+      transform: scale(0.95);
+    }
+
+    .btn-send {
+      background: rgba(157, 0, 255, 0.1);
+      color: var(--neon-purple);
+      border: 2px solid var(--neon-purple);
+      box-shadow: 0 0 15px rgba(157, 0, 255, 0.2);
+      display: none;
+    }
+    .btn-send:hover, .btn-send:active {
+      background: rgba(157, 0, 255, 0.2);
+      box-shadow: 0 0 25px rgba(157, 0, 255, 0.4);
+    }
+
+    /* Views */
+    #view-record { display: none; }
+
+    /* Price tag */
+    .price {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 3rem;
+      color: var(--neon-green);
+      margin: 20px 0;
+      text-shadow: 0 0 15px rgba(57, 255, 20, 0.4);
+    }
+
+    .phrase-box {
+      background: rgba(0,0,0,0.5);
+      border: 1px dashed var(--neon-orange);
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+      font-style: italic;
+      color: var(--neon-orange);
+      font-size: 1.1rem;
+    }
+
+    .status-text {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--neon-red);
+      margin-top: 15px;
+      height: 20px;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      margin-top: 10px;
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .progress-bar-container.active {
+      opacity: 1;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: var(--neon-red);
+      box-shadow: 0 0 10px var(--neon-red);
+      transition: width 0.1s linear;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- PASO 1: MURO DE PAGO -->
+    <div id="view-paywall" class="panel">
+      <h2 class="neon-text-purple">Acceso Exclusivo</h2>
+      <p style="margin-top: 15px; color: var(--text-secondary); line-height: 1.5;">
+        Suscríbete para habilitar tu voz en el Streamer. Únete al aquelarre y hazte escuchar.
+      </p>
+      
+      <div class="price">$4.99<span style="font-size: 1rem; color: var(--text-secondary);">/mes</span></div>
+      
+      <button id="btn-pay" class="btn-giant">Pagar Suscripción</button>
+      
+      <div style="margin-top: 20px; font-size: 0.8rem; color: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <input type="checkbox" id="chk-terms" />
+        <label for="chk-terms">Acepto los <a href="/terms" target="_blank" style="color: var(--neon-purple); text-decoration: underline;">Términos y Condiciones</a></label>
+      </div>
+      
+      <div style="margin-top: 10px; font-size: 0.7rem; color: rgba(255,255,255,0.3);">
+        Pago seguro y encriptado.
+      </div>
+    </div>
+
+    <!-- PASO 2: GRABADOR -->
+    <div id="view-record" class="panel">
+      <h2 class="neon-text-green">Estás dentro.</h2>
+      <p style="margin-top: 10px; color: var(--text-secondary); font-size: 0.9rem;">
+        Lee esta frase en voz alta para clonar tu esencia:
+      </p>
+      
+      <div class="phrase-box" id="phrase-box">
+        "Las sombras susurran mi nombre a la medianoche."
+      </div>
+      
+      <p style="margin-top: 5px; color: rgba(255,255,255,0.4); font-size: 0.75rem; font-style: italic;">
+        *(Próximamente: Podrás elegir voces preestablecidas como la de Mario Castañeda)*
+      </p>
+      
+      <button id="btn-record" class="btn-giant btn-record">Mantener pulsado</button>
+      
+      <div class="progress-bar-container" id="progress-container">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      
+      <div class="status-text" id="status-text"></div>
+      
+      <button id="btn-send" class="btn-giant btn-send">Enviar Audio</button>
+    </div>
+
+  </div>
+
+  <script>
+    const viewPaywall = document.getElementById('view-paywall');
+    const viewRecord = document.getElementById('view-record');
+    const btnPay = document.getElementById('btn-pay');
+    
+    const btnRecord = document.getElementById('btn-record');
+    const btnSend = document.getElementById('btn-send');
+    const phraseBox = document.getElementById('phrase-box');
+    const statusText = document.getElementById('status-text');
+    const progressBar = document.getElementById('progress-bar');
+    const progressContainer = document.getElementById('progress-container');
+
+    const phrases = [
+      "Las sombras susurran mi nombre a la medianoche.",
+      "El cuervo observa desde la rama marchita.",
+      "No hay luz que pueda perforar esta niebla.",
+      "Mi voz resonará en el abismo eternamente.",
+      "El eco de mis pasos despierta a los antiguos."
+    ];
+
+    // Simular Pago
+    btnPay.addEventListener('click', () => {
+      const chkTerms = document.getElementById('chk-terms');
+      if (chkTerms && !chkTerms.checked) {
+        alert("Debes aceptar los Términos y Condiciones para continuar.");
+        return;
+      }
+      btnPay.innerHTML = "Procesando...";
+      setTimeout(() => {
+        viewPaywall.style.display = 'none';
+        viewRecord.style.display = 'block';
+        phraseBox.innerText = `"${phrases[Math.floor(Math.random() * phrases.length)]}"`;
+      }, 1500);
+    });
+
+    // Grabación Lógica
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+    let recordingTimer;
+    let progressInterval;
+    const MAX_RECORD_TIME = 15000; // 15 seconds
+
+    async function setupAudio() {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaRecorder = new MediaRecorder(stream);
+          
+          mediaRecorder.ondataavailable = e => {
+            audioChunks.push(e.data);
+          };
+          
+          mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            // Aquí se enviaría el Blob al servidor
+            console.log("Audio listo para enviar", audioBlob);
+            btnSend.style.display = 'block';
+            btnRecord.style.display = 'none';
+            statusText.innerText = "Audio capturado.";
+            statusText.style.color = "var(--neon-green)";
+            progressContainer.classList.remove('active');
+          };
+        } catch (err) {
+          console.error("Error accediendo al micrófono", err);
+          statusText.innerText = "Error de micrófono";
+        }
+      } else {
+        statusText.innerText = "Micrófono no soportado";
+      }
+    }
+
+    setupAudio();
+
+    const startRecording = () => {
+      if (!mediaRecorder || isRecording) return;
+      audioChunks = [];
+      mediaRecorder.start();
+      isRecording = true;
+      btnRecord.classList.add('recording');
+      btnRecord.innerText = "Grabando...";
+      statusText.innerText = "Escuchando...";
+      statusText.style.color = "var(--neon-red)";
+      progressContainer.classList.add('active');
+      progressBar.style.width = '0%';
+      
+      let startTime = Date.now();
+      progressInterval = setInterval(() => {
+        let elapsed = Date.now() - startTime;
+        let percentage = (elapsed / MAX_RECORD_TIME) * 100;
+        if(percentage > 100) percentage = 100;
+        progressBar.style.width = `${percentage}%`;
+      }, 100);
+
+      recordingTimer = setTimeout(() => {
+        stopRecording();
+      }, MAX_RECORD_TIME);
+    };
+
+    const stopRecording = () => {
+      if (!mediaRecorder || !isRecording) return;
+      mediaRecorder.stop();
+      isRecording = false;
+      btnRecord.classList.remove('recording');
+      btnRecord.innerText = "Procesando...";
+      clearTimeout(recordingTimer);
+      clearInterval(progressInterval);
+    };
+
+    // Eventos para móvil y PC (Touch / Mouse)
+    btnRecord.addEventListener('mousedown', startRecording);
+    btnRecord.addEventListener('mouseup', stopRecording);
+    btnRecord.addEventListener('mouseleave', stopRecording);
+    
+    btnRecord.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); });
+    btnRecord.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); });
+    btnRecord.addEventListener('touchcancel', (e) => { e.preventDefault(); stopRecording(); });
+
+    btnSend.addEventListener('click', () => {
+      btnSend.innerText = "Enviando...";
+      setTimeout(() => {
+        viewRecord.innerHTML = `
+          <h2 class="neon-text-purple">¡Completado!</h2>
+          <p style="margin-top: 15px; color: var(--text-secondary);">
+            Tu esencia ha sido capturada y enviada a moderación.
+          </p>
+          <div style="margin-top: 30px; font-size: 3rem;">🔮</div>
+        `;
+      }, 1500);
+    });
+
+  </script>
+</body>
+</html>
