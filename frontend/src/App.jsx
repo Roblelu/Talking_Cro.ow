@@ -66,22 +66,38 @@ function App() {
   
   React.useEffect(() => {
     const API_BASE = 'http://127.0.0.1:8763';
-    fetch(API_BASE + '/api/gifts')
-      .then(res => res.json())
-      .then(data => setGifts(data))
-      .catch(err => console.error("Error cargando regalos:", err));
-      
-    fetch(API_BASE + '/api/settings')
-      .then(res => res.json())
-      .then(data => {
-        if(data && data.tiktok_username) setTiktokUsername(data.tiktok_username);
-      })
-      .catch(err => console.error("Error cargando settings:", err));
-
-    fetch(API_BASE + '/api/tts/state')
-      .then(res => res.json())
-      .then(data => setIsTtsLiveEnabled(data.enabled))
-      .catch(err => console.error("Error cargando tts state:", err));
+    
+    let isMounted = true;
+    const checkBackend = () => {
+      fetch(API_BASE + '/api/settings')
+        .then(res => {
+          if (res.ok) {
+            if (isMounted) setIsBackendReady(true);
+            res.json().then(data => {
+              if(data && data.tiktok_username && isMounted) setTiktokUsername(data.tiktok_username);
+            });
+            
+            fetch(API_BASE + '/api/gifts')
+              .then(r => r.json())
+              .then(d => { if (isMounted) setGifts(d); })
+              .catch(err => console.error(err));
+              
+            fetch(API_BASE + '/api/tts/state')
+              .then(r => r.json())
+              .then(d => { if (isMounted) setIsTtsLiveEnabled(d.enabled); })
+              .catch(err => console.error(err));
+          }
+        })
+        .catch(err => {
+          if (isMounted) {
+            setIsBackendReady(false);
+            setTimeout(checkBackend, 2000);
+          }
+        });
+    };
+    
+    checkBackend();
+    return () => { isMounted = false; };
   }, []);
 
   React.useEffect(() => {
@@ -157,6 +173,7 @@ function App() {
   };
   const [newGiftScript, setNewGiftScript] = useState('');
   const [isTiktokConnected, setIsTiktokConnected] = useState(false);
+  const [isBackendReady, setIsBackendReady] = useState(false);
   
   const [tiktokUsername, setTiktokUsername] = useState(localStorage.getItem('lastTiktokUsername') || '');
   const [hostAvatar, setHostAvatar] = useState(null);
@@ -666,13 +683,28 @@ function App() {
             <h2 className="neon-text-green" style={{ margin: 0 }}>
               Monitor en Vivo
             </h2>
-            <button 
-              className={`btn-neon ${isTtsLiveEnabled ? 'btn-neon-green' : 'btn-neon-red'}`} 
-              onClick={toggleTts}
-              style={{ padding: '8px 15px', fontSize: '0.9rem', borderColor: isTtsLiveEnabled ? '#39ff14' : '#ff003c', color: isTtsLiveEnabled ? '#39ff14' : '#ff003c', cursor: 'pointer' }}
-            >
-              {isTtsLiveEnabled ? '🔊 Texto a Voz ON' : '🔈 Texto a Voz OFF'}
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={toggleTts} title="Activar/Desactivar Texto a Voz Local">
+              <span style={{ color: isTtsLiveEnabled ? '#39ff14' : '#ff003c', fontWeight: 'bold', fontSize: '1.05rem', textShadow: isTtsLiveEnabled ? '0 0 5px #39ff14' : '0 0 5px #ff003c', transition: 'all 0.3s' }}>TTS</span>
+              <div 
+                style={{ 
+                  width: '46px', height: '24px', 
+                  borderRadius: '12px', 
+                  background: isTtsLiveEnabled ? 'rgba(57, 255, 20, 0.2)' : 'rgba(255, 0, 60, 0.1)',
+                  border: `2px solid ${isTtsLiveEnabled ? '#39ff14' : '#ff003c'}`,
+                  position: 'relative',
+                  transition: 'all 0.3s',
+                  boxShadow: isTtsLiveEnabled ? '0 0 10px rgba(57,255,20,0.4)' : 'none'
+                }}
+              >
+                <div style={{
+                  position: 'absolute', top: '2px', left: isTtsLiveEnabled ? '24px' : '2px',
+                  width: '16px', height: '16px', borderRadius: '50%',
+                  background: isTtsLiveEnabled ? '#39ff14' : '#ff003c',
+                  transition: 'all 0.3s',
+                  boxShadow: `0 0 8px ${isTtsLiveEnabled ? '#39ff14' : '#ff003c'}`
+                }} />
+              </div>
+            </div>
           </div>
           
           {audioQueue.length > 0 && (
@@ -763,7 +795,9 @@ function App() {
                       Desconectar
                     </button>
                  ) : (
-                    <button className="btn-neon btn-neon-orange" style={{ flex: 1, minWidth: '120px', padding: '8px 15px', fontSize: '0.9rem', margin: 0 }} onClick={handleConnect}>Vincular</button>
+                    <button className="btn-neon btn-neon-orange" style={{ flex: 1, minWidth: '120px', padding: '8px 15px', fontSize: '0.9rem', margin: 0, opacity: isBackendReady ? 1 : 0.4, cursor: isBackendReady ? 'pointer' : 'not-allowed' }} disabled={!isBackendReady} onClick={handleConnect}>
+                      {isBackendReady ? 'Vincular' : 'Cargando Motor...'}
+                    </button>
                  )}
               </div>
               {isTiktokConnected && (

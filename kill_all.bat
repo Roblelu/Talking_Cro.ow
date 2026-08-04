@@ -10,6 +10,9 @@ taskkill /F /IM electron.exe /T >nul 2>&1
 :: Matar Python (Backend)
 taskkill /F /IM python.exe /T >nul 2>&1
 
+:: Matar ventanas de CMD del proyecto (para que no queden terminales estancadas)
+taskkill /F /FI "WINDOWTITLE eq TalkingCrow*" /T >nul 2>&1
+
 :: Matar Navegadores Fantasmas y Tuneles
 taskkill /F /IM chrome.exe /T >nul 2>&1
 taskkill /F /IM cloudflared.exe /T >nul 2>&1

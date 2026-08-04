@@ -166,6 +166,11 @@ async def connect_tiktok(req: TikTokConnectRequest):
         @client.on(CommentEvent)
         async def on_comment(event: CommentEvent):
             await broadcast_event(LiveEvent(type="chat", username=event.user.nickname, message=event.comment))
+            
+            global tts_global_enabled
+            if tts_global_enabled:
+                text_to_speak = f"{event.user.nickname} dice: {event.comment}"
+                asyncio.create_task(tts_engine.tts_engine.generate_and_play(text_to_speak, None))
 
         @client.on(GiftEvent)
         async def on_gift(event: GiftEvent):

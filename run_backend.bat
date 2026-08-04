@@ -1,9 +1,9 @@
 @echo off
+title TalkingCrowBackend
 cd backend
 if not exist venv (
     python -m venv venv
 )
 call venv\Scripts\activate.bat
-pip install -r requirements.txt
-playwright install chromium
+set COQUI_TOS_AGREED=1
 python app.py
