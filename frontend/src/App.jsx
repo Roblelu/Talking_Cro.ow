@@ -364,28 +364,33 @@ function App() {
   };
   
   const handleConnect = async () => {
+    if (!tiktokUsername.trim()) return;
+    setIsTiktokConnected(true);
+    setHostAvatar(null);
     localStorage.setItem('lastTiktokUsername', tiktokUsername);
+    
     const API_BASE = 'http://127.0.0.1:8763';
-    await fetch(API_BASE + '/api/settings', {
+    const cleanUsername = tiktokUsername.replace('@', '').trim();
+    
+    fetch(API_BASE + '/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tiktok_username: tiktokUsername, base_audio_path: '' })
-    });
+      body: JSON.stringify({ tiktok_username: cleanUsername, base_audio_path: '' })
+    }).catch(e => console.log(e));
     
     try {
       const res = await fetch(API_BASE + '/api/tiktok/connect', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: tiktokUsername })
+          body: JSON.stringify({ username: cleanUsername })
       });
       const data = await res.json();
-      if(data.status === "conectando") {
-         setHostAvatar(null);
-         setIsTiktokConnected(true);
-      } else {
+      if(data.status !== "conectando") {
+         setIsTiktokConnected(false);
          showAlert("Error", "No se pudo conectar: " + data.message);
       }
     } catch(e) {
+      setIsTiktokConnected(false);
       showAlert("Error", "Fallo al comunicar con el backend.");
     }
   };
@@ -408,13 +413,27 @@ function App() {
   };
 
   const handlePlayAudio = (id) => {
-    // Aquí implementaremos la llamada real a ElevenLabs / Audio Player más tarde.
-    console.log("Reproduciendo audio id:", id);
+    const audioData = audioQueue.find(a => a.id === id);
+    if (audioData && audioData.audio_url) {
+       console.log("Reproduciendo audio id:", id);
+       const snd = new Audio(audioData.audio_url);
+       snd.play();
+       snd.onended = () => {
+          // Limpiar el audio del servidor una vez escuchado
+          if (audioData.audio_id) {
+             fetch(`http://127.0.0.1:8763/api/audio/${audioData.audio_id}`, { method: 'DELETE' }).catch(e=>console.log(e));
+          }
+       };
+    }
     setAudioQueue(prev => prev.filter(a => a.id !== id));
   };
 
   const handleRejectAudio = (id) => {
     showConfirm("Aviso", "¿Seguro que quieres descartar este audio prioritario?", () => {
+       const audioData = audioQueue.find(a => a.id === id);
+       if (audioData && audioData.audio_id) {
+          fetch(`http://127.0.0.1:8763/api/audio/${audioData.audio_id}`, { method: 'DELETE' }).catch(e=>console.log(e));
+       }
        setAudioQueue(prev => prev.filter(a => a.id !== id));
     });
   };
@@ -796,7 +815,7 @@ function App() {
                     </button>
                  ) : (
                     <button className="btn-neon btn-neon-orange" style={{ flex: 1, minWidth: '120px', padding: '8px 15px', fontSize: '0.9rem', margin: 0, opacity: isBackendReady ? 1 : 0.4, cursor: isBackendReady ? 'pointer' : 'not-allowed' }} disabled={!isBackendReady} onClick={handleConnect}>
-                      {isBackendReady ? 'Vincular' : 'Cargando Motor...'}
+                      {isBackendReady ? 'Vincular' : <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Cargando Motores<span className="dot-1">.</span><span className="dot-2">.</span><span className="dot-3">.</span></span>}
                     </button>
                  )}
               </div>

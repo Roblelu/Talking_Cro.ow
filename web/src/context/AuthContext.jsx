@@ -18,16 +18,25 @@ export const AuthProvider = ({ children }) => {
       if (user) {
         // En un futuro multi-streamer, usaríamos el ID del streamer actual, pero por ahora "vridel"
         const username = user.displayName || user.email.split('@')[0];
-        const docRef = doc(db, "streamers", "vridel", "fans", username);
+        const docRef = doc(db, "streamers", "vridel", "fans", user.uid);
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
-          setUserData(docSnap.data());
+          // Leer también la información privada
+          const privateDocRef = doc(db, "streamers", "vridel", "fans", user.uid, "private", "contact");
+          const privateSnap = await getDoc(privateDocRef);
+          const privateData = privateSnap.exists() ? privateSnap.data() : {};
+          setUserData({ ...docSnap.data(), ...privateData });
         } else {
-          // Si el usuario es nuevo, creamos el documento base en Firestore
-          const newData = { Croins: 0, isPro: false, email: user.email };
+          // Si el usuario es nuevo, creamos el documento público y el privado
+          const newData = { Croins: 0, isPro: false, username: username };
           await setDoc(docRef, newData);
-          setUserData(newData);
+
+          const privateDocRef = doc(db, "streamers", "vridel", "fans", user.uid, "private", "contact");
+          const privateData = { email: user.email };
+          await setDoc(privateDocRef, privateData);
+
+          setUserData({ ...newData, ...privateData });
         }
       } else {
         setUserData(null);

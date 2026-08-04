@@ -43,17 +43,22 @@ export default function Register() {
       // 2. Actualizar el displayName con el username
       await updateProfile(user, { displayName: username });
 
-      // 3. Crear su documento en Firestore con su username y 0 Croins iniciales
+      // 3. Crear su documento público en Firestore usando su UID y 0 Croins iniciales
       // Como estamos unificando Streamers y Fans, lo guardamos en la subcolección fans de "vridel" por ahora
       // Cuando sea multi-streamer, esta ruta cambiará.
-      const docRef = doc(db, "streamers", "vridel", "fans", username);
+      const docRef = doc(db, "streamers", "vridel", "fans", user.uid);
       await setDoc(docRef, {
         Croins: 0,
         isPro: false,
-        email: email,
-        phone: phone,
         username: username,
         createdAt: new Date()
+      });
+
+      // 4. Guardar datos sensibles (PII) en una subcolección privada aislada
+      const privateDocRef = doc(db, "streamers", "vridel", "fans", user.uid, "private", "contact");
+      await setDoc(privateDocRef, {
+        email: email,
+        phone: phone
       });
 
       navigate("/dashboard");

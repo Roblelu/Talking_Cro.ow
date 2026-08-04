@@ -40,7 +40,7 @@ const Header = () => {
         <nav style={{ display: 'flex', gap: '20px', position: 'relative', zIndex: 10 }}>
           <NavLink to="/" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Inicio</NavLink>
           <NavLink to="/streamers" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Streamers</NavLink>
-          <NavLink to="/fans" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Donadores</NavLink>
+          <NavLink to="/fans" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Fans</NavLink>
         </nav>
       </div>
 

@@ -10,6 +10,8 @@ backend/temp_tts_out/
 backend/ffmpeg_extracted/
 backend/ffmpeg_temp/
 backend/audio_queue/
+backend/tts/*.wav
+backend/tts/*.mp3
 
 # Large Binaries / Executables
 backend/ffmpeg.exe

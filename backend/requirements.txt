@@ -4,6 +4,6 @@ SQLAlchemy
 TikTokLive
 TTS
 torch
-stripe
+
 playwright
 python-multipart

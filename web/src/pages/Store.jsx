@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { doc, setDoc, increment } from 'firebase/firestore';
+import { doc, setDoc, increment, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import '../App.css';
 
@@ -50,19 +50,33 @@ const CheckoutForm = ({ streamerName, streamerId }) => {
     setError(null);
 
     try {
-      console.log("[1] Solicitando cobro al servidor de Python...");
-      // 1. Pedirle al backend de Python que genere un cobro (PaymentIntent)
-      const res = await fetch("http://127.0.0.1:8763/api/stripe/create-payment-intent", {
+      // 1. Buscamos el UID del usuario correspondiente al username ingresado:
+      const cleanUsername = tiktokUser.startsWith('@') ? tiktokUser.substring(1) : tiktokUser;
+      
+      const fansRef = collection(db, 'streamers', streamerId.toLowerCase(), 'fans');
+      const q = query(fansRef, where("username", "==", cleanUsername));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        throw new Error("El usuario no existe en la base de datos. Pide al streamer o revisa tu registro.");
+      }
+
+      const fanDoc = querySnapshot.docs[0];
+      const fanUid = fanDoc.id;
+
+      console.log("[1] Solicitando cobro seguro a Cloud Functions...");
+      // 2. Pedirle a Cloud Functions que genere un cobro (PaymentIntent) pasándole el UID
+      const res = await fetch("/api/createPaymentIntent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tiktok_username: tiktokUser, amount: 499 }) // $4.99 en centavos
+        body: JSON.stringify({ uid: fanUid, amount: 499 }) // $4.99 en centavos
       });
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.detail || "Error en el servidor Python");
+      if (!res.ok) throw new Error(data.error || "Error en el servidor de pagos");
 
       console.log("[2] Confirmando tarjeta en Stripe...");
-      // 2. Confirmar el pago usando la tarjeta escrita por el usuario
+      // 3. Confirmar el pago usando la tarjeta escrita por el usuario
       const confirmResult = await stripe.confirmCardPayment(data.client_secret, {
         payment_method: {
           card: elements.getElement(CardElement),
@@ -74,16 +88,8 @@ const CheckoutForm = ({ streamerName, streamerId }) => {
         throw new Error(confirmResult.error.message);
       }
 
-      console.log("[3] Pago Aprobado por el banco. Guardando en Firestore...");
-      // 3. El banco aprobó el pago. Guardar en Firestore:
-      // Ruta: streamers/{streamerId}/fans/{tiktokUser}
-      const fanRef = doc(db, 'streamers', streamerId.toLowerCase(), 'fans', tiktokUser.toLowerCase());
-      await setDoc(fanRef, {
-        credits: increment(10),
-        last_purchase: new Date()
-      }, { merge: true });
+      console.log("[3] Pago Aprobado por el banco. El Webhook actualizará los Croins en breve.");
 
-      console.log("[4] Créditos guardados exitosamente en la nube!");
       setProcessing(false);
       setSuccess(true);
     } catch (err) {

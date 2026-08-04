@@ -107,6 +107,22 @@ export default function Dashboard() {
                 <button className="btn-neon btn-neon-orange" style={{ width: '100%' }}>Mejorar a Pro</button>
               </div>
             </div>
+
+            <div style={{ marginTop: '40px' }}>
+              <h3 className="neon-text-green" style={{ marginBottom: '15px' }}>Seguridad del Backend (Local) 🔐</h3>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>
+                Pega aquí la API Key que aparece en la consola de tu backend de Python para poder usar el Panel de Moderación.
+              </p>
+              <div style={{ display: 'flex', gap: '10px', maxWidth: '500px' }}>
+                <input 
+                  type="password" 
+                  placeholder="Ej: abc123def456..."
+                  defaultValue={localStorage.getItem("local_api_key") || ""}
+                  onChange={(e) => localStorage.setItem("local_api_key", e.target.value)}
+                  style={{ flex: 1, padding: '10px', background: 'rgba(0,0,0,0.5)', border: '1px solid var(--neon-green)', color: '#fff', borderRadius: '4px' }}
+                />
+              </div>
+            </div>
           </div>
         )}
 

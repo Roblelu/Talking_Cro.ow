@@ -13,14 +13,15 @@ function ModerationPanel() {
   const [pendingMessages, setPendingMessages] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const getHeaders = () => ({ "Authorization": `Bearer ${localStorage.getItem("local_api_key") || ""}` });
+
   /**
    * fetchQueue
    * Consulta al endpoint de Python que devuelve los mensajes encolados.
    */
   const fetchQueue = async () => {
     try {
-      // Llamada al servidor local (App de Escritorio)
-      const response = await fetch('http://127.0.0.1:8763/api/moderation/queue');
+      const response = await fetch('http://127.0.0.1:8763/api/moderation/queue', { headers: getHeaders() });
       const data = await response.json();
       
       // Actualizamos la lista de mensajes en la interfaz
@@ -57,7 +58,10 @@ function ModerationPanel() {
    */
   const handleApprove = async (token) => {
     try {
-      await fetch(`http://127.0.0.1:8763/api/moderation/approve/${token}`, { method: 'POST' });
+      await fetch(`http://127.0.0.1:8763/api/moderation/approve/${token}`, { 
+        method: 'POST',
+        headers: getHeaders()
+      });
       // Tras aprobar, forzamos una recarga inmediata de la cola para borrarlo visualmente
       fetchQueue();
     } catch (error) {
@@ -72,7 +76,10 @@ function ModerationPanel() {
    */
   const handleReject = async (token) => {
     try {
-      await fetch(`http://127.0.0.1:8763/api/moderation/reject/${token}`, { method: 'POST' });
+      await fetch(`http://127.0.0.1:8763/api/moderation/reject/${token}`, { 
+        method: 'POST',
+        headers: getHeaders()
+      });
       // Tras rechazar, recargamos la lista
       fetchQueue();
     } catch (error) {

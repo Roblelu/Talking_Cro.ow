@@ -8,6 +8,10 @@
     ],
     "rewrites": [
       {
+        "source": "/api/createPaymentIntent",
+        "function": "createPaymentIntent"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

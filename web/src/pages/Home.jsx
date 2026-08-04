@@ -18,7 +18,7 @@ const Home = () => {
           </p>
           <div className="hero-buttons">
             <button className="btn-hero primary" onClick={() => navigate('/streamers')}>Soy Streamer</button>
-            <button className="btn-hero secondary" onClick={() => navigate('/fans')}>Soy Donador</button>
+            <button className="btn-hero secondary" onClick={() => navigate('/fans')}>Soy Fan</button>
           </div>
         </div>
         <div className="hero-visual">
@@ -44,7 +44,7 @@ const Home = () => {
           <div className="feature-card">
             <div className="feature-icon">💎</div>
             <h3>Sistema de Croins</h3>
-            <p>Una economía virtual donde tus donadores obtienen beneficios, recompensas y estatus exclusivos por apoyarte.</p>
+            <p>Una economía virtual donde tus fans obtienen beneficios, recompensas y estatus exclusivos por apoyarte.</p>
           </div>
           <div className="feature-card">
             <div className="feature-icon">⚡</div>
