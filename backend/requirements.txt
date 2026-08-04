@@ -2,3 +2,5 @@ fastapi
 uvicorn
 SQLAlchemy
 TikTokLive
+TTS
+torch
