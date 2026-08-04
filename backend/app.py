@@ -179,14 +179,27 @@ async def connect_tiktok(req: TikTokConnectRequest):
                 except:
                     pass
 
+                should_broadcast = False
+                count = 1
+                msg = ""
+
                 if getattr(event.gift, "streakable", False):
                     if not getattr(event, "streaking", False):
                         count = getattr(event, 'repeat_count', 1)
                         msg = f"{count}x {event.gift.name}"
-                        await broadcast_event(LiveEvent(type="gift", username=event.user.nickname, message=msg, img_url=img_url))
+                        should_broadcast = True
                 else:
                     msg = f"1x {event.gift.name}"
+                    should_broadcast = True
+
+                if should_broadcast:
                     await broadcast_event(LiveEvent(type="gift", username=event.user.nickname, message=msg, img_url=img_url))
+                    
+                    global tts_global_enabled
+                    if tts_global_enabled:
+                        text_to_speak = f"{event.user.nickname} ha enviado {msg}"
+                        # Lanza la síntesis en background sin bloquear la recepción de eventos
+                        asyncio.create_task(tts_engine.tts_engine.generate_and_play(text_to_speak, None))
             except Exception as e:
                 print("Gift parse error:", e)
 
@@ -212,6 +225,21 @@ async def disconnect_tiktok():
 # ---------------------------------------------------------
 # Integración de TTS y Moderación
 # ---------------------------------------------------------
+
+tts_global_enabled = False
+
+class TTSState(BaseModel):
+    enabled: bool
+
+@app.get("/api/tts/state")
+def get_tts_state():
+    return {"enabled": tts_global_enabled}
+
+@app.post("/api/tts/state")
+def set_tts_state(state: TTSState):
+    global tts_global_enabled
+    tts_global_enabled = state.enabled
+    return {"status": "ok", "enabled": tts_global_enabled}
 
 @app.get("/api/moderation/link")
 def get_moderation_link():

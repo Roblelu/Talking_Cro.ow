@@ -77,6 +77,11 @@ function App() {
         if(data && data.tiktok_username) setTiktokUsername(data.tiktok_username);
       })
       .catch(err => console.error("Error cargando settings:", err));
+
+    fetch(API_BASE + '/api/tts/state')
+      .then(res => res.json())
+      .then(data => setIsTtsLiveEnabled(data.enabled))
+      .catch(err => console.error("Error cargando tts state:", err));
   }, []);
 
   React.useEffect(() => {
@@ -88,6 +93,22 @@ function App() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     }
   }, []);
+
+  const toggleTts = async () => {
+    try {
+      const newState = !isTtsLiveEnabled;
+      const API_BASE = 'http://127.0.0.1:8763';
+      const res = await fetch(API_BASE + '/api/tts/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: newState })
+      });
+      const data = await res.json();
+      setIsTtsLiveEnabled(data.enabled);
+    } catch (e) {
+      console.error("Error toggling TTS:", e);
+    }
+  };
 
   const handleShutdown = async () => {
     try {
@@ -145,6 +166,7 @@ function App() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isDmsOpen, setIsDmsOpen] = useState(false);
   const [liveEvents, setLiveEvents] = useState([]);
+  const [isTtsLiveEnabled, setIsTtsLiveEnabled] = useState(false);
   const [audioQueue, setAudioQueue] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -640,9 +662,18 @@ function App() {
 
         {/* Columna 2: Monitor en Vivo */}
         <section className="panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', minHeight: 0 }}>
-          <h2 className="neon-text-green" style={{ textAlign: 'center', marginBottom: '25px', borderBottom: '1px solid rgba(57, 255, 20, 0.3)', paddingBottom: '10px' }}>
-            Monitor en Vivo
-          </h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '1px solid rgba(57, 255, 20, 0.3)', paddingBottom: '10px' }}>
+            <h2 className="neon-text-green" style={{ margin: 0 }}>
+              Monitor en Vivo
+            </h2>
+            <button 
+              className={`btn-neon ${isTtsLiveEnabled ? 'btn-neon-green' : 'btn-neon-red'}`} 
+              onClick={toggleTts}
+              style={{ padding: '8px 15px', fontSize: '0.9rem', borderColor: isTtsLiveEnabled ? '#39ff14' : '#ff003c', color: isTtsLiveEnabled ? '#39ff14' : '#ff003c', cursor: 'pointer' }}
+            >
+              {isTtsLiveEnabled ? '🔊 Texto a Voz ON' : '🔈 Texto a Voz OFF'}
+            </button>
+          </div>
           
           {audioQueue.length > 0 && (
              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '20px', maxHeight: '30%', overflowY: 'auto' }}>
