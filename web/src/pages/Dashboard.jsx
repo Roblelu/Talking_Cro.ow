@@ -5,7 +5,7 @@ import { signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
-  const { userProfile } = useAuth();
+  const { userData } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('donador'); // 'donador' o 'streamer'
 

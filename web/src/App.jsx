@@ -30,7 +30,8 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/streamers" element={<StreamersPage />} />
               <Route path="/fans" element={<FansPage />} />
-              <Route path="/store" element={<Store />} />
+              <Route path="/store" element={<Navigate to="/store/vridel" />} />
+              <Route path="/store/:streamerId" element={<Store />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route 

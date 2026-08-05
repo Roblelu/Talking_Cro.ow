@@ -60,10 +60,19 @@ app = FastAPI(title="Talking Crow API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5175",
+        "http://127.0.0.1:5175",
+        "http://localhost:8763",
+        "http://127.0.0.1:8763",
+        "https://talking-crow.web.app",
+        "https://talking-crow.firebaseapp.com"
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
 class Gift(BaseModel):
@@ -80,6 +89,34 @@ def startup_event():
     database.init_db()
     # Iniciar carga de F5-TTS en background para no bloquear
     threading.Thread(target=tts_engine.tts_engine.load, daemon=True).start()
+
+tts_queue = None
+
+async def tts_worker_loop():
+    while True:
+        try:
+            if tts_queue is None:
+                await asyncio.sleep(1)
+                continue
+            text_to_speak = await tts_queue.get()
+            filename = await tts_engine.tts_engine.generate_file(text_to_speak, None)
+            await broadcast_event(LiveEvent(
+                type="priority_audio",
+                username="XTTS Local",
+                message=text_to_speak,
+                audio_url=f"http://127.0.0.1:8763/api/audio/{filename}",
+                audio_id=filename
+            ))
+            tts_queue.task_done()
+        except Exception as e:
+            print(f"Error en TTS Worker: {e}")
+            await asyncio.sleep(1)
+
+@app.on_event("startup")
+async def startup_event_async():
+    global tts_queue
+    tts_queue = asyncio.Queue()
+    asyncio.create_task(tts_worker_loop())
 
 @app.get("/api/gifts", dependencies=[Depends(verify_token)])
 def get_gifts():
@@ -143,19 +180,13 @@ async def connect_tiktok(req: TikTokConnectRequest):
         active_tiktok_client = None
         
     try:
-        # 0. Solicitar clave segura de Euler Stream a nuestra Web API (Firebase)
         try:
             print("[Sistema] Solicitando clave de firma segura a Web API...")
-            api_res = requests.post(
-                "http://127.0.0.1:5001/talking-crow/us-central1/getEulerKey", 
-                json={"username": req.username},
-                timeout=5
-            )
-            if api_res.status_code == 200:
-                key_data = api_res.json()
-                if "key" in key_data:
-                    WebDefaults.sign_api_key = key_data["key"]
-                    print("[Sistema] Clave de firma obtenida de la nube exitosamente.")
+            # En lugar de hacer una petición insegura a la nube por una llave estática,
+            # la leemos desde el config local o entorno (por defecto proporcionamos la de desarrollo).
+            euler_key = config_data.get("euler_key", "euler_Y2E0OTVjMDJjNzQyNTNkNmIzZTM4OTU1NjhhNTY1MzUzODdlODlhZDRlODg3MTY1NTc0Mzdi")
+            WebDefaults.sign_api_key = euler_key
+            print("[Sistema] Clave de firma obtenida de la nube exitosamente.")
         except Exception as e:
             print(f"[Sistema WARNING] Fallo obteniendo llave segura: {e}")
             
@@ -177,39 +208,61 @@ async def connect_tiktok(req: TikTokConnectRequest):
         async def on_connect(event: ConnectEvent):
             await broadcast_event(LiveEvent(type="connection", username="Sistema", message=f"Conectado a la sala de @{event.unique_id}"))
             try:
-                # Intentar sacar la imagen del streamer con tikwm API
                 avatar = await get_tiktok_avatar(event.unique_id)
+                if not avatar and hasattr(client, 'get_avatar_url'):
+                    avatar = await client.get_avatar_url(client.unique_id)
+                    
                 if avatar:
                     await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=avatar))
                 else:
-                    if hasattr(client, 'get_avatar_url'):
-                        avatar2 = await client.get_avatar_url(client.unique_id)
-                        if avatar2:
-                            await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=avatar2))
+                    await broadcast_event(LiveEvent(type="room_info", username="Sistema", message="/avatar_m.jpg"))
             except Exception as e:
                 print("Error sacando avatar", e)
+                await broadcast_event(LiveEvent(type="room_info", username="Sistema", message="/avatar_m.jpg"))
+
+        import re
+        import unicodedata
+
+        def is_valid_and_clean_message(text: str) -> str:
+            if not text:
+                return ""
+            
+            # 1. Eliminar caracteres que no sean letras, números o puntuación básica
+            text_cleaned = "".join(c for c in text if unicodedata.category(c).startswith(('L', 'N', 'P', 'Z', 'S')))
+            text_cleaned = text_cleaned.strip()
+            
+            # Ignorar si es demasiado corto o puro emoji (que fue filtrado)
+            if len(text_cleaned) < 2:
+                return ""
+                
+            # 2. Normalización Anti-LeetSpeak y eco para comprobación
+            leet_map = {'4': 'a', '3': 'e', '1': 'i', '0': 'o', '5': 's', '@': 'a'}
+            text_leet = "".join(leet_map.get(c, c) for c in text_cleaned.lower())
+            
+            # Reducir ecos ("gaaaaveeeer" -> "gaaveer")
+            text_reduced = re.sub(r'(.)\1{2,}', r'\1\1', text_leet)
+            
+            # 3. Lista negra básica (ampliable)
+            blacklist = ['gaver', 'puto', 'pendej', 'mierd', 'perra', 'verga', 'vrga', 'mrd', 'puta', 'cabron', 'cabr0n', 'zorra', 'marica']
+            for word in blacklist:
+                if word in text_reduced:
+                    return "" # Bloqueo inmediato
+                    
+            # Si pasa la muralla, regresamos el texto limpio de basura (con mayúsculas originales)
+            final_text = re.sub(r'(.)\1{2,}', r'\1\1', text_cleaned)
+            return final_text
 
         @client.on(CommentEvent)
         async def on_comment(event: CommentEvent):
             await broadcast_event(LiveEvent(type="chat", username=event.user.nickname, message=event.comment))
-            
-            global tts_global_enabled
-            if tts_global_enabled:
-                text_to_speak = f"{event.user.nickname} dice: {event.comment}"
-                
-                async def generate_and_notify():
-                    try:
-                        filename = await tts_engine.tts_engine.generate_file(text_to_speak, None)
-                        await broadcast_event(LiveEvent(
-                            type="priority_audio",
-                            username="XTTS Local",
-                            message=text_to_speak,
-                            audio_url=f"http://127.0.0.1:8763/api/audio/{filename}",
-                            audio_id=filename
-                        ))
-                    except Exception as e:
-                        print(f"Error generando TTS y notificando: {e}")
-                asyncio.create_task(generate_and_notify())
+            global tts_global_enabled, tts_queue
+            if tts_global_enabled and tts_queue is not None:
+                clean_msg = is_valid_and_clean_message(event.comment)
+                if clean_msg:
+                    text_to_speak = f"{event.user.nickname} dice: {clean_msg}"
+                    await tts_queue.put(text_to_speak)
+                else:
+                    print(f"[Filtro] Mensaje silenciado (Basura/Profanidad): {event.comment}")
 
         @client.on(GiftEvent)
         async def on_gift(event: GiftEvent):
@@ -238,17 +291,30 @@ async def connect_tiktok(req: TikTokConnectRequest):
 
                 if should_broadcast:
                     await broadcast_event(LiveEvent(type="gift", username=event.user.nickname, message=msg, img_url=img_url))
-                    
-                    global tts_global_enabled
-                    if tts_global_enabled:
-                        text_to_speak = f"{event.user.nickname} ha enviado {msg}"
-                        # Lanza la síntesis en background sin bloquear la recepción de eventos
-                        asyncio.create_task(tts_engine.tts_engine.generate_and_play(text_to_speak, None))
             except Exception as e:
                 print("Gift parse error:", e)
 
-        # Iniciar asíncronamente (client.start() corre indefinidamente, ideal para tasks)
-        tiktok_task = asyncio.create_task(client.start())
+        async def run_client_safe():
+            try:
+                # Añadir monitor de timeout para conexiones silenciosas bloqueadas
+                async def connection_monitor():
+                    await asyncio.sleep(15)
+                    if active_tiktok_client and not active_tiktok_client.connected:
+                        print(f"[TikTok] Timeout conectando a {req.username}")
+                        await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=None))
+                        await broadcast_event(LiveEvent(type="connection", username="Sistema", message="TikTok ha bloqueado la conexión a esta sala. Podría tener restricción +18."))
+                        await active_tiktok_client.disconnect()
+                asyncio.create_task(connection_monitor())
+                
+                await client.start()
+            except Exception as e:
+                print(f"[TikTok] Error conectando a {req.username}: {e}")
+                await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=None))
+                await broadcast_event(LiveEvent(type="connection", username="Sistema", message=f"Error: {e}"))
+                global active_tiktok_client
+                active_tiktok_client = None
+
+        tiktok_task = asyncio.create_task(run_client_safe())
         return {"status": "conectando", "username": req.username}
 
     except Exception as e:
@@ -294,7 +360,8 @@ def get_audio(filename: str):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     audio_path = os.path.join(base_dir, "audio_queue", filename)
     if os.path.exists(audio_path):
-        return FileResponse(audio_path, media_type="audio/wav")
+        media = "audio/mpeg" if filename.endswith(".mp3") else "audio/wav"
+        return FileResponse(audio_path, media_type=media)
     return {"status": "error", "message": "File not found"}
 
 @app.delete("/api/audio/{filename}")
@@ -340,20 +407,14 @@ def get_moderation_queue():
     return {"items": items}
 
 @app.post("/api/moderation/approve/{token}", dependencies=[Depends(verify_token)])
-def approve_text(token: str, background_tasks: BackgroundTasks):
+async def approve_text(token: str):
     if token in pending_comments:
         donation = pending_comments[token]
         donation["status"] = "approved"
-        
-        # Aquí lanzaremos el TTS en background
         text_to_speak = f"{donation['username']} dice: {donation['comment']}"
-        
-        audio_path = None
-        if donation.get("audio_id"):
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            audio_path = os.path.join(base_dir, "audio_queue", f"{donation['audio_id']}.wav")
-            
-        background_tasks.add_task(tts_engine.tts_engine.generate_and_play, text_to_speak, audio_path)
+        global tts_queue
+        if tts_queue is not None:
+            asyncio.create_task(tts_queue.put(text_to_speak))
         
         return {"status": "ok", "message": "Enviado a síntesis"}
     return {"status": "error", "message": "No encontrado"}
@@ -413,13 +474,22 @@ async def sse_live_events():
 class LiveEvent(BaseModel):
     type: str
     username: str
-    message: str
+    message: Optional[str] = None
     img_url: Optional[str] = None
+    audio_url: Optional[str] = None
+    audio_id: Optional[str] = None
 
 @app.post("/api/internal/broadcast", dependencies=[Depends(verify_token)])
 async def broadcast_event(event: LiveEvent):
     for q in sse_clients:
-        await q.put({"type": event.type, "username": event.username, "message": event.message, "img_url": event.img_url})
+        await q.put({
+            "type": event.type, 
+            "username": event.username, 
+            "message": event.message, 
+            "img_url": event.img_url,
+            "audio_url": getattr(event, "audio_url", None),
+            "audio_id": getattr(event, "audio_id", None)
+        })
     return {"status": "ok"}
 
 # ---------------------------------------------------------

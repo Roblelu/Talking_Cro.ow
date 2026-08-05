@@ -103,7 +103,7 @@ const CheckoutForm = ({ streamerName, streamerId }) => {
     return (
       <div style={{ textAlign: 'center', marginTop: '20px' }}>
         <h3 className="neon-text-green">¡Pago Exitoso!</h3>
-        <p className="card-description">Se han añadido 10 créditos a tu cuenta de TikTok ({tiktokUser}).</p>
+        <p className="card-description">Se han añadido 10 Croins a tu cuenta de TikTok ({tiktokUser}).</p>
         <p className="card-description" style={{ marginTop: '15px' }}>¡Ve al stream de {streamerName} y escribe algo en el chat!</p>
       </div>
     );
@@ -137,7 +137,7 @@ const CheckoutForm = ({ streamerName, streamerId }) => {
         className="btn-neon send-audio-btn" 
         style={{ width: '100%', opacity: (!stripe || processing) ? 0.5 : 1 }}
       >
-        {processing ? `Procesando${dots}` : 'Comprar 10 Créditos ($4.99)'}
+        {processing ? `Procesando${dots}` : 'Comprar 10 Croins ($4.99)'}
       </button>
     </form>
   );

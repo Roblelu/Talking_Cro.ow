@@ -8,7 +8,7 @@ import logoImg from '../assets/logo.png';
 import titleImg from '../assets/title.png';
 
 const Header = () => {
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userData } = useAuth();
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -54,7 +54,7 @@ const Header = () => {
               title="Comprar más Croins"
             >
               <span style={{ fontSize: '1.2rem' }}>🪙</span>
-              <span className="neon-text-green" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{userProfile?.Croins || 0} Croins</span>
+              <span className="neon-text-green" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{userData?.Croins || 0} Croins</span>
             </div>
             
             <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setIsDropdownOpen(!isDropdownOpen)}>

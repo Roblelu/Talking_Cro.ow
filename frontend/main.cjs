@@ -21,7 +21,11 @@ function createWindow() {
     session.defaultSession.webRequest.onBeforeSendHeaders(
       { urls: ['http://127.0.0.1:8763/api/*'] },
       (details, callback) => {
-        details.requestHeaders['Authorization'] = `Bearer ${localApiKey}`;
+        // No inyectar Authorization en la ruta de audios porque HTML5 <audio> 
+        // falla si se le añaden cabeceras custom cross-origin.
+        if (!details.url.includes('/api/audio/')) {
+            details.requestHeaders['Authorization'] = `Bearer ${localApiKey}`;
+        }
         callback({ requestHeaders: details.requestHeaders });
       }
     );

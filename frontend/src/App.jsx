@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './index.css';
 import logoImg from './assets/logo.png';
 import titleImg from './assets/title.png';
@@ -57,6 +57,78 @@ const exampleScripts = [
   }
 ];
 
+const AudioPlayItem = ({ audio, isFirst, handlePlayAudio, handleRejectAudio }) => {
+  const [progress, setProgress] = useState(0);
+  const [hasActed, setHasActed] = useState(false);
+
+  const handlePlayRef = React.useRef(handlePlayAudio);
+  React.useEffect(() => { handlePlayRef.current = handlePlayAudio; }, [handlePlayAudio]);
+
+  useEffect(() => {
+    if (!isFirst) return; // Wait in queue until it becomes the first item
+    
+    let startTime = Date.now();
+    let animationFrame;
+    const DURATION = 3000;
+
+    const animate = () => {
+      if (hasActed) return;
+      const now = Date.now();
+      const elapsed = now - startTime;
+      if (elapsed >= DURATION) {
+        setProgress(100);
+        setHasActed(true);
+        handlePlayRef.current(audio.id, audio.audio_url);
+      } else {
+        setProgress((elapsed / DURATION) * 100);
+        animationFrame = requestAnimationFrame(animate);
+      }
+    };
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [audio.id, audio.audio_url, isFirst, hasActed]);
+
+  return (
+    <div style={{ padding: '12px', borderLeft: '4px solid #00f0ff', background: 'rgba(0, 240, 255, 0.1)', borderRadius: '0 8px 8px 0', animation: 'fadeIn 0.3s ease-out' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+         <strong style={{ color: '#00f0ff', textShadow: '0 0 5px #00f0ff' }}>{audio.username}</strong>
+         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{audio.timestamp.toLocaleTimeString()}</div>
+      </div>
+      <div style={{ margin: '8px 0', color: 'var(--text-primary)', fontStyle: 'italic' }}>"{audio.message}"</div>
+      
+      <div style={{ display: 'flex', gap: '10px' }}>
+         <button 
+           className="btn-neon" 
+           disabled={hasActed}
+           style={{ 
+             flex: 1, 
+             borderColor: '#00f0ff', 
+             color: '#00f0ff', 
+             padding: '5px', 
+             fontSize: '0.85rem',
+             background: `linear-gradient(90deg, rgba(0, 240, 255, 0.3) ${progress}%, transparent ${progress}%)`,
+             boxShadow: progress > 0 ? `0 0 ${progress / 5}px #00f0ff` : 'none',
+             transition: 'box-shadow 0.1s linear',
+             opacity: hasActed ? 0.7 : 1,
+             cursor: hasActed ? 'default' : 'pointer'
+           }} 
+           onClick={() => { setHasActed(true); handlePlayRef.current(audio.id, audio.audio_url); }}
+         >
+           {hasActed ? '🔊 Reproduciendo...' : '▶ Reproducir'}
+         </button>
+         <button 
+           className="btn-neon btn-neon-red" 
+           disabled={hasActed}
+           style={{ flex: 1, padding: '5px', fontSize: '0.85rem', opacity: hasActed ? 0.5 : 1, cursor: hasActed ? 'default' : 'pointer' }} 
+           onClick={() => { setHasActed(true); handleRejectAudio(audio.id); }}
+         >
+           ✖ Rechazar
+         </button>
+      </div>
+    </div>
+  );
+};
+
 function App() {
   const [activeView, setActiveView] = useState('main');
   const [profileImage, setProfileImage] = useState('/avatar_m.jpg');
@@ -74,7 +146,9 @@ function App() {
           if (res.ok) {
             if (isMounted) setIsBackendReady(true);
             res.json().then(data => {
-              if(data && data.tiktok_username && isMounted) setTiktokUsername(data.tiktok_username);
+              if(data && data.tiktok_username && isMounted) {
+                 setTiktokUsername(data.tiktok_username.startsWith('@') ? data.tiktok_username : '@' + data.tiktok_username);
+              }
             });
             
             fetch(API_BASE + '/api/gifts')
@@ -102,7 +176,7 @@ function App() {
 
   React.useEffect(() => {
     const handleBeforeUnload = () => {
-      navigator.sendBeacon('http://localhost:8763/api/shutdown');
+      navigator.sendBeacon('http://127.0.0.1:8763/api/shutdown');
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
@@ -128,12 +202,14 @@ function App() {
 
   const handleShutdown = async () => {
     try {
-      await fetch('http://localhost:8763/api/shutdown', { method: 'POST' });
+      await fetch('http://127.0.0.1:8763/api/shutdown', { method: 'POST' });
     } catch (e) {
       console.log("Servidor cerrado.");
     }
-    window.close();
     document.body.innerHTML = "<div style='display:flex;height:100vh;background:#000;color:#ff003c;align-items:center;justify-content:center;font-family:Orbitron;font-size:2rem;text-shadow:0 0 10px #ff003c;'>SISTEMA APAGADO. YA PUEDES CERRAR LA VENTANA.</div>";
+    setTimeout(() => {
+       window.close();
+    }, 500);
   };
 
   const [newGiftName, setNewGiftName] = useState('');
@@ -175,7 +251,13 @@ function App() {
   const [isTiktokConnected, setIsTiktokConnected] = useState(false);
   const [isBackendReady, setIsBackendReady] = useState(false);
   
-  const [tiktokUsername, setTiktokUsername] = useState(localStorage.getItem('lastTiktokUsername') || '');
+  const [tiktokUsername, setTiktokUsername] = useState(() => {
+    const saved = localStorage.getItem('lastTiktokUsername');
+    if (saved) return saved.startsWith('@') ? saved : '@' + saved;
+    return '@';
+  });
+  
+  const avatarFallback = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2300f0ff"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>';
   const [hostAvatar, setHostAvatar] = useState(null);
   const [isGiftsOpen, setIsGiftsOpen] = useState(false);
   const [isTopGiftsOpen, setIsTopGiftsOpen] = useState(false);
@@ -241,7 +323,12 @@ function App() {
       try {
         const data = JSON.parse(e.data);
         if (data.type === 'room_info') {
-            setHostAvatar(data.message);
+            if (data.message === null || data.message === "") {
+               setIsTiktokConnected(false);
+               setHostAvatar(null);
+            } else {
+               setHostAvatar(data.message);
+            }
         } else if (data.type === 'priority_audio') {
             const newAudio = { ...data, timestamp: new Date(), id: Date.now().toString() };
             setAudioQueue(prev => [...prev, newAudio]);
@@ -365,6 +452,11 @@ function App() {
   
   const handleConnect = async () => {
     if (!tiktokUsername.trim()) return;
+    if (!tiktokUsername.trim().startsWith('@')) {
+       showAlert("Aviso", "Es obligatorio incluir el símbolo @ al inicio del nombre de usuario de TikTok (ej. @facuuparejas).");
+       return;
+    }
+    
     setIsTiktokConnected(true);
     setHostAvatar(null);
     localStorage.setItem('lastTiktokUsername', tiktokUsername);
@@ -412,20 +504,32 @@ function App() {
     );
   };
 
-  const handlePlayAudio = (id) => {
-    const audioData = audioQueue.find(a => a.id === id);
-    if (audioData && audioData.audio_url) {
+  const handlePlayAudio = (id, url) => {
+    let finalUrl = url;
+    if (!finalUrl) {
+      const audioData = audioQueue.find(a => a.id === id);
+      finalUrl = audioData ? audioData.audio_url : null;
+    }
+
+    if (finalUrl) {
        console.log("Reproduciendo audio id:", id);
-       const snd = new Audio(audioData.audio_url);
-       snd.play();
+       const snd = new Audio(finalUrl);
+       snd.play().catch(e => {
+           console.error("Error al reproducir el audio HTML5:", e);
+           setAudioQueue(prev => prev.filter(a => a.id !== id));
+       });
        snd.onended = () => {
           // Limpiar el audio del servidor una vez escuchado
-          if (audioData.audio_id) {
-             fetch(`http://127.0.0.1:8763/api/audio/${audioData.audio_id}`, { method: 'DELETE' }).catch(e=>console.log(e));
+          if (id) {
+             fetch(`http://127.0.0.1:8763/api/audio/${id}`, { method: 'DELETE' }).catch(e=>console.log(e));
           }
+          // Y finalmente lo quitamos de la cola visual, permitiendo que avance el siguiente
+          setAudioQueue(prev => prev.filter(a => a.id !== id));
        };
+    } else {
+       console.log("No se pudo encontrar la URL de audio para el ID:", id);
+       setAudioQueue(prev => prev.filter(a => a.id !== id));
     }
-    setAudioQueue(prev => prev.filter(a => a.id !== id));
   };
 
   const handleRejectAudio = (id) => {
@@ -727,21 +831,11 @@ function App() {
           </div>
           
           {audioQueue.length > 0 && (
-             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '20px', maxHeight: '30%', overflowY: 'auto' }}>
-                {audioQueue.map(audio => (
-                  <div key={audio.id} style={{ padding: '12px', borderLeft: '4px solid #00f0ff', background: 'rgba(0, 240, 255, 0.1)', borderRadius: '0 8px 8px 0', animation: 'fadeIn 0.3s ease-out' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                       <strong style={{ color: '#00f0ff', textShadow: '0 0 5px #00f0ff' }}>{audio.username}</strong>
-                       <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{audio.timestamp.toLocaleTimeString()}</div>
-                    </div>
-                    <div style={{ margin: '8px 0', color: 'var(--text-primary)', fontStyle: 'italic' }}>"{audio.message}"</div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                       <button className="btn-neon" style={{ flex: 1, borderColor: '#00f0ff', color: '#00f0ff', padding: '5px', fontSize: '0.85rem' }} onClick={() => handlePlayAudio(audio.id)}>▶ Reproducir</button>
-                       <button className="btn-neon btn-neon-red" style={{ flex: 1, padding: '5px', fontSize: '0.85rem' }} onClick={() => handleRejectAudio(audio.id)}>✖ Rechazar</button>
-                    </div>
-                  </div>
-                ))}
-             </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                 {audioQueue.map((audio, index) => (
+                   <AudioPlayItem key={audio.id} audio={audio} isFirst={index === 0} handlePlayAudio={handlePlayAudio} handleRejectAudio={handleRejectAudio} />
+                 ))}
+              </div>
           )}
           
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.4)', padding: '20px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '0', minHeight: 0 }}
@@ -787,7 +881,7 @@ function App() {
             <div style={{ flexShrink: 0 }}>
                {isTiktokConnected ? (
                   hostAvatar ? (
-                    <img src={hostAvatar} alt="Host Avatar" style={{ width: '60px', height: '60px', borderRadius: '50%', border: '2px solid var(--neon-green)', boxShadow: '0 0 15px var(--neon-green)', objectFit: 'cover' }} />
+                    <img src={hostAvatar} alt="Host Avatar" style={{ width: '60px', height: '60px', borderRadius: '50%', border: '2px solid var(--neon-green)', boxShadow: '0 0 15px var(--neon-green)', objectFit: 'cover' }} onError={(e) => { e.target.onerror = null; e.target.src = avatarFallback; }} />
                   ) : (
                     <div className="spinner-border" style={{ width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--neon-orange)', boxShadow: '0 0 15px rgba(255, 117, 24, 0.5)' }}>
                       <span style={{ fontSize: '1.5rem', animation: 'spin 2s linear infinite reverse' }}>⏳</span>

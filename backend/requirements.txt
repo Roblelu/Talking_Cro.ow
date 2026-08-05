@@ -1,9 +1,9 @@
-fastapi
-uvicorn
-SQLAlchemy
-TikTokLive
-TTS
-torch
+fastapi==0.141.1
+uvicorn==0.52.1
+SQLAlchemy==2.0.51
+TikTokLive==6.6.6
+TTS==0.22.0
+torch==2.13.0
 
-playwright
-python-multipart
+playwright==1.62.0
+python-multipart==0.0.32
