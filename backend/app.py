@@ -50,7 +50,7 @@ api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 async def verify_token(api_key: str = Depends(api_key_header)):
     if not api_key:
         raise HTTPException(status_code=401, detail="Token requerido (Authorization: Bearer <token>)")
-    token = api_key.replace("Bearer ", "").strip()
+    token = api_key[7:].strip() if api_key.lower().startswith("bearer ") else api_key.strip()
     if token != LOCAL_API_KEY:
         raise HTTPException(status_code=403, detail="Token inválido")
     return token
@@ -99,7 +99,16 @@ async def tts_worker_loop():
                 await asyncio.sleep(1)
                 continue
             text_to_speak = await tts_queue.get()
-            filename = await tts_engine.tts_engine.generate_file(text_to_speak, None)
+            # Extraer configuración actual de voz
+            conn = database.get_db_connection()
+            db_settings = conn.execute("SELECT tts_voice, tts_rate, tts_volume FROM settings LIMIT 1").fetchone()
+            conn.close()
+            voice = db_settings["tts_voice"] if db_settings else "es-MX-DaliaNeural"
+            rate = db_settings["tts_rate"] if db_settings else "+0%"
+            volume = db_settings["tts_volume"] if db_settings else "+0%"
+
+            # Generar audio con las opciones del usuario
+            filename = await tts_engine.tts_engine.generate_file(text_to_speak, voice=voice, rate=rate, volume=volume)
             await broadcast_event(LiveEvent(
                 type="priority_audio",
                 username="XTTS Local",
@@ -144,20 +153,27 @@ def delete_gift(gift_id: int):
     conn.close()
     return {"status": "ok"}
 
+class Settings(BaseModel):
+    tiktok_username: str
+    base_audio_path: str
+    tts_voice: str = "es-MX-DaliaNeural"
+    tts_rate: str = "+0%"
+    tts_volume: str = "+0%"
+
 @app.get("/api/settings", dependencies=[Depends(verify_token)])
 def get_settings():
     conn = database.get_db_connection()
-    settings = conn.execute("SELECT tiktok_username, base_audio_path FROM settings LIMIT 1").fetchone()
+    settings = conn.execute("SELECT * FROM settings LIMIT 1").fetchone()
     conn.close()
     if settings:
         return dict(settings)
-    return {"tiktok_username": "@SoyVridel", "base_audio_path": ""}
+    return {"tiktok_username": "@SoyVridel", "base_audio_path": "", "tts_voice": "es-MX-DaliaNeural", "tts_rate": "+0%", "tts_volume": "+0%"}
 
 @app.post("/api/settings", dependencies=[Depends(verify_token)])
 def update_settings(settings: Settings):
     conn = database.get_db_connection()
-    conn.execute("UPDATE settings SET tiktok_username = ?, base_audio_path = ?", 
-                 (settings.tiktok_username, settings.base_audio_path))
+    conn.execute("UPDATE settings SET tiktok_username = ?, base_audio_path = ?, tts_voice = ?, tts_rate = ?, tts_volume = ?", 
+                 (settings.tiktok_username, settings.base_audio_path, settings.tts_voice, settings.tts_rate, settings.tts_volume))
     conn.commit()
     conn.close()
     return {"status": "ok"}
@@ -183,8 +199,8 @@ async def connect_tiktok(req: TikTokConnectRequest):
         try:
             print("[Sistema] Solicitando clave de firma segura a Web API...")
             # En lugar de hacer una petición insegura a la nube por una llave estática,
-            # la leemos desde el config local o entorno (por defecto proporcionamos la de desarrollo).
-            euler_key = config_data.get("euler_key", "euler_Y2E0OTVjMDJjNzQyNTNkNmIzZTM4OTU1NjhhNTY1MzUzODdlODlhZDRlODg3MTY1NTc0Mzdi")
+            # la leemos desde el config local o entorno.
+            euler_key = config_data.get("euler_key", "")
             WebDefaults.sign_api_key = euler_key
             print("[Sistema] Clave de firma obtenida de la nube exitosamente.")
         except Exception as e:
@@ -351,6 +367,25 @@ def set_tts_state(state: TTSState):
     tts_global_enabled = state.enabled
     return {"status": "ok", "enabled": tts_global_enabled}
 
+class TTSTestRequest(BaseModel):
+    text: str
+    voice: str
+
+@app.post("/api/tts/test")
+async def test_tts(req: TTSTestRequest):
+    conn = database.get_db_connection()
+    db_settings = conn.execute("SELECT tts_rate, tts_volume FROM settings LIMIT 1").fetchone()
+    conn.close()
+    
+    rate = db_settings["tts_rate"] if db_settings else "+0%"
+    volume = db_settings["tts_volume"] if db_settings else "+0%"
+    
+    import tts_engine
+    import os
+    filename = await tts_engine.tts_engine.generate_file(req.text, voice=req.voice, rate=rate, volume=volume)
+    
+    return {"status": "ok", "audio_url": f"/api/audio/{os.path.basename(filename)}"}
+
 
 
 from fastapi.responses import FileResponse
@@ -453,7 +488,7 @@ from fastapi.responses import StreamingResponse
 
 sse_clients = []
 
-@app.get("/api/live_events")
+@app.get("/api/live_events", dependencies=[Depends(verify_token)])
 async def sse_live_events():
     queue = asyncio.Queue()
     sse_clients.append(queue)

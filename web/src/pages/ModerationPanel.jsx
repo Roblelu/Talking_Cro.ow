@@ -13,7 +13,7 @@ function ModerationPanel() {
   const [pendingMessages, setPendingMessages] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const getHeaders = () => ({ "Authorization": `Bearer ${localStorage.getItem("local_api_key") || ""}` });
+  const getHeaders = () => ({ "Authorization": `Bearer ${sessionStorage.getItem("local_api_key") || ""}` });
 
   /**
    * fetchQueue

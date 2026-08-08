@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import './index.css';
 import logoImg from './assets/logo.png';
 import titleImg from './assets/title.png';
+// Para mayor seguridad (TC-09), obtenemos ipcRenderer a través del contextBridge en lugar de require
+const { ipcRenderer } = window.electron ? window.electron : { ipcRenderer: null };
 
 import AccountPage from './pages/AccountPage';
 import SubscriptionPage from './pages/SubscriptionPage';
@@ -69,7 +71,7 @@ const AudioPlayItem = ({ audio, isFirst, handlePlayAudio, handleRejectAudio }) =
     
     let startTime = Date.now();
     let animationFrame;
-    const DURATION = 3000;
+    const DURATION = 1000;
 
     const animate = () => {
       if (hasActed) return;
@@ -132,9 +134,35 @@ const AudioPlayItem = ({ audio, isFirst, handlePlayAudio, handleRejectAudio }) =
 function App() {
   const [activeView, setActiveView] = useState('main');
   const [profileImage, setProfileImage] = useState('/avatar_m.jpg');
+  const [hashRoute, setHashRoute] = useState(window.location.hash);
   
   const { currentUser, userProfile } = useAuth();
   const [gifts, setGifts] = useState([]);
+  
+  const [ttsVoice, setTtsVoice] = useState('es-MX-DaliaNeural');
+  const [ttsRate, setTtsRate] = useState('+0%');
+  const [ttsVolume, setTtsVolume] = useState('+0%');
+  const [isTtsSettingsOpen, setIsTtsSettingsOpen] = useState(false);
+  const [soundsVolume, setSoundsVolume] = useState('100');
+  const [stickersVolume, setStickersVolume] = useState('100');
+
+  const getDbFromPercentage = (pctStr) => {
+     const val = parseInt(pctStr.replace('%','').replace('+','')) || 0;
+     if (val <= 0) return Math.round((val / 100) * 60); 
+     return Math.round((val / 100) * 12);
+  };
+
+  const getPercentageFromDb = (dbVal) => {
+     const db = parseFloat(dbVal);
+     const pct = db <= 0 ? Math.round((db / 60) * 100) : Math.round((db / 12) * 100);
+     return (pct >= 0 ? '+' : '') + pct + '%';
+  };
+
+  useEffect(() => {
+    const handleHash = () => setHashRoute(window.location.hash);
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
   
   React.useEffect(() => {
     const API_BASE = 'http://127.0.0.1:8763';
@@ -146,8 +174,11 @@ function App() {
           if (res.ok) {
             if (isMounted) setIsBackendReady(true);
             res.json().then(data => {
-              if(data && data.tiktok_username && isMounted) {
-                 setTiktokUsername(data.tiktok_username.startsWith('@') ? data.tiktok_username : '@' + data.tiktok_username);
+              if(data && isMounted) {
+                 if (data.tiktok_username) setTiktokUsername(data.tiktok_username.startsWith('@') ? data.tiktok_username : '@' + data.tiktok_username);
+                 if (data.tts_voice) setTtsVoice(data.tts_voice);
+                 if (data.tts_rate) setTtsRate(data.tts_rate);
+                 if (data.tts_volume) setTtsVolume(data.tts_volume);
               }
             });
             
@@ -176,7 +207,9 @@ function App() {
 
   React.useEffect(() => {
     const handleBeforeUnload = () => {
-      navigator.sendBeacon('http://127.0.0.1:8763/api/shutdown');
+      if (!window.location.hash) {
+        navigator.sendBeacon('http://127.0.0.1:8763/api/shutdown');
+      }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
@@ -200,7 +233,43 @@ function App() {
     }
   };
 
+  const saveTtsSettings = async (voice, rate, volume) => {
+    const API_BASE = 'http://127.0.0.1:8763';
+    const cleanUsername = tiktokUsername.replace('@', '').trim() || 'SoyVridel';
+    fetch(API_BASE + '/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+         tiktok_username: cleanUsername, 
+         base_audio_path: '',
+         tts_voice: voice,
+         tts_rate: rate,
+         tts_volume: volume
+      })
+    }).catch(e => console.log(e));
+  };
+
+  const handleVoiceChange = (e) => {
+    const v = e.target.value;
+    setTtsVoice(v);
+    saveTtsSettings(v, ttsRate, ttsVolume);
+  };
+  const handleRateChange = (e) => {
+    const v = e.target.value;
+    setTtsRate(v);
+    saveTtsSettings(ttsVoice, v, ttsVolume);
+  };
+  const handleVolumeChange = (e) => {
+    const v = e.target.value;
+    setTtsVolume(v);
+    saveTtsSettings(ttsVoice, ttsRate, v);
+  };
+
   const handleShutdown = async () => {
+    if (window.location.hash) {
+        window.close();
+        return;
+    }
     try {
       await fetch('http://127.0.0.1:8763/api/shutdown', { method: 'POST' });
     } catch (e) {
@@ -467,7 +536,7 @@ function App() {
     fetch(API_BASE + '/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tiktok_username: cleanUsername, base_audio_path: '' })
+      body: JSON.stringify({ tiktok_username: cleanUsername, base_audio_path: '', tts_voice: ttsVoice, tts_rate: ttsRate, tts_volume: ttsVolume })
     }).catch(e => console.log(e));
     
     try {
@@ -572,8 +641,11 @@ function App() {
   };
 
   return (
-    <div style={{ padding: '30px', maxWidth: '1600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '30px', height: '100vh', boxSizing: 'border-box' }}>
+    <div style={{ padding: hashRoute ? '10px' : '30px', maxWidth: '1600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: hashRoute ? '10px' : '30px', height: '100vh', boxSizing: 'border-box', background: hashRoute ? '#050505' : 'transparent' }}>
       <Modal {...modalConfig} />
+      
+      {!hashRoute && (
+        <>
       <header className="main-navbar">
         <div className="navbar-left navbar-side" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', position: 'relative' }} onClick={() => setActiveView('main')}>
           <img src={logoImg} alt="Talking Crow Logo" className="logo-img" />
@@ -980,45 +1052,190 @@ function App() {
           </div>
           </section>
 
-          {/* Paneles Extras: Efectos de Sonido y Stickers (Desplazamiento Dinámico) */}
-          <div className={`extras-container ${!isDmsOpen ? 'visible' : ''}`} style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-             <section className="panel custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, paddingBottom: '15px', overflowY: 'auto' }}>
-                <h2 className="neon-text-purple" style={{ textAlign: 'center', marginBottom: '15px' }}>
-                   Efectos de Sonido
-                </h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gridAutoRows: '35px', gap: '10px', paddingBottom: '5px' }}>
-                   {sounds.map((item, i) => (
-                      <button key={i} title="Clic derecho para eliminar" onContextMenu={(e) => handleDeleteSound(i, e)} className="btn-neon btn-neon-orange" style={{ height: '100%', padding: '8px 2px', fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-                         <span style={{ fontSize: '1rem' }}>{item.icon}</span> {item.name}
-                      </button>
-                   ))}
-                   <div style={{ display: 'flex', height: '100%' }}>
-                     <button className="btn-neon btn-neon-green" onClick={() => setActiveModal('sound')} style={{ flex: 1, padding: '8px', fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px 0 0 6px', borderRight: 'none', borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px' }}>+</button>
-                     <button className="btn-neon btn-neon-red" onClick={() => { setActiveModal('delete-sound'); setItemsToDelete([]); }} style={{ flex: 1, padding: '8px', fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0 6px 6px 0', borderTopWidth: '1px', borderBottomWidth: '1px', borderRightWidth: '1px' }}>-</button>
+          {/* Panel de Configuración TTS */}
+          <div className={`extras-container ${!isDmsOpen ? 'visible' : ''}`} style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+             <section className="panel" style={{ maxHeight: '100%', minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                   <h2 className="neon-text-orange" style={{ margin: 0, fontSize: '1.2rem', textAlign: 'left' }}>Configuración TTS</h2>
+                   <button 
+                     onClick={() => setIsTtsSettingsOpen(!isTtsSettingsOpen)}
+                     style={{ background: 'transparent', border: 'none', color: 'var(--neon-orange)', fontSize: '1.1rem', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}
+                   >
+                     <span style={{ transition: 'transform 0.3s ease', transform: isTtsSettingsOpen ? 'rotate(90deg)' : 'rotate(0deg)', fontSize: '0.8rem' }}>▶</span>
+                     <span style={{ transition: 'transform 0.3s ease', transform: isTtsSettingsOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>⚙️</span>
+                   </button>
+                </div>
+                
+                <div className={`accordion-content ${isTtsSettingsOpen ? 'open' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '15px', flexShrink: 0 }}>
+                   
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                        Voz Inteligente: <span style={{ color: 'var(--neon-orange)' }}>
+                          {[
+                             { id: 'es-MX-DaliaNeural', name: 'Dalia (MX)' },
+                             { id: 'es-MX-JorgeNeural', name: 'Jorge (MX)' },
+                             { id: 'es-ES-ElviraNeural', name: 'Elvira (ES)' },
+                             { id: 'es-ES-AlvaroNeural', name: 'Álvaro (ES)' }
+                          ].find(v => v.id === ttsVoice)?.name || ''}
+                        </span>
+                      </label>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 75px)', justifyContent: 'center', gap: '20px' }}>
+                         {[
+                           { id: 'es-MX-DaliaNeural', img: '/IAvATARFem (1).png', name: 'Dalia (MX)' },
+                           { id: 'es-MX-JorgeNeural', img: '/IAvATARMasc (1).png', name: 'Jorge (MX)' },
+                           { id: 'es-ES-ElviraNeural', img: '/IAvATARFem (2).png', name: 'Elvira (ES)' },
+                           { id: 'es-ES-AlvaroNeural', img: '/IAvATARMasc (2).png', name: 'Álvaro (ES)' }
+                         ].map(voice => (
+                            <div 
+                              key={voice.id}
+                              onClick={async () => {
+                                setTtsVoice(voice.id);
+                                saveTtsSettings(voice.id, ttsRate, ttsVolume);
+                                try {
+                                  const username = userProfile?.username || 'Usuario';
+                                  const API_BASE = 'http://127.0.0.1:8763';
+                                  const res = await fetch(API_BASE + '/api/tts/test', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ text: `Hola ${username}`, voice: voice.id })
+                                  });
+                                  const data = await res.json();
+                                  if (data.audio_url) {
+                                    const audio = new Audio(API_BASE + data.audio_url);
+                                    audio.play().catch(e => console.error('Audio autoplay error:', e));
+                                  }
+                                } catch (e) { console.error('Error probando voz:', e); }
+                              }}
+                              style={{
+                                position: 'relative',
+                                cursor: 'pointer',
+                                border: ttsVoice === voice.id ? '2px solid var(--neon-orange)' : '2px solid transparent',
+                                boxShadow: ttsVoice === voice.id ? '0 0 10px var(--neon-orange)' : 'none',
+                                transition: 'all 0.3s ease',
+                                aspectRatio: '1',
+                                overflow: 'hidden',
+                                borderRadius: '15px'
+                              }}
+                            >
+                              <img src={voice.img} alt={voice.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
+                         ))}
+                      </div>
+                   </div>
+
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Velocidad de Locución</span>
+                        <span style={{ color: '#00f0ff' }}>{ttsRate}</span>
+                      </label>
+                      <div className="obs-fader-container">
+                         <div className="speed-fader-track" style={{ '--fill-ratio': ((parseInt(ttsRate.replace('%','').replace('+','')) || 0) + 50) / 100 }}>
+                           <input 
+                              type="range" 
+                              min="-50" max="50" step="10" 
+                              value={parseInt(ttsRate.replace('%','').replace('+','')) || 0} 
+                              onChange={(e) => { const val = e.target.value; handleRateChange({ target: { value: (val >= 0 ? '+' : '') + val + '%' } }); }} 
+                              className="obs-fader" 
+                           />
+                         </div>
+                      </div>
+                   </div>
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flexShrink: 0 }}>
+                   <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Volumen (dB)</label>
+                   <div className="obs-fader-container">
+                      <div className="obs-fader-track" style={{ '--fill-ratio': (getDbFromPercentage(ttsVolume) + 60) / 72 }}>
+                        <input 
+                           type="range" 
+                           min="-60" max="12" step="1" 
+                           value={getDbFromPercentage(ttsVolume)} 
+                           onChange={(e) => { 
+                             const pct = getPercentageFromDb(e.target.value); 
+                             handleVolumeChange({ target: { value: pct } }); 
+                           }} 
+                           className="obs-fader" 
+                        />
+                      </div>
+                      <span className="obs-fader-value">
+                        {getDbFromPercentage(ttsVolume) > 0 ? '+' : ''}{getDbFromPercentage(ttsVolume)} dB
+                      </span>
                    </div>
                 </div>
              </section>
 
-             <section className="panel custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, paddingBottom: '15px', overflowY: 'auto' }}>
-                <h2 className="neon-text-purple" style={{ textAlign: 'center', marginBottom: '15px' }}>
-                   Stickers
-                </h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gridAutoRows: '35px', gap: '10px', paddingBottom: '5px' }}>
-                   {stickers.map((item, i) => (
-                      <button key={i} title="Clic derecho para eliminar" onContextMenu={(e) => handleDeleteSticker(i, e)} className="btn-neon btn-neon-orange" style={{ height: '100%', padding: '8px 2px', fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-                         <span style={{ fontSize: '1rem' }}>{item.icon}</span> {item.name}
-                      </button>
-                   ))}
-                   <div style={{ display: 'flex', height: '100%' }}>
-                     <button className="btn-neon btn-neon-green" onClick={() => setActiveModal('sticker')} style={{ flex: 1, padding: '8px', fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px 0 0 6px', borderRight: 'none', borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px' }}>+</button>
-                     <button className="btn-neon btn-neon-red" onClick={() => { setActiveModal('delete-sticker'); setItemsToDelete([]); }} style={{ flex: 1, padding: '8px', fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0 6px 6px 0', borderTopWidth: '1px', borderBottomWidth: '1px', borderRightWidth: '1px' }}>-</button>
-                   </div>
-                </div>
-             </section>
+             <div style={{ display: 'flex', gap: '15px', height: '50px' }}>
+                <button className="btn-neon btn-neon-cyan" style={{ flex: 1, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', lineHeight: '1.2' }} onClick={() => ipcRenderer?.send('open-secondary-window', 'sounds', 'Efectos de Sonido')}>
+                   EFECTOS DE<br/>SONIDO
+                </button>
+                <button className="btn-neon btn-neon-cyan" style={{ flex: 1, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => ipcRenderer?.send('open-secondary-window', 'stickers', 'Stickers')}>
+                   STICKERS
+                </button>
+             </div>
           </div>
         </div>
 
         </div>
+      )}
+      </>
+      )}
+
+      {/* RENDERIZADO DE VENTANAS SECUNDARIAS (Si hay hashRoute) */}
+      {hashRoute === '#sounds' && (
+         <section className="panel custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, paddingBottom: '15px', overflowY: 'auto' }}>
+            <h2 className="neon-text-purple" style={{ textAlign: 'center', margin: '0 0 10px 0' }}>
+               Efectos de Sonido
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '15px' }}>
+               <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Volumen Maestro</label>
+               <div className="obs-fader-container">
+                 <div className="obs-fader-track" style={{ '--fill-ratio': soundsVolume / 100 }}>
+                   <input type="range" min="0" max="100" step="1" value={soundsVolume} onChange={(e) => setSoundsVolume(e.target.value)} className="obs-fader" />
+                 </div>
+                 <span className="obs-fader-value">{soundsVolume}%</span>
+               </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gridAutoRows: '35px', gap: '10px', paddingBottom: '5px' }}>
+               {sounds.map((item, i) => (
+                  <button key={i} title="Clic derecho para eliminar" onContextMenu={(e) => handleDeleteSound(i, e)} className="btn-neon btn-neon-orange" style={{ height: '100%', padding: '8px 2px', fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                     <span style={{ fontSize: '1rem' }}>{item.icon}</span> {item.name}
+                  </button>
+               ))}
+               <div style={{ display: 'flex', height: '100%' }}>
+                 <button className="btn-neon btn-neon-green" onClick={() => setActiveModal('sound')} style={{ flex: 1, padding: '8px', fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px 0 0 6px', borderRight: 'none', borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px' }}>+</button>
+                 <button className="btn-neon btn-neon-red" onClick={() => { setActiveModal('delete-sound'); setItemsToDelete([]); }} style={{ flex: 1, padding: '8px', fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0 6px 6px 0', borderTopWidth: '1px', borderBottomWidth: '1px', borderRightWidth: '1px' }}>-</button>
+               </div>
+            </div>
+         </section>
+      )}
+
+      {hashRoute === '#stickers' && (
+         <section className="panel custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, paddingBottom: '15px', overflowY: 'auto' }}>
+            <h2 className="neon-text-purple" style={{ textAlign: 'center', margin: '0 0 10px 0' }}>
+               Stickers
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '15px' }}>
+               <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Volumen Maestro</label>
+               <div className="obs-fader-container">
+                 <div className="obs-fader-track" style={{ '--fill-ratio': stickersVolume / 100 }}>
+                   <input type="range" min="0" max="100" step="1" value={stickersVolume} onChange={(e) => setStickersVolume(e.target.value)} className="obs-fader" />
+                 </div>
+                 <span className="obs-fader-value">{stickersVolume}%</span>
+               </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gridAutoRows: '35px', gap: '10px', paddingBottom: '5px' }}>
+               {stickers.map((item, i) => (
+                  <button key={i} title="Clic derecho para eliminar" onContextMenu={(e) => handleDeleteSticker(i, e)} className="btn-neon btn-neon-orange" style={{ height: '100%', padding: '8px 2px', fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                     <span style={{ fontSize: '1rem' }}>{item.icon}</span> {item.name}
+                  </button>
+               ))}
+               <div style={{ display: 'flex', height: '100%' }}>
+                 <button className="btn-neon btn-neon-green" onClick={() => setActiveModal('sticker')} style={{ flex: 1, padding: '8px', fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px 0 0 6px', borderRight: 'none', borderTopWidth: '1px', borderBottomWidth: '1px', borderLeftWidth: '1px' }}>+</button>
+                 <button className="btn-neon btn-neon-red" onClick={() => { setActiveModal('delete-sticker'); setItemsToDelete([]); }} style={{ flex: 1, padding: '8px', fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0 6px 6px 0', borderTopWidth: '1px', borderBottomWidth: '1px', borderRightWidth: '1px' }}>-</button>
+               </div>
+            </div>
+         </section>
       )}
       
       {/* VISTA DE MENSAJES DIRECTOS (WEBVIEW TIKTOK) */}

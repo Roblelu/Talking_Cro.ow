@@ -26,6 +26,14 @@ def init_db():
     if c.fetchone()[0] == 0:
         c.execute("INSERT INTO settings (tiktok_username) VALUES ('@SoyVridel')")
         
+    # Migración: Añadir nuevas columnas TTS si no existen
+    try:
+        c.execute("ALTER TABLE settings ADD COLUMN tts_voice TEXT DEFAULT 'es-MX-DaliaNeural'")
+        c.execute("ALTER TABLE settings ADD COLUMN tts_rate TEXT DEFAULT '+0%'")
+        c.execute("ALTER TABLE settings ADD COLUMN tts_volume TEXT DEFAULT '+0%'")
+    except sqlite3.OperationalError:
+        pass # Las columnas ya existen
+        
     # Tabla Regalos
     c.execute('''
         CREATE TABLE IF NOT EXISTS gifts (

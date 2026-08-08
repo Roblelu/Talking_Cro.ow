@@ -5,6 +5,7 @@ backend/__pycache__/
 *.pyo
 *.pyd
 *.log
+backend/config.json
 backend/database.db
 backend/temp_tts_out/
 backend/ffmpeg_extracted/

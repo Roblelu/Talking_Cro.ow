@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { auth, db } from "../firebase";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 
 const EyeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--neon-green)' }}>
@@ -34,31 +34,43 @@ export default function Register({ onNavigate }) {
     }
 
     try {
-      // 1. Crear el usuario en Firebase Auth
+      // 1. TC-11: Comprobar que el nombre de usuario no esté ocupado
+      const fansRef = collection(db, "streamers", "vridel", "fans");
+      const q = query(fansRef, where("username", "==", username));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+         return setError("El nombre de usuario ya está ocupado. Elige otro.");
+      }
+
+      // 2. Crear el usuario en Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 2. Actualizar el displayName con el username
+      // 3. Actualizar el displayName con el username
       await updateProfile(user, { displayName: username });
 
-      // 3. Crear su documento en Firestore con su username y 0 Croins iniciales
-      // Como estamos unificando Streamers y Fans, lo guardamos en la subcolección fans de "vridel" por ahora
-      // Cuando sea multi-streamer, esta ruta cambiará.
-      const docRef = doc(db, "streamers", "vridel", "fans", username);
+      // 4. TC-10: Crear documento en Firestore con el UID (no el username) y ocultar PII
+      const docRef = doc(db, "streamers", "vridel", "fans", user.uid);
       await setDoc(docRef, {
         Croins: 0,
         isPro: false,
-        email: email,
-        phone: phone,
         username: username,
         createdAt: new Date()
       });
 
-      // 4. Regresar a la vista principal en lugar de /dashboard
+      // 5. TC-10: Guardar datos sensibles en bóveda privada
+      const privateDocRef = doc(db, "streamers", "vridel", "fans", user.uid, "private", "contact");
+      await setDoc(privateDocRef, {
+        email: email,
+        phone: phone
+      });
+
+      // 6. Regresar a la vista principal
       onNavigate('main');
     } catch (err) {
       console.error(err);
-      setError("Error al registrarse. Intenta con otro correo.");
+      setError("Error al registrarse. Intenta con otro correo o revisa tu conexión.");
     }
   };
 

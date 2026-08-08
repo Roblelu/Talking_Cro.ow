@@ -17,7 +17,7 @@ class TTSEngine:
             print("[Edge TTS Engine] Motor cargado y listo (Instantáneo).")
             self.is_loaded = True
 
-    async def generate_file(self, text, reference_audio_path=None):
+    async def generate_file(self, text, reference_audio_path=None, voice="es-MX-DaliaNeural", rate="+0%", volume="+0%"):
         if not self.is_loaded:
             self.load()
             
@@ -29,8 +29,8 @@ class TTSEngine:
         out_path = os.path.join(audio_dir, f"{token}.mp3")
         
         try:
-            print(f"[Edge TTS Engine] Sintetizando voz: {text[:30]}...")
-            communicate = edge_tts.Communicate(text, self.voice)
+            print(f"[Edge TTS Engine] Sintetizando voz: {text[:30]}... ({voice}, {rate}, {volume})")
+            communicate = edge_tts.Communicate(text, voice, rate=rate, volume=volume)
             await communicate.save(out_path)
             print(f"[Edge TTS Engine] Síntesis completada instantánea: {out_path}")
             return f"{token}.mp3"

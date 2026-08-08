@@ -1,0 +1,171 @@
+/* Streamers.css */
+.streamers-container {
+  min-height: 100vh;
+  background: radial-gradient(circle at 10% 20%, #0b0f19, #000000);
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  padding: 100px 20px 60px;
+  overflow: hidden;
+}
+
+.streamers-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  gap: 40px;
+}
+
+.streamers-text {
+  flex: 1;
+}
+
+.streamers-title {
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.streamers-subtitle {
+  font-size: 1.2rem;
+  color: #a0aec0;
+  margin-bottom: 30px;
+  line-height: 1.6;
+}
+
+.btn-streamer {
+  background: linear-gradient(90deg, #00c6ff, #0072ff);
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 15px rgba(0, 114, 255, 0.4);
+}
+
+.btn-streamer:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 114, 255, 0.6);
+}
+
+.streamers-visual {
+  flex: 1;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Glassmorphism Dashboard Placeholder */
+.dashboard-placeholder {
+  width: 100%;
+  max-width: 500px;
+  height: 350px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboard-placeholder::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(transparent, transparent, transparent, #00f2fe);
+  animation: rotate-border 4s linear infinite;
+  z-index: -1;
+  opacity: 0.1;
+}
+
+@keyframes rotate-border {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.dash-header {
+  height: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  margin-bottom: 20px;
+  width: 40%;
+}
+
+.dash-body {
+  display: flex;
+  gap: 15px;
+  flex: 1;
+}
+
+.dash-sidebar {
+  width: 30%;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.dash-main {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.streamers-features {
+  max-width: 1200px;
+  margin: 80px auto 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+}
+
+.s-feature-card {
+  background: rgba(16, 24, 39, 0.6);
+  border-radius: 12px;
+  padding: 30px;
+  border: 1px solid rgba(0, 242, 254, 0.1);
+  transition: transform 0.3s;
+}
+
+.s-feature-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(0, 242, 254, 0.5);
+}
+
+.s-feature-icon {
+  font-size: 2.5rem;
+  margin-bottom: 15px;
+}
+
+.s-feature-card h3 {
+  font-size: 1.3rem;
+  margin-bottom: 10px;
+  color: #fff;
+}
+
+.s-feature-card p {
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .streamers-hero {
+    flex-direction: column;
+    text-align: center;
+  }
+}

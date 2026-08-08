@@ -37,9 +37,10 @@ function createWindow() {
     backgroundColor: '#050505',
     title: 'Talking Cro.ow',
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      webviewTag: true
+      nodeIntegration: false,
+      contextIsolation: true,
+      webviewTag: false,
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 
@@ -57,6 +58,26 @@ app.whenReady().then(createWindow);
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
+  }
+});
+
+ipcMain.on('open-secondary-window', (event, route, windowTitle) => {
+  const secWindow = new BrowserWindow({
+    width: 600,
+    height: 700,
+    backgroundColor: '#050505',
+    title: windowTitle,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
+    }
+  });
+  secWindow.removeMenu();
+  if (isDev) {
+    secWindow.loadURL(`http://localhost:5175/#${route}`);
+  } else {
+    secWindow.loadFile(path.join(__dirname, 'dist', 'index.html'), { hash: route });
   }
 });
 

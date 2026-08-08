@@ -39,8 +39,8 @@ const Header = () => {
         </div>
         <nav style={{ display: 'flex', gap: '20px', position: 'relative', zIndex: 10 }}>
           <NavLink to="/" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Inicio</NavLink>
-          <NavLink to="/streamers" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Streamers</NavLink>
-          <NavLink to="/fans" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Fans</NavLink>
+          <NavLink to="/creadores" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Creadores</NavLink>
+          <NavLink to="/ecovoices" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Eco Voices</NavLink>
         </nav>
       </div>
 
@@ -72,7 +72,7 @@ const Header = () => {
                      <img src={'/avatar_m.jpg'} alt="Perfil" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--neon-purple)' }} />
                      Cuenta Talking Crow
                    </li>
-                   <li onClick={() => { navigate('/store'); setIsDropdownOpen(false); }}>Suscripción y Pagos</li>
+                   <li onClick={() => { navigate('/dashboard'); setIsDropdownOpen(false); }}>Suscripción y Pagos</li>
                    <li onClick={() => { navigate('/dashboard'); setIsDropdownOpen(false); }}>Contacto y soporte</li>
                    <li onClick={() => { navigate('/dashboard'); setIsDropdownOpen(false); }}>Términos y Condiciones</li>
                    <li 

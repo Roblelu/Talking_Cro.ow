@@ -3,9 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Header from './components/Header'
 import Home from './pages/Home'
-import StreamersPage from './pages/StreamersPage'
-import FansPage from './pages/FansPage'
-import Store from './pages/Store'
+import CreatorsPage from './pages/CreatorsPage'
+import EcoVoicesPage from './pages/EcoVoicesPage'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
@@ -28,10 +27,8 @@ function App() {
           <main>
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/streamers" element={<StreamersPage />} />
-              <Route path="/fans" element={<FansPage />} />
-              <Route path="/store" element={<Navigate to="/store/vridel" />} />
-              <Route path="/store/:streamerId" element={<Store />} />
+              <Route path="/creadores" element={<CreatorsPage />} />
+              <Route path="/ecovoices" element={<EcoVoicesPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route 

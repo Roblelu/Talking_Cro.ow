@@ -51,10 +51,10 @@ h1, h2, h3, h4, h5, h6 {
 /* Estilos de paneles - Borde y fondo sutiles, sin box-shadow estridente */
 .panel {
   background-color: var(--panel-bg);
-  border: 1px solid rgba(157, 0, 255, 0.2); /* Borde sutil morado */
+  border: 1px solid rgba(157, 0, 255, 0.1); /* Borde sutil */
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6); /* Sombra oscura de profundidad */
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.9), 0 0 30px rgba(0, 0, 0, 0.4); /* Flotación natural y suave */
   position: relative;
   overflow: hidden;
 }
@@ -123,6 +123,18 @@ h1, h2, h3, h4, h5, h6 {
   background: rgba(57, 255, 20, 0.1);
   border-color: var(--neon-green);
   box-shadow: 0 0 12px rgba(57, 255, 20, 0.3);
+}
+
+.btn-neon.btn-neon-cyan {
+  background: rgba(0, 240, 255, 0.03);
+  color: #00f0ff;
+  border-color: rgba(0, 240, 255, 0.4);
+}
+
+.btn-neon.btn-neon-cyan:hover {
+  background: rgba(0, 240, 255, 0.1);
+  border-color: #00f0ff;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
 }
 
 /* Inputs y Selects */
@@ -310,6 +322,63 @@ input[type="file"]::file-selector-button:hover {
   animation: dropdownFadeIn 0.3s ease forwards;
   max-height: 250px;
   overflow-y: auto;
+}
+
+.obs-fader { z-index: 10; }
+
+.obs-fader::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.9), 0 0 5px rgba(255, 255, 255, 0.5) inset;
+}
+
+/* --- NUEVO: Fader de Velocidad (Speed) --- */
+.speed-fader-track {
+  flex: 1;
+  position: relative;
+  height: 26px;
+  box-sizing: border-box;
+  
+  border-style: solid;
+  border-color: #030305;
+  border-width: 8px 4px;
+  border-radius: 6px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.9), inset 0 -2px 4px rgba(0,0,0,0.9);
+  
+  background-clip: padding-box;
+  
+  /* Degradado azul marino a cyan */
+  background: 
+    linear-gradient(90deg, transparent 82.5%, rgba(255,255,255,0.9) 82.5%, rgba(255,255,255,0.9) 83.5%, transparent 83.5%),
+    linear-gradient(90deg, transparent 50%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0.4) 51%, transparent 51%),
+    linear-gradient(90deg, transparent 16.6%, rgba(255,255,255,0.2) 16.6%, rgba(255,255,255,0.2) 17%, transparent 17%),
+    linear-gradient(to right, #001133 0%, #005f99 50%, #00f0ff 100%);
+}
+
+/* Capa de flechas animadas que se pinta SOBRE el degradado pero SOLO en la zona rellena */
+.speed-fader-track::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: calc(3px + (100% - 6px) * var(--fill-ratio, 0));
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='10' viewBox='0 0 24 10'%3E%3Cpath d='M8,2 L14,5 L8,8' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-size: 24px 10px;
+  animation: speedFlow 0.8s linear infinite;
+  pointer-events: none;
+}
+
+.speed-fader-track::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  left: calc(3px + (100% - 6px) * var(--fill-ratio, 0));
+  background: #0d0c14; 
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.9), inset 0 -2px 4px rgba(0,0,0,0.9);
+  pointer-events: none;
+  border-radius: 0 2px 2px 0;
+}
+
+@keyframes speedFlow {
+  from { background-position: 0 0; }
+  to { background-position: 24px 0; }
 }
 
 @keyframes dropdownFadeIn {
@@ -621,4 +690,104 @@ input[type="file"]::file-selector-button:hover {
   0% { box-shadow: 0 0 0 0 rgba(157, 0, 255, 0.4); }
   70% { box-shadow: 0 0 0 10px rgba(157, 0, 255, 0); }
   100% { box-shadow: 0 0 0 0 rgba(157, 0, 255, 0); }
+}
+
+/* Fader estilo OBS/DaVinci */
+.obs-fader-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #0d0c14;
+  padding: 8px 10px;
+  border-radius: 4px;
+  border: 1px solid #1a1a24;
+}
+
+.obs-fader-track {
+  flex: 1;
+  position: relative;
+  height: 26px;
+  box-sizing: border-box;
+  
+  /* Márgenes oscuros envolventes para encapsular el degradado */
+  border-style: solid;
+  border-color: #030305;
+  border-width: 8px 4px; /* 8px arriba/abajo, 4px izquierda/derecha */
+  border-radius: 6px;
+  /* Sombra interna doble (arriba y abajo) para el efecto cilíndrico/hundido */
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.9), inset 0 -2px 4px rgba(0,0,0,0.9);
+  
+  /* Evitar que el fondo se pinte por debajo de los bordes laterales */
+  background-clip: padding-box;
+  
+  /* Degradado base fijo (pintado solo en el centro) */
+  background: 
+    linear-gradient(90deg, transparent 82.5%, rgba(255,255,255,0.9) 82.5%, rgba(255,255,255,0.9) 83.5%, transparent 83.5%),
+    linear-gradient(90deg, transparent 50%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0.4) 51%, transparent 51%),
+    linear-gradient(90deg, transparent 16.6%, rgba(255,255,255,0.2) 16.6%, rgba(255,255,255,0.2) 17%, transparent 17%),
+    linear-gradient(to right, #00bfff 0%, #39ff14 50%, #ffff00 83%, #ff003c 100%);
+}
+
+.obs-fader {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 26px; /* Altura total cubriendo los márgenes */
+  position: absolute;
+  top: -8px; /* Compensar el nuevo borde superior de 8px */
+  left: 0;
+  outline: none;
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  z-index: 10; /* Asegurar que el input/thumb pinte por encima de ::after y ::before */
+}
+
+.obs-fader::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Sombra y máscara sólida para la parte "vacía" */
+.obs-fader-track::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  
+  /* Cálculo matemático exacto para coincidir con el centro del thumb (6px de ancho) */
+  left: calc(3px + (100% - 6px) * var(--fill-ratio, 0));
+  
+  /* Fondo completamente oscuro, cero transparencias */
+  background: #0d0c14; 
+  
+  /* Replicar la sombra para que la pista parezca vacía y hundida */
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.9), inset 0 -2px 4px rgba(0,0,0,0.9);
+  
+  pointer-events: none;
+  border-radius: 0 2px 2px 0;
+}
+
+/* El thumb de neón personalizado */
+.obs-fader::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 6px;
+  height: 26px;
+  background: #fff;
+  border-radius: 3px;
+  cursor: ew-resize;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 0 10px #fff, 0 0 5px var(--neon-purple);
+}
+
+.obs-fader-value {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  min-width: 55px;
+  text-align: right;
+  text-shadow: 0 0 5px rgba(255,255,255,0.3);
 }

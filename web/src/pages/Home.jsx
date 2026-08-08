@@ -11,14 +11,14 @@ const Home = () => {
       <section className="hero-section">
         <div className="hero-content">
           <h1 className="hero-title">
-            El Siguiente Nivel de tu <span className="text-glow-cyan">Streaming</span>
+            Mejora la interacción en tus <span className="text-glow-cyan">Streamings</span>
           </h1>
           <p className="hero-subtitle">
-            Interactúa con tu audiencia a través de avatares reactivos, gamifica tus donaciones y crea una comunidad legendaria en Talking Crow.
+            Activa el texto a voz para que el chat cobre vida y escuches la voz clonada de tu comunidad.
           </p>
           <div className="hero-buttons">
-            <button className="btn-hero primary" onClick={() => navigate('/streamers')}>Soy Streamer</button>
-            <button className="btn-hero secondary" onClick={() => navigate('/fans')}>Soy Fan</button>
+            <button className="btn-hero secondary" onClick={() => navigate('/creadores')}>Soy Creador de Contenido</button>
+            <button className="btn-hero secondary" onClick={() => navigate('/ecovoices')}>Quiero Participar con las Eco Voices</button>
           </div>
         </div>
         <div className="hero-visual">
@@ -34,22 +34,32 @@ const Home = () => {
 
       {/* Features Section */}
       <section className="features-section">
-        <h2 className="section-title">¿Por qué unirte a la <span className="text-glow-purple">Bandada</span>?</h2>
+        <h2 className="section-title">Funciones Principales</h2>
         <div className="features-grid">
           <div className="feature-card">
-            <div className="feature-icon">🎭</div>
-            <h3>Avatares Reactivos</h3>
-            <p>Tu cuervo u otro avatar reaccionará automáticamente a tu voz y a los eventos de tu chat en tiempo real.</p>
+            <div className="feature-icon">🔊</div>
+            <h3>Texto a Voz</h3>
+            <p>Una comunidad con voz. Automatizamos la lectura del chat en vivo, el streamer puede seleccionar y configurar las voces.</p>
           </div>
           <div className="feature-card">
-            <div className="feature-icon">💎</div>
-            <h3>Sistema de Croins</h3>
-            <p>Una economía virtual donde tus fans obtienen beneficios, recompensas y estatus exclusivos por apoyarte.</p>
+            <div className="feature-icon">🤖</div>
+            <h3>Texto a Voz Clonada</h3>
+            <p>Llevamos la personalización al extremo. Los usuarios podrán utilizar nuestra inteligencia artificial para clonar sus propias voces y hablar con ella en el directo del streamer.</p>
           </div>
           <div className="feature-card">
-            <div className="feature-icon">⚡</div>
-            <h3>Gamificación Extrema</h3>
-            <p>Sube de nivel, lanza retos y mantén a tu audiencia siempre activa interactuando directamente con tu overlay.</p>
+            <div className="feature-icon">🎨</div>
+            <h3>Efectos de Sonido y Stickers</h3>
+            <p>La comunidad podrá detonar efectos de sonido y enviar animaciones visuales o stickers que se integran de forma nativa, fluida y transparente directamente en OBS.</p>
+          </div>
+          <div className="feature-card">
+            <div className="feature-icon">🎁</div>
+            <h3>Regalos Personalizados</h3>
+            <p>Control total sobre los eventos de TikTok. Asigna los regalos nativos de TikTok (rosas, leones, etc.) para que detonen alertas, reproduzcan sonidos específicos o ejecuten comandos personalizados en pantalla automáticamente.</p>
+          </div>
+          <div className="feature-card">
+            <div className="feature-icon">🛡️</div>
+            <h3>Seguridad y Moderación</h3>
+            <p>Estamos comprometidos con el uso ético y responsable. Incluimos filtros de palabras, censura automática, tiempos de retraso, y un control riguroso de identidad para asegurar que la clonación de voz IA se utilice siempre para construir un ambiente sano y divertido.</p>
           </div>
         </div>
       </section>

@@ -17,8 +17,7 @@ export const AuthProvider = ({ children }) => {
       setCurrentUser(user);
       if (user) {
         // En un futuro multi-streamer, usaríamos el ID del streamer actual, pero por ahora "vridel"
-        const username = user.displayName || user.email.split('@')[0];
-        const docRef = doc(db, "streamers", "vridel", "fans", username);
+        const docRef = doc(db, "streamers", "vridel", "fans", user.uid);
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { auth, db } from "../firebase";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { useNavigate, Link } from "react-router-dom";
 
 const EyeIcon = () => (
@@ -36,6 +36,15 @@ export default function Register() {
     }
 
     try {
+      // TC-11: Comprobar que el nombre de usuario no esté ocupado
+      const fansRef = collection(db, "streamers", "vridel", "fans");
+      const q = query(fansRef, where("username", "==", username));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+         return setError("El nombre de usuario ya está ocupado. Elige otro.");
+      }
+
       // 1. Crear el usuario en Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -44,8 +53,6 @@ export default function Register() {
       await updateProfile(user, { displayName: username });
 
       // 3. Crear su documento público en Firestore usando su UID y 0 Croins iniciales
-      // Como estamos unificando Streamers y Fans, lo guardamos en la subcolección fans de "vridel" por ahora
-      // Cuando sea multi-streamer, esta ruta cambiará.
       const docRef = doc(db, "streamers", "vridel", "fans", user.uid);
       await setDoc(docRef, {
         Croins: 0,
@@ -64,7 +71,7 @@ export default function Register() {
       navigate("/dashboard");
     } catch (err) {
       console.error(err);
-      setError("Error al registrarse. Intenta con otro correo.");
+      setError("Error al registrarse. Intenta con otro correo o revisa tu conexión.");
     }
   };
 
@@ -141,6 +148,13 @@ export default function Register() {
                 style={{ width: '100%', boxSizing: 'border-box', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(157, 0, 255, 0.3)', color: '#fff' }}
               />
             </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginTop: '5px' }}>
+            <input type="checkbox" required id="privacy_consent" style={{ marginTop: '3px' }} />
+            <label htmlFor="privacy_consent" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'left', lineHeight: '1.4' }}>
+              Acepto que mis mensajes y nombre de usuario pueden ser procesados temporalmente por modelos de Inteligencia Artificial (TTS) para la generación de audio.
+            </label>
           </div>
 
           <button type="submit" className="btn-neon" style={{ marginTop: '10px', alignSelf: 'center', padding: '10px 40px' }}>Registrarse</button>

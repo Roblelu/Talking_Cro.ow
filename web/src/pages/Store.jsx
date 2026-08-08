@@ -9,11 +9,16 @@ import '../App.css';
 // Inicializar Stripe con la llave pública desde el archivo .env
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../firebase';
+import { useAuth } from '../context/AuthContext';
+
 // Componente Interno del Formulario de Pago
 const CheckoutForm = ({ streamerName, streamerId }) => {
   const stripe = useStripe();
   const elements = useElements();
-  const [tiktokUser, setTiktokUser] = useState('');
+  const { currentUser, userData } = useAuth();
+  
   const [error, setError] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -36,8 +41,8 @@ const CheckoutForm = ({ streamerName, streamerId }) => {
     event.preventDefault();
     if (!stripe || !elements) return;
 
-    if (!tiktokUser.startsWith('@')) {
-      setError("Tu usuario de TikTok debe empezar con '@'");
+    if (!currentUser) {
+      setError("Debes iniciar sesión para comprar Croins.");
       return;
     }
 
@@ -50,37 +55,20 @@ const CheckoutForm = ({ streamerName, streamerId }) => {
     setError(null);
 
     try {
-      // 1. Buscamos el UID del usuario correspondiente al username ingresado:
-      const cleanUsername = tiktokUser.startsWith('@') ? tiktokUser.substring(1) : tiktokUser;
+      console.log("[1] Solicitando cobro seguro a Cloud Functions (onCall)...");
+      const createPaymentIntent = httpsCallable(functions, 'createPaymentIntent');
       
-      const fansRef = collection(db, 'streamers', streamerId.toLowerCase(), 'fans');
-      const q = query(fansRef, where("username", "==", cleanUsername));
-      const querySnapshot = await getDocs(q);
+      // TC-02 y TC-07: Ya no enviamos `amount` ni `uid`. El servidor lo tomará de nuestro Auth Token.
+      const res = await createPaymentIntent();
+      const data = res.data;
 
-      if (querySnapshot.empty) {
-        throw new Error("El usuario no existe en la base de datos. Pide al streamer o revisa tu registro.");
-      }
-
-      const fanDoc = querySnapshot.docs[0];
-      const fanUid = fanDoc.id;
-
-      console.log("[1] Solicitando cobro seguro a Cloud Functions...");
-      // 2. Pedirle a Cloud Functions que genere un cobro (PaymentIntent) pasándole el UID
-      const res = await fetch("/api/createPaymentIntent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid: fanUid, amount: 499 }) // $4.99 en centavos
-      });
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || "Error en el servidor de pagos");
+      if (!data.client_secret) throw new Error("No se recibió el client_secret del servidor");
 
       console.log("[2] Confirmando tarjeta en Stripe...");
-      // 3. Confirmar el pago usando la tarjeta escrita por el usuario
       const confirmResult = await stripe.confirmCardPayment(data.client_secret, {
         payment_method: {
           card: elements.getElement(CardElement),
-          billing_details: { name: tiktokUser }
+          billing_details: { name: userData?.username || currentUser.email }
         }
       });
 
@@ -89,13 +77,12 @@ const CheckoutForm = ({ streamerName, streamerId }) => {
       }
 
       console.log("[3] Pago Aprobado por el banco. El Webhook actualizará los Croins en breve.");
-
       setProcessing(false);
       setSuccess(true);
     } catch (err) {
       console.error("[ERROR GENERAL]", err);
       setProcessing(false);
-      setError(err.message);
+      setError(err.message || "Error al procesar el pago");
     }
   };
 
@@ -103,23 +90,26 @@ const CheckoutForm = ({ streamerName, streamerId }) => {
     return (
       <div style={{ textAlign: 'center', marginTop: '20px' }}>
         <h3 className="neon-text-green">¡Pago Exitoso!</h3>
-        <p className="card-description">Se han añadido 10 Croins a tu cuenta de TikTok ({tiktokUser}).</p>
+        <p className="card-description">Se han añadido 10 Croins a tu cuenta de TikTok (@{userData?.username || currentUser?.email}).</p>
         <p className="card-description" style={{ marginTop: '15px' }}>¡Ve al stream de {streamerName} y escribe algo en el chat!</p>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div style={{ textAlign: 'center', marginTop: '20px', color: '#ff4444' }}>
+        <p>Debes iniciar sesión con tu cuenta para poder recargar Croins.</p>
       </div>
     );
   }
 
   return (
     <form onSubmit={handleSubmit} style={{ marginTop: '20px', textAlign: 'left' }}>
-      <label className="card-description" style={{ display: 'block', marginBottom: '10px' }}>Tu usuario de TikTok:</label>
-      <input 
-        type="text" 
-        placeholder="@tu_usuario" 
-        value={tiktokUser}
-        onChange={(e) => setTiktokUser(e.target.value)}
-        style={{ width: '100%', padding: '10px', marginBottom: '20px', borderRadius: '5px', background: '#222', color: '#fff', border: '1px solid var(--neon-purple)' }}
-        required
-      />
+      <label className="card-description" style={{ display: 'block', marginBottom: '10px' }}>Usuario vinculado:</label>
+      <div style={{ width: '100%', padding: '10px', marginBottom: '20px', borderRadius: '5px', background: '#333', color: '#888', border: '1px solid #555' }}>
+        @{userData?.username || currentUser.email} (UID: {currentUser.uid.substring(0, 8)}...)
+      </div>
 
       <label className="card-description" style={{ display: 'block', marginBottom: '10px' }}>Tarjeta de Crédito / Débito:</label>
       <div style={{ padding: '15px', background: '#fff', borderRadius: '5px', marginBottom: '20px' }}>

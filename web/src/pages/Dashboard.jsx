@@ -117,8 +117,8 @@ export default function Dashboard() {
                 <input 
                   type="password" 
                   placeholder="Ej: abc123def456..."
-                  defaultValue={localStorage.getItem("local_api_key") || ""}
-                  onChange={(e) => localStorage.setItem("local_api_key", e.target.value)}
+                  defaultValue={sessionStorage.getItem("local_api_key") || ""}
+                  onChange={(e) => sessionStorage.setItem("local_api_key", e.target.value)}
                   style={{ flex: 1, padding: '10px', background: 'rgba(0,0,0,0.5)', border: '1px solid var(--neon-green)', color: '#fff', borderRadius: '4px' }}
                 />
               </div>
