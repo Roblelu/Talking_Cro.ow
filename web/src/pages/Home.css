@@ -5,6 +5,10 @@
   width: 100%;
   color: #fff;
   font-family: 'Space Grotesk', sans-serif;
+  background: radial-gradient(circle at 10% 20%, #0b0f19, #000000);
+  min-height: 100vh;
+  margin-top: -250px;
+  padding-top: 200px;
 }
 
 /* Hero Section */
@@ -150,7 +154,7 @@
 .features-section {
   width: 100%;
   max-width: 1200px;
-  padding: 60px 20px;
+  padding: 50px 20px;
   text-align: center;
 }
 

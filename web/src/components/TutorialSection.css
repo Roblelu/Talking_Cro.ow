@@ -1,0 +1,126 @@
+.tutorial-container {
+  max-width: 1200px;
+  margin: 100px auto 0;
+  padding: 0 20px;
+  text-align: center;
+  position: relative;
+  z-index: 5;
+}
+
+.tutorial-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+  color: #fff;
+}
+
+.tutorial-subtitle {
+  color: #a0aec0;
+  margin-bottom: 40px;
+}
+
+.tutorial-image-wrapper {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(57, 255, 20, 0.15);
+  border: 1px solid rgba(57, 255, 20, 0.3);
+}
+
+.tutorial-img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.tutorial-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.hotspot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
+
+.hotspot-btn {
+  width: 44px;
+  height: 44px;
+  background: rgba(11, 15, 25, 0.8);
+  border: 2px solid var(--neon-green);
+  border-radius: 50%;
+  color: #fff;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 0 15px rgba(57, 255, 20, 0.5);
+  transition: all 0.3s ease;
+  animation: pulse-hotspot 2s infinite;
+}
+
+.hotspot-btn:hover, .hotspot-btn.active {
+  background: var(--neon-green);
+  color: #000;
+  transform: scale(1.1);
+  animation: none;
+}
+
+.hotspot-popup {
+  position: absolute;
+  top: 55px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0d0c14;
+  border: 1px solid var(--neon-green);
+  padding: 15px;
+  border-radius: 8px;
+  width: 260px;
+  text-align: left;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.9);
+  animation: fade-in 0.3s ease;
+  z-index: 20;
+}
+
+/* Flecha del popup */
+.hotspot-popup::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 12px;
+  height: 12px;
+  background: #0d0c14;
+  border-left: 1px solid var(--neon-green);
+  border-top: 1px solid var(--neon-green);
+}
+
+.hotspot-popup h4 {
+  margin: 0 0 8px 0;
+  color: var(--neon-green);
+  font-size: 1.1rem;
+}
+
+.hotspot-popup p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #ccc;
+  line-height: 1.5;
+}
+
+@keyframes pulse-hotspot {
+  0% { box-shadow: 0 0 0 0 rgba(57, 255, 20, 0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(57, 255, 20, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(57, 255, 20, 0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translate(-50%, -10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}

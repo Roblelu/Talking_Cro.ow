@@ -9,6 +9,7 @@
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
   position: relative;
+  z-index: 1000;
   margin-top: 10px; /* para que no pegue arriba */
   margin-left: 20px; /* espaciado opcional si no lo tiene App.jsx en web */
   margin-right: 20px;
@@ -50,7 +51,7 @@
 .logo-img {
   width: 249px;
   position: absolute;
-  top: -100px;
+  top: -90px;
   left: -15px;
   z-index: 10;
   transition: all 0.3s ease;

@@ -5,6 +5,7 @@ import Header from './components/Header'
 import Home from './pages/Home'
 import CreatorsPage from './pages/CreatorsPage'
 import EcoVoicesPage from './pages/EcoVoicesPage'
+import OnlineCreatorsPage from './pages/OnlineCreatorsPage'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
@@ -29,6 +30,7 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/creadores" element={<CreatorsPage />} />
               <Route path="/ecovoices" element={<EcoVoicesPage />} />
+              <Route path="/creadores-online" element={<OnlineCreatorsPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route 

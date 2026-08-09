@@ -1,10 +1,11 @@
 /* Streamers.css */
 .streamers-container {
   min-height: 100vh;
-  background: radial-gradient(circle at 10% 20%, #0b0f19, #000000);
+  background: radial-gradient(circle at 10% 20%, #0b1910, #000000);
   color: #fff;
   font-family: 'Inter', sans-serif;
-  padding: 100px 20px 60px;
+  margin-top: -250px;
+  padding: 300px 20px 50px;
   overflow: hidden;
 }
 
@@ -22,11 +23,11 @@
 }
 
 .streamers-title {
-  font-size: 3.5rem;
+  font-size: 2.8rem;
   font-weight: 800;
   line-height: 1.1;
   margin-bottom: 20px;
-  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+  background: linear-gradient(135deg, var(--neon-green) 0%, #00b386 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -88,7 +89,7 @@
   left: -50%;
   width: 200%;
   height: 200%;
-  background: conic-gradient(transparent, transparent, transparent, #00f2fe);
+  background: conic-gradient(transparent, transparent, transparent, var(--neon-green));
   animation: rotate-border 4s linear infinite;
   z-index: -1;
   opacity: 0.1;
@@ -128,7 +129,7 @@
 
 .streamers-features {
   max-width: 1200px;
-  margin: 80px auto 0;
+  margin: 50px auto 0;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 30px;
@@ -138,13 +139,13 @@
   background: rgba(16, 24, 39, 0.6);
   border-radius: 12px;
   padding: 30px;
-  border: 1px solid rgba(0, 242, 254, 0.1);
+  border: 1px solid rgba(57, 255, 20, 0.1);
   transition: transform 0.3s;
 }
 
 .s-feature-card:hover {
   transform: translateY(-5px);
-  border-color: rgba(0, 242, 254, 0.5);
+  border-color: rgba(57, 255, 20, 0.5);
 }
 
 .s-feature-icon {

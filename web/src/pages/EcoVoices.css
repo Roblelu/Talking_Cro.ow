@@ -1,10 +1,11 @@
-/* Fans.css */
+/* EcoVoices.css */
 .fans-container {
   min-height: 100vh;
   background: radial-gradient(circle at 90% 10%, #1a0b16, #05000a);
   color: #fff;
   font-family: 'Inter', sans-serif;
-  padding: 100px 20px 60px;
+  margin-top: -250px;
+  padding: 300px 20px 50px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -12,15 +13,88 @@
 }
 
 .fans-hero {
-  max-width: 1000px;
-  text-align: center;
-  margin-bottom: 60px;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto 50px;
   position: relative;
   z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 50px;
+}
+
+.fans-hero-text {
+  flex: 1;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.fans-hero-visual {
+  flex: 1;
+  height: 300px;
+  position: relative;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-scroller {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.chat-track {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: scroll-chat 20s linear infinite;
+}
+
+@keyframes scroll-chat {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
+.chat-bubble-placeholder {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  padding: 15px;
+  width: 80%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chat-bubble-placeholder.left {
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.chat-bubble-placeholder.right {
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+  background: linear-gradient(135deg, rgba(255,8,68,0.1), rgba(255,177,153,0.1));
+}
+
+.chat-line {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.chat-line.short {
+  width: 60%;
+  margin-bottom: 0;
 }
 
 .fans-title {
-  font-size: 4rem;
+  font-size: 2.5rem;
   font-weight: 900;
   margin-bottom: 20px;
   background: linear-gradient(to right, #ff0844 0%, #ffb199 100%);
@@ -35,116 +109,79 @@
 }
 
 .fans-subtitle {
-  font-size: 1.3rem;
+  font-size: 1.15rem;
   color: #d1d5db;
   max-width: 600px;
   margin: 0 auto 40px;
   line-height: 1.6;
 }
 
-.btn-fan {
-  background: linear-gradient(45deg, #ff0844, #ffb199);
-  color: white;
-  border: none;
-  padding: 16px 36px;
-  font-size: 1.2rem;
-  font-weight: bold;
-  border-radius: 50px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  box-shadow: 0 10px 25px rgba(255, 8, 68, 0.4);
-}
-
-.btn-fan:hover {
-  transform: scale(1.05);
-  box-shadow: 0 15px 35px rgba(255, 8, 68, 0.6);
-}
-
-/* Chat/Mobile Interface Placeholder */
-.fans-visual-area {
+/* Steps Section */
+.eco-steps-section {
   width: 100%;
-  max-width: 600px;
-  position: relative;
-  height: 250px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 40px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.chat-bubble-placeholder {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
-  border-radius: 20px;
-  padding: 20px;
-  width: 70%;
-  position: absolute;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
-  animation: float 4s ease-in-out infinite;
-}
-
-.chat-bubble-placeholder.left {
-  top: 10%;
-  left: 5%;
-  border-bottom-left-radius: 5px;
-  animation-delay: 0s;
-}
-
-.chat-bubble-placeholder.right {
-  bottom: 10%;
-  right: 5%;
-  background: linear-gradient(135deg, rgba(255,8,68,0.15), rgba(255,177,153,0.15));
-  border-bottom-right-radius: 5px;
-  animation-delay: 2s;
-}
-
-.chat-line {
-  height: 10px;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 5px;
-  margin-bottom: 12px;
-}
-
-.chat-line.short {
-  width: 50%;
-  margin-bottom: 0;
-}
-
-@keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-15px); }
-  100% { transform: translateY(0px); }
-}
-
-.fans-features {
-  display: flex;
-  justify-content: center;
-  gap: 30px;
-  flex-wrap: wrap;
-  width: 100%;
-  max-width: 900px;
-}
-
-.f-feature-pill {
-  background: rgba(255, 8, 68, 0.1);
-  border: 1px solid rgba(255, 8, 68, 0.3);
-  padding: 15px 25px;
-  border-radius: 50px;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  transition: all 0.3s;
-}
-
-.f-feature-pill:hover {
-  background: rgba(255, 8, 68, 0.2);
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(255, 8, 68, 0.2);
-}
-
-.f-feature-pill h3 {
-  font-size: 1.1rem;
+.eco-section-title {
+  font-size: 2rem;
   color: #fff;
+  margin-bottom: 30px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.eco-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.eco-step-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 25px 15px;
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  gap: 10px;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.eco-step-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 8, 68, 0.4);
+}
+
+.eco-step-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0px;
+}
+
+.eco-step-content h3 {
+  font-size: 1rem;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.step-gray {
+  color: #8892b0;
+  font-weight: normal;
+}
+
+.eco-step-content p {
+  font-size: 0.85rem;
+  color: #a0aec0;
+  line-height: 1.5;
   margin: 0;
+}
+
+/* Packages Section */
+.eco-packages-section {
+  width: 100%;
+  margin-top: 50px;
 }

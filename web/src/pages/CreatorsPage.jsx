@@ -1,21 +1,29 @@
 import React from 'react';
 import './Creators.css';
+import TutorialSection from '../components/TutorialSection';
 
 const CreatorsPage = () => {
+  const handleScrollToTutorial = () => {
+    const tutorialElement = document.getElementById('tutorial-section');
+    if (tutorialElement) {
+      tutorialElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="streamers-container">
       <div className="streamers-hero">
         <div className="streamers-text">
-          <h1 className="streamers-title">Potencia tu Stream<br/>en TikTok</h1>
+          <h1 className="streamers-title">Creador de Contenido,<br/>Ésta es tu Sección.</h1>
           <p className="streamers-subtitle">
-            Convierte a tu audiencia en participantes activos. Permite que tus fans donen y hablen a través de sus avatares o voces clonadas en tu transmisión en vivo.
+            Convierte a tu audiencia en participantes activos. Permite que tus fans donen y activen audios o efectos visuales, tambien deja de leer los comentarios y escuchalos directamente durante la transmision.
           </p>
           <button className="btn-streamer" onClick={() => alert('Descarga de la app en construcción...')}>
             Descargar App (Windows)
           </button>
         </div>
         
-        <div className="streamers-visual">
+        <div className="streamers-visual" onClick={handleScrollToTutorial} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }} title="Haz clic para ver el tutorial de la interfaz">
           <div className="dashboard-placeholder">
             <div className="dash-header"></div>
             <div className="dash-body">
@@ -23,26 +31,31 @@ const CreatorsPage = () => {
               <div className="dash-main"></div>
             </div>
           </div>
+          <p style={{ marginTop: '20px', color: 'var(--neon-green)', fontWeight: 'bold', fontSize: '1rem', letterSpacing: '1px', textShadow: '0 0 10px rgba(57, 255, 20, 0.5)' }}>
+            Explora tu Panel de Control
+          </p>
         </div>
       </div>
 
       <div className="streamers-features">
         <div className="s-feature-card">
-          <div className="s-feature-icon">🎙️</div>
-          <h3>Voces Clonadas</h3>
-          <p>Tus fans pueden enviar mensajes en tiempo real con voces idénticas a las suyas. Controla y modera todo desde tu panel.</p>
+          <div className="s-feature-icon">💎</div>
+          <h3>Multiplica tus Ingresos</h3>
+          <p>Aumenta tus donaciones personalizando los regalos nativos de TikTok y recibe comisiones por el uso de voces clonadas de tu comunidad.</p>
         </div>
         <div className="s-feature-card">
           <div className="s-feature-icon">🔌</div>
-          <h3>Overlay Transparente</h3>
-          <p>Se integra nativamente a tu transmisión de TikTok Live con un overlay limpio que muestra animaciones dinámicas.</p>
+          <h3>Integración Rápida y Limpia</h3>
+          <p>Un par de clicks y estarás listo para utilizar nuestra app de manera nativa sin complicadas configuraciones en OBS.</p>
         </div>
         <div className="s-feature-card">
-          <div className="s-feature-icon">💎</div>
-          <h3>Monetización Directa</h3>
-          <p>Motiva más interacciones cobrando "Croins" o utilizando los regalos nativos de TikTok para activar eventos especiales.</p>
+          <div className="s-feature-icon">🛠️</div>
+          <h3>Soporte Técnico</h3>
+          <p>No dudes en contactarnos para reportar bugs o recomendarnos cómo mejorar nuestra aplicación de forma continua.</p>
         </div>
       </div>
+
+      <TutorialSection />
     </div>
   );
 };
