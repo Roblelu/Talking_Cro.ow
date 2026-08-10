@@ -7,19 +7,19 @@ const EcoVoicesPage = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
 
-  const handleBuyClick = () => {
+  const handleBuyClick = (packageId) => {
     if (currentUser) {
-      navigate('/store');
+      navigate(`/store?packageId=${packageId}`);
     } else {
       navigate('/login');
     }
   };
 
   return (
-    <div className="fans-container">
+    <div className="donadores-container">
       {/* Hero Section */}
-      <div className="fans-hero">
-        <div className="fans-hero-visual">
+      <div className="donadores-hero">
+        <div className="donadores-hero-visual">
           <div className="chat-scroller">
             <div className="chat-track">
               {/* Primer Grupo */}
@@ -64,9 +64,9 @@ const EcoVoicesPage = () => {
           </div>
         </div>
 
-        <div className="fans-hero-text">
-          <h1 className="fans-title">Haz que tu Streamer te Escuche.<br/>Literalmente.</h1>
-          <p className="fans-subtitle">
+        <div className="donadores-hero-text">
+          <h1 className="donadores-title">Haz que tu Streamer te Escuche.<br/>Literalmente.</h1>
+          <p className="donadores-subtitle">
             Olvídate del texto aburrido. Únete a Eco Voices, clona tu voz y manda mensajes en vivo para que tu streamer favorito te escuche con tu propio tono de voz.
           </p>
         </div>
@@ -118,31 +118,51 @@ const EcoVoicesPage = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', width: '100%', maxWidth: '1000px', margin: '0 auto' }}>
           
           <div className="panel" style={{ border: '1px solid rgba(0,255,204,0.3)', textAlign: 'center', padding: '30px 20px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}>
-            <h4 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '10px' }}>Pack Básico</h4>
-            <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>80 Croins</h2>
-            <h3 style={{ marginBottom: '20px', color: '#a0aec0' }}>$20 MXN</h3>
-            <button className="btn-neon" style={{ width: '100%' }} onClick={handleBuyClick}>Comprar</button>
+            <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>28 Croins</h2>
+            <h3 style={{ marginBottom: '20px', color: '#a0aec0' }}>$12 MXN</h3>
+            <button className="btn-neon" style={{ width: '100%' }} onClick={() => handleBuyClick('pack_1')}>Comprar</button>
           </div>
 
           <div className="panel" style={{ border: '1px solid rgba(0,255,204,0.3)', textAlign: 'center', padding: '30px 20px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}>
-            <h4 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '10px' }}>Pack Popular</h4>
-            <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>320 Croins</h2>
+            <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>110 Croins</h2>
+            <h3 style={{ marginBottom: '20px', color: '#a0aec0' }}>$35 MXN</h3>
+            <button className="btn-neon" style={{ width: '100%' }} onClick={() => handleBuyClick('pack_2')}>Comprar</button>
+          </div>
+
+          <div className="panel" style={{ border: '1px solid rgba(0,255,204,0.3)', textAlign: 'center', padding: '30px 20px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}>
+            <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>270 Croins</h2>
             <h3 style={{ marginBottom: '20px', color: '#a0aec0' }}>$80 MXN</h3>
-            <button className="btn-neon" style={{ width: '100%' }} onClick={handleBuyClick}>Comprar</button>
+            <button className="btn-neon" style={{ width: '100%' }} onClick={() => handleBuyClick('pack_3')}>Comprar</button>
+          </div>
+
+          <div className="panel" style={{ border: '1px solid rgba(0,255,204,0.3)', textAlign: 'center', padding: '30px 20px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}>
+            <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>500 Croins</h2>
+            <h3 style={{ marginBottom: '20px', color: '#a0aec0' }}>$140 MXN</h3>
+            <button className="btn-neon" style={{ width: '100%' }} onClick={() => handleBuyClick('pack_4')}>Comprar</button>
           </div>
 
           <div className="panel" style={{ border: '1px solid rgba(157,0,255,0.5)', textAlign: 'center', padding: '30px 20px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)', boxShadow: '0 0 15px rgba(157,0,255,0.2)' }}>
-            <h4 className="neon-text-purple" style={{ fontSize: '1.2rem', marginBottom: '10px' }}>Pack Épico</h4>
-            <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>640 Croins</h2>
-            <h3 style={{ marginBottom: '20px', color: '#a0aec0' }}>$160 MXN</h3>
-            <button className="btn-neon" style={{ width: '100%', borderColor: 'var(--neon-purple)', color: 'var(--neon-purple)' }} onClick={handleBuyClick}>Comprar</button>
+            <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>850 Croins</h2>
+            <h3 style={{ marginBottom: '20px', color: '#a0aec0' }}>$200 MXN</h3>
+            <button className="btn-neon" style={{ width: '100%', borderColor: 'var(--neon-purple)', color: 'var(--neon-purple)' }} onClick={() => handleBuyClick('pack_5')}>Comprar</button>
+          </div>
+
+          <div className="panel" style={{ border: '1px solid rgba(157,0,255,0.5)', textAlign: 'center', padding: '30px 20px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)', boxShadow: '0 0 15px rgba(157,0,255,0.2)' }}>
+            <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>1200 Croins</h2>
+            <h3 style={{ marginBottom: '20px', color: '#a0aec0' }}>$260 MXN</h3>
+            <button className="btn-neon" style={{ width: '100%', borderColor: 'var(--neon-purple)', color: 'var(--neon-purple)' }} onClick={() => handleBuyClick('pack_6')}>Comprar</button>
           </div>
 
           <div className="panel" style={{ border: '1px solid var(--neon-orange)', textAlign: 'center', padding: '30px 20px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)', boxShadow: '0 0 15px rgba(255,117,24,0.2)' }}>
-            <h4 className="neon-text-orange" style={{ fontSize: '1.2rem', marginBottom: '10px' }}>Pack Leyenda</h4>
-            <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>1200 Croins</h2>
-            <h3 style={{ marginBottom: '20px', color: '#a0aec0' }}>$300 MXN</h3>
-            <button className="btn-neon btn-neon-orange" style={{ width: '100%' }} onClick={handleBuyClick}>Comprar</button>
+            <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>1900 Croins</h2>
+            <h3 style={{ marginBottom: '20px', color: '#a0aec0' }}>$330 MXN</h3>
+            <button className="btn-neon btn-neon-orange" style={{ width: '100%' }} onClick={() => handleBuyClick('pack_7')}>Comprar</button>
+          </div>
+
+          <div className="panel" style={{ border: '1px solid var(--neon-orange)', textAlign: 'center', padding: '30px 20px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)', boxShadow: '0 0 15px rgba(255,117,24,0.2)' }}>
+            <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>2700 Croins</h2>
+            <h3 style={{ marginBottom: '20px', color: '#a0aec0' }}>$399 MXN</h3>
+            <button className="btn-neon btn-neon-orange" style={{ width: '100%' }} onClick={() => handleBuyClick('pack_8')}>Comprar</button>
           </div>
 
         </div>

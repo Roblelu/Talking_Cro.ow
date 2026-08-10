@@ -20,77 +20,50 @@ except:
 
 db = firestore.client()
 
-def migrate_legacy_users():
+def migrate_fans_to_donadores():
     fans_ref = db.collection('streamers').document('vridel').collection('fans')
+    donadores_ref = db.collection('streamers').document('vridel').collection('donadores')
     docs = fans_ref.stream()
     
     migrated_count = 0
-    skipped_count = 0
     error_count = 0
+    
+    print("Iniciando migración de 'fans' a 'donadores'...")
     
     for doc in docs:
         data = doc.to_dict()
-        doc_id = doc.id
+        uid = doc.id
         
-        # Detectar si es un documento heredado: 
-        # 1. Tiene PII expuesta (email o phone).
-        # 2. El ID suele ser el username en lugar de un UID de 28 caracteres.
-        if 'email' in data:
-            print(f"Migrando cuenta heredada: {doc_id} (email: {data['email']})")
+        print(f"Migrando cuenta: {uid}...")
+        
+        try:
+            # 1. Copiar el documento base
+            donadores_ref.document(uid).set(data)
             
-            try:
-                # Obtener el verdadero UID desde Firebase Auth
-                user_record = auth.get_user_by_email(data['email'])
-                uid = user_record.uid
-                
-                if uid == doc_id:
-                    # Extrañamente el ID ya era el UID pero los datos estaban revueltos.
-                    print(f"  El ID ya es el UID. Solo separaremos la PII.")
-                
-                # 1. Crear el nuevo documento base (sin PII)
-                new_profile = {
-                    'Croins': data.get('Croins', 0),
-                    'isPro': data.get('isPro', False),
-                    'username': data.get('username', doc_id),
-                    'createdAt': data.get('createdAt', firestore.SERVER_TIMESTAMP)
-                }
-                db.collection('streamers').document('vridel').collection('fans').document(uid).set(new_profile)
-                
-                # 2. Crear el documento privado (con PII)
-                private_contact = {
-                    'email': data.get('email'),
-                    'phone': data.get('phone', '')
-                }
-                db.collection('streamers').document('vridel').collection('fans').document(uid).collection('private').document('contact').set(private_contact)
-                
-                # 3. Borrar el documento antiguo si el ID era diferente
-                if uid != doc_id:
-                    fans_ref.document(doc_id).delete()
-                    print(f"  ✅ Documento '{doc_id}' migrado a '{uid}' y eliminado.")
-                else:
-                    # Si el ID era el mismo, solo borramos los campos sensibles del documento público
-                    fans_ref.document(doc_id).update({
-                        'email': firestore.DELETE_FIELD,
-                        'phone': firestore.DELETE_FIELD
-                    })
-                    print(f"  ✅ PII extraída y movida a subcolección para '{uid}'.")
-                    
-                migrated_count += 1
-            except auth.UserNotFoundError:
-                print(f"  ❌ Error: El usuario con email {data['email']} no existe en Firebase Auth.")
-                error_count += 1
-            except Exception as e:
-                print(f"  ❌ Error migrando {doc_id}: {str(e)}")
-                error_count += 1
-        else:
-            skipped_count += 1
+            # 2. Copiar la subcolección privada si existe
+            private_contact_ref = fans_ref.document(uid).collection('private').document('contact')
+            private_contact_doc = private_contact_ref.get()
+            
+            if private_contact_doc.exists:
+                donadores_ref.document(uid).collection('private').document('contact').set(private_contact_doc.to_dict())
+                # Borrar el documento privado original
+                private_contact_ref.delete()
+            
+            # 3. Borrar el documento original en fans
+            fans_ref.document(uid).delete()
+            
+            print(f"  ✅ Cuenta '{uid}' migrada exitosamente.")
+            migrated_count += 1
+            
+        except Exception as e:
+            print(f"  ❌ Error migrando {uid}: {str(e)}")
+            error_count += 1
 
     print("=" * 40)
-    print("REPORTE DE MIGRACIÓN (TC-19)")
-    print(f"Cuentas migradas/reparadas: {migrated_count}")
-    print(f"Cuentas ya modernas (saltadas): {skipped_count}")
+    print("REPORTE DE MIGRACIÓN")
+    print(f"Cuentas migradas: {migrated_count}")
     print(f"Errores: {error_count}")
     print("=" * 40)
 
 if __name__ == "__main__":
-    migrate_legacy_users()
+    migrate_fans_to_donadores()

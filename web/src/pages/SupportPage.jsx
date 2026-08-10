@@ -1,11 +1,13 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
-const SupportPage = ({ onBack }) => {
+const SupportPage = () => {
+  const navigate = useNavigate();
   return (
     <div className="panel-layout-wrapper" style={{ '--panel-width': '700px' }}>
       <button 
         className="btn-neon back-btn-responsive" 
-        onClick={onBack} 
+        onClick={() => navigate('/dashboard')} 
       >
         &lt; Volver al Panel de Control Principal
       </button>

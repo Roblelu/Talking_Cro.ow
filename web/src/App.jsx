@@ -9,6 +9,12 @@ import OnlineCreatorsPage from './pages/OnlineCreatorsPage'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
+import AccountPage from './pages/AccountPage'
+import SubscriptionPage from './pages/SubscriptionPage'
+import Store from './pages/Store'
+import SupportPage from './pages/SupportPage'
+import PortConfigPage from './pages/PortConfigPage'
+import TermsPage from './pages/TermsPage'
 import './App.css'
 
 const PrivateRoute = ({ children }) => {
@@ -35,12 +41,15 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route 
                 path="/dashboard" 
-                element={
-                  <PrivateRoute>
-                    <Dashboard />
-                  </PrivateRoute>
-                } 
+                element={<PrivateRoute><Dashboard /></PrivateRoute>} 
               />
+              <Route path="/store" element={<PrivateRoute><Store /></PrivateRoute>} />
+              <Route path="/store/:streamerId" element={<PrivateRoute><Store /></PrivateRoute>} />
+              <Route path="/account" element={<PrivateRoute><AccountPage /></PrivateRoute>} />
+              <Route path="/subscription" element={<PrivateRoute><SubscriptionPage /></PrivateRoute>} />
+              <Route path="/support" element={<PrivateRoute><SupportPage /></PrivateRoute>} />
+              <Route path="/port" element={<PrivateRoute><PortConfigPage /></PrivateRoute>} />
+              <Route path="/terms" element={<PrivateRoute><TermsPage /></PrivateRoute>} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </main>

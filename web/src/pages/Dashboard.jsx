@@ -46,6 +46,12 @@ export default function Dashboard() {
         
         {activeTab === 'donador' && (
           <div className="donador-view">
+            <div style={{ marginBottom: '30px', padding: '20px', border: '1px solid var(--neon-green)', borderRadius: '8px', background: 'rgba(0,255,204,0.1)', textAlign: 'center' }}>
+              <h3 style={{ margin: 0, color: 'var(--text-secondary)' }}>Saldo Actual</h3>
+              <h1 className="neon-text-green" style={{ fontSize: '3rem', margin: '10px 0' }}>🪙 {((userData?.purchased_croins || 0) + (userData?.promotional_croins || 0))}</h1>
+              <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Croins Disponibles</p>
+            </div>
+
             <h3 className="neon-text-purple" style={{ marginBottom: '15px' }}>Comprar Croins 🪙</h3>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '25px' }}>
               Usa tus Croins para enviar mensajes de voz en tiempo real al chat de tus streamers favoritos.
@@ -54,31 +60,51 @@ export default function Dashboard() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '40px' }}>
               
               <div className="panel" style={{ border: '1px solid rgba(0,255,204,0.3)', textAlign: 'center' }}>
-                <h4 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '10px' }}>Pack Básico</h4>
-                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>80 Croins</h2>
-                <h3 style={{ marginBottom: '20px' }}>$20 MXN</h3>
-                <button className="btn-neon" style={{ width: '100%' }}>Comprar</button>
+                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>28 Croins</h2>
+                <h3 style={{ marginBottom: '20px' }}>$12 MXN</h3>
+                <button className="btn-neon" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_1')}>Comprar</button>
               </div>
 
               <div className="panel" style={{ border: '1px solid rgba(0,255,204,0.3)', textAlign: 'center' }}>
-                <h4 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '10px' }}>Pack Popular</h4>
-                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>320 Croins</h2>
+                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>110 Croins</h2>
+                <h3 style={{ marginBottom: '20px' }}>$35 MXN</h3>
+                <button className="btn-neon" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_2')}>Comprar</button>
+              </div>
+
+              <div className="panel" style={{ border: '1px solid rgba(0,255,204,0.3)', textAlign: 'center' }}>
+                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>270 Croins</h2>
                 <h3 style={{ marginBottom: '20px' }}>$80 MXN</h3>
-                <button className="btn-neon" style={{ width: '100%' }}>Comprar</button>
+                <button className="btn-neon" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_3')}>Comprar</button>
+              </div>
+
+              <div className="panel" style={{ border: '1px solid rgba(0,255,204,0.3)', textAlign: 'center' }}>
+                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>500 Croins</h2>
+                <h3 style={{ marginBottom: '20px' }}>$140 MXN</h3>
+                <button className="btn-neon" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_4')}>Comprar</button>
               </div>
 
               <div className="panel" style={{ border: '1px solid rgba(157,0,255,0.5)', textAlign: 'center', boxShadow: '0 0 15px rgba(157,0,255,0.2)' }}>
-                <h4 className="neon-text-purple" style={{ fontSize: '1.2rem', marginBottom: '10px' }}>Pack Épico</h4>
-                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>640 Croins</h2>
-                <h3 style={{ marginBottom: '20px' }}>$160 MXN</h3>
-                <button className="btn-neon" style={{ width: '100%', borderColor: 'var(--neon-purple)', color: 'var(--neon-purple)' }}>Comprar</button>
+                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>850 Croins</h2>
+                <h3 style={{ marginBottom: '20px' }}>$200 MXN</h3>
+                <button className="btn-neon" style={{ width: '100%', borderColor: 'var(--neon-purple)', color: 'var(--neon-purple)' }} onClick={() => navigate('/store?packageId=pack_5')}>Comprar</button>
+              </div>
+
+              <div className="panel" style={{ border: '1px solid rgba(157,0,255,0.5)', textAlign: 'center', boxShadow: '0 0 15px rgba(157,0,255,0.2)' }}>
+                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>1200 Croins</h2>
+                <h3 style={{ marginBottom: '20px' }}>$260 MXN</h3>
+                <button className="btn-neon" style={{ width: '100%', borderColor: 'var(--neon-purple)', color: 'var(--neon-purple)' }} onClick={() => navigate('/store?packageId=pack_6')}>Comprar</button>
               </div>
 
               <div className="panel" style={{ border: '1px solid var(--neon-orange)', textAlign: 'center', boxShadow: '0 0 15px rgba(255,117,24,0.2)' }}>
-                <h4 className="neon-text-orange" style={{ fontSize: '1.2rem', marginBottom: '10px' }}>Pack Leyenda</h4>
-                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>1200 Croins</h2>
-                <h3 style={{ marginBottom: '20px' }}>$300 MXN</h3>
-                <button className="btn-neon btn-neon-orange" style={{ width: '100%' }}>Comprar</button>
+                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>1900 Croins</h2>
+                <h3 style={{ marginBottom: '20px' }}>$330 MXN</h3>
+                <button className="btn-neon btn-neon-orange" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_7')}>Comprar</button>
+              </div>
+
+              <div className="panel" style={{ border: '1px solid var(--neon-orange)', textAlign: 'center', boxShadow: '0 0 15px rgba(255,117,24,0.2)' }}>
+                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>2700 Croins</h2>
+                <h3 style={{ marginBottom: '20px' }}>$399 MXN</h3>
+                <button className="btn-neon btn-neon-orange" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_8')}>Comprar</button>
               </div>
 
             </div>
@@ -87,9 +113,27 @@ export default function Dashboard() {
 
         {activeTab === 'streamer' && (
           <div className="streamer-view">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '40px' }}>
+              <div style={{ padding: '20px', border: '1px solid var(--neon-orange)', borderRadius: '8px', background: 'rgba(255,117,24,0.1)', textAlign: 'center' }}>
+                <h4 style={{ margin: 0, color: 'var(--text-secondary)' }}>Creator Credits</h4>
+                <h2 className="neon-text-orange" style={{ margin: '10px 0' }}>{userData?.creator_credits || 0}</h2>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Créditos para uso propio</p>
+              </div>
+              <div style={{ padding: '20px', border: '1px solid var(--neon-purple)', borderRadius: '8px', background: 'rgba(157,0,255,0.1)', textAlign: 'center' }}>
+                <h4 style={{ margin: 0, color: 'var(--text-secondary)' }}>Ingresos Generados</h4>
+                <h2 className="neon-text-purple" style={{ margin: '10px 0' }}>🪙 {userData?.creator_earnings || 0}</h2>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Croins convertibles a dinero</p>
+              </div>
+              <div style={{ padding: '20px', border: '1px solid var(--neon-green)', borderRadius: '8px', background: 'rgba(0,255,204,0.1)', textAlign: 'center' }}>
+                <h4 style={{ margin: 0, color: 'var(--text-secondary)' }}>Revenue Share</h4>
+                <h2 className="neon-text-green" style={{ margin: '10px 0' }}>5%</h2>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Porcentaje de ganancias actual</p>
+              </div>
+            </div>
+
             <h3 className="neon-text-orange" style={{ marginBottom: '15px' }}>Suscripción para Streamers 🎙️</h3>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '25px' }}>
-              Activa la clonación de voz IA en tiempo real para tu transmisión y monetiza a tus fans.
+              Activa la clonación de voz IA en tiempo real para tu transmisión y monetiza a tus donadores.
             </p>
 
             <div style={{ display: 'flex', gap: '20px', marginBottom: '40px', flexWrap: 'wrap' }}>

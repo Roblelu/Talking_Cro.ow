@@ -2,11 +2,18 @@ import React from 'react';
 
 const SubscriptionPage = ({ onBack }) => {
   return (
-    <div className="panel" style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
-        <button className="btn-neon" onClick={onBack} style={{ marginRight: '20px' }}>&lt; Volver al Monitor</button>
-        <h2 className="neon-text-green" style={{ margin: 0 }}>Suscripción Activa</h2>
-      </div>
+    <div className="panel-layout-wrapper" style={{ '--panel-width': '1000px' }}>
+      <button 
+        className="btn-neon back-btn-responsive" 
+        onClick={onBack} 
+      >
+        &lt; Volver al Panel de Control Principal
+      </button>
+
+      <div className="panel" style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <h2 className="neon-text-green" style={{ margin: 0 }}>Suscripción Activa</h2>
+        </div>
       
       <div style={{ padding: '20px' }}>
         {/* Planes */}
@@ -53,6 +60,8 @@ const SubscriptionPage = ({ onBack }) => {
           </table>
         </div>
       </div>
+      </div>
+      <div></div>
     </div>
   );
 };

@@ -16,7 +16,7 @@ const CreatorsPage = () => {
         <div className="streamers-text">
           <h1 className="streamers-title">Creador de Contenido,<br/>Ésta es tu Sección.</h1>
           <p className="streamers-subtitle">
-            Convierte a tu audiencia en participantes activos. Permite que tus fans donen y activen audios o efectos visuales, tambien deja de leer los comentarios y escuchalos directamente durante la transmision.
+            Convierte a tu audiencia en participantes activos. Permite que tus donadores donen y activen audios o efectos visuales, tambien deja de leer los comentarios y escuchalos directamente durante la transmision.
           </p>
           <button className="btn-streamer" onClick={() => alert('Descarga de la app en construcción...')}>
             Descargar App (Windows)

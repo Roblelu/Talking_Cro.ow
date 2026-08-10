@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { doc, setDoc, increment, collection, query, where, getDocs } from 'firebase/firestore';
@@ -14,7 +14,7 @@ import { functions } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 
 // Componente Interno del Formulario de Pago
-const CheckoutForm = ({ streamerName, streamerId }) => {
+const CheckoutForm = ({ streamerName, streamerId, packageId, packDetails }) => {
   const stripe = useStripe();
   const elements = useElements();
   const { currentUser, userData } = useAuth();
@@ -58,8 +58,8 @@ const CheckoutForm = ({ streamerName, streamerId }) => {
       console.log("[1] Solicitando cobro seguro a Cloud Functions (onCall)...");
       const createPaymentIntent = httpsCallable(functions, 'createPaymentIntent');
       
-      // TC-02 y TC-07: Ya no enviamos `amount` ni `uid`. El servidor lo tomará de nuestro Auth Token.
-      const res = await createPaymentIntent();
+      // TC-02 y TC-07: Ya no enviamos uid, pero sí el packageId
+      const res = await createPaymentIntent({ packageId });
       const data = res.data;
 
       if (!data.client_secret) throw new Error("No se recibió el client_secret del servidor");
@@ -90,8 +90,9 @@ const CheckoutForm = ({ streamerName, streamerId }) => {
     return (
       <div style={{ textAlign: 'center', marginTop: '20px' }}>
         <h3 className="neon-text-green">¡Pago Exitoso!</h3>
-        <p className="card-description">Se han añadido 10 Croins a tu cuenta de TikTok (@{userData?.username || currentUser?.email}).</p>
+        <p className="card-description">Se han añadido {packDetails.croins} Croins a tu cuenta de TikTok (@{userData?.username || currentUser?.email}).</p>
         <p className="card-description" style={{ marginTop: '15px' }}>¡Ve al stream de {streamerName} y escribe algo en el chat!</p>
+        <button className="btn-neon" style={{ marginTop: '20px' }} onClick={() => window.location.href = '/dashboard'}>Volver al Dashboard</button>
       </div>
     );
   }
@@ -127,7 +128,7 @@ const CheckoutForm = ({ streamerName, streamerId }) => {
         className="btn-neon send-audio-btn" 
         style={{ width: '100%', opacity: (!stripe || processing) ? 0.5 : 1 }}
       >
-        {processing ? `Procesando${dots}` : 'Comprar 10 Croins ($4.99)'}
+        {processing ? `Procesando${dots}` : `Comprar ${packDetails.croins} Croins ($${packDetails.price_mxn} MXN)`}
       </button>
     </form>
   );
@@ -135,7 +136,27 @@ const CheckoutForm = ({ streamerName, streamerId }) => {
 
 export default function Store() {
   const { streamerId } = useParams();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const packageId = searchParams.get('packageId') || 'pack_1';
   const displayName = streamerId ? streamerId.charAt(0).toUpperCase() + streamerId.slice(1) : 'Streamer';
+
+  const PACKAGES = {
+    'pack_1': { price_mxn: 12, croins: 28 },
+    'pack_2': { price_mxn: 35, croins: 110 },
+    'pack_3': { price_mxn: 80, croins: 270 },
+    'pack_4': { price_mxn: 140, croins: 500 },
+    'pack_5': { price_mxn: 200, croins: 850 },
+    'pack_6': { price_mxn: 260, croins: 1200 },
+    'pack_7': { price_mxn: 330, croins: 1900 },
+    'pack_8': { price_mxn: 399, croins: 2700 }
+  };
+
+  const packDetails = PACKAGES[packageId];
+
+  if (!packDetails) {
+    return <div style={{ color: 'white', textAlign: 'center', marginTop: '50px' }}>Paquete no válido. <button onClick={() => navigate('/dashboard')}>Volver</button></div>;
+  }
 
   return (
     <div className="store-container">
@@ -146,7 +167,7 @@ export default function Store() {
           <p className="card-description" style={{ textAlign: 'center', marginBottom: '10px' }}>Recarga saldo para que la IA lea tus mensajes en mi stream.</p>
           
           <Elements stripe={stripePromise} options={{ appearance: { theme: 'night', variables: { colorPrimary: '#9d00ff', colorBackground: '#222222' } } }}>
-            <CheckoutForm streamerName={displayName} streamerId={streamerId} />
+            <CheckoutForm streamerName={displayName} streamerId={streamerId} packageId={packageId} packDetails={packDetails} />
           </Elements>
         </div>
       </main>

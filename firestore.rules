@@ -7,15 +7,31 @@ service cloud.firestore {
       allow read, write: if false;
     }
     
-    // 2. Reglas para los perfiles de fans de un streamer
-    match /streamers/{streamerId}/fans/{uid} {
-      // El perfil general (username, croins) solo puede ser leído por el propio usuario (Anti-Enumeración)
+    // 2. Reglas para nombres de usuario (disponibilidad)
+    match /usernames/{username} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // 3. Reglas para perfiles unificados (creadores y donadores)
+    match /users/{uid} {
+      // El perfil general solo puede ser leído por el propio usuario
       allow read: if request.auth != null && request.auth.uid == uid;
       
-      // La creación exige que el usuario comience con 0 Croins
-      allow create: if request.auth != null && request.auth.uid == uid && request.resource.data.Croins == 0 && request.resource.data.isPro == false;
-      // Las actualizaciones del perfil general no pueden alterar los Croins o privilegios
-      allow update: if request.auth != null && request.auth.uid == uid && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['Croins', 'isPro']);
+      // La creación exige iniciar los saldos en 0
+      allow create: if request.auth != null && request.auth.uid == uid 
+                    && request.resource.data.purchased_croins == 0
+                    && request.resource.data.promotional_croins == 0
+                    && request.resource.data.creator_credits == 0
+                    && request.resource.data.creator_earnings == 0
+                    && request.resource.data.isPro == false;
+                    
+      // Las actualizaciones del perfil general desde el cliente no pueden alterar los saldos o privilegios
+      // (Los saldos solo pueden ser modificados por Firebase Functions/Admin)
+      allow update: if request.auth != null && request.auth.uid == uid 
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                      'purchased_croins', 'promotional_croins', 'creator_credits', 'creator_earnings', 'isPro'
+                    ]);
       
       // 3. Subcolección privada de contacto (PII)
       match /private/contact {

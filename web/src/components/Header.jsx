@@ -23,6 +23,8 @@ const Header = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const isMissingFields = currentUser && (!userData?.email || !userData?.phone || !userData?.tiktok);
+
   return (
     <header className="main-navbar">
       {/* Left: Circular Logo */}
@@ -55,27 +57,33 @@ const Header = () => {
               title="Comprar más Croins"
             >
               <span style={{ fontSize: '1.2rem' }}>🪙</span>
-              <span className="neon-text-green" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{userData?.Croins || 0} Croins</span>
+              <span className="neon-text-green" style={{ fontWeight: 'bold', fontSize: '1.1rem', whiteSpace: 'nowrap' }}>{((userData?.purchased_croins || 0) + (userData?.promotional_croins || 0))} Croins</span>
             </div>
             
             <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
               <img src={'/avatar_m.jpg'} alt="Menú de Usuario" className="avatar-placeholder" title="Menú de Usuario" style={{ objectFit: 'cover' }} />
-              <button className="settings-gear-btn" title="Ajustes" style={{ pointerEvents: 'none' }}>⚙️</button>
+              <button className="settings-gear-btn" title="Ajustes" style={{ pointerEvents: 'none' }}>
+                ⚙️
+                {isMissingFields && <span style={{ position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
+              </button>
             </div>
             
             {isDropdownOpen && (
               <div className="user-dropdown-menu">
                  <ul>
                    <li 
-                     onClick={() => { navigate('/dashboard'); setIsDropdownOpen(false); }}
-                     style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(157, 0, 255, 0.3)', paddingBottom: '12px', marginBottom: '8px' }}
+                     onClick={() => { navigate('/account'); setIsDropdownOpen(false); }}
+                     style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(157, 0, 255, 0.3)', paddingBottom: '12px', marginBottom: '8px', color: '#00f0ff', fontWeight: 'bold' }}
                    >
                      <img src={'/avatar_m.jpg'} alt="Perfil" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--neon-purple)' }} />
-                     Cuenta Talking Crow
+                     <div style={{ display: 'flex', justifyContent: 'space-between', flex: 1, alignItems: 'center' }}>
+                       <span>Cuenta Talking Crow</span>
+                       {isMissingFields && <span style={{ width: '8px', height: '8px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
+                     </div>
                    </li>
-                   <li onClick={() => { navigate('/dashboard'); setIsDropdownOpen(false); }}>Suscripción y Pagos</li>
-                   <li onClick={() => { navigate('/dashboard'); setIsDropdownOpen(false); }}>Contacto y soporte</li>
-                   <li onClick={() => { navigate('/dashboard'); setIsDropdownOpen(false); }}>Términos y Condiciones</li>
+                   <li onClick={() => { navigate('/subscription'); setIsDropdownOpen(false); }}>Suscripción y Pagos</li>
+                   <li onClick={() => { navigate('/support'); setIsDropdownOpen(false); }}>Contacto y soporte</li>
+                   <li onClick={() => { navigate('/terms'); setIsDropdownOpen(false); }}>Términos y Condiciones</li>
                    <li 
                      style={{ color: '#ff6600', textAlign: 'center', borderTop: '1px solid rgba(255,102,0,0.3)', paddingTop: '12px', marginTop: '8px', fontWeight: 'bold' }} 
                      onClick={async () => { await signOut(auth); setIsDropdownOpen(false); navigate('/'); }}

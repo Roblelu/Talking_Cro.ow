@@ -46,3 +46,8 @@ build/
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Documents / Spreadsheets
+*.xlsx
+*.xls
+*.csv

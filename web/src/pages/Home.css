@@ -117,7 +117,7 @@
   background: radial-gradient(circle, #9d00ff 0%, #000 70%);
   border-radius: 50%;
   box-shadow: 0 0 40px #9d00ff;
-  animation: pulse 3s infinite alternate;
+  animation: pulse-home 3s infinite alternate;
 }
 
 .orb-ring {
@@ -206,7 +206,7 @@
 }
 
 /* Animations */
-@keyframes pulse {
+@keyframes pulse-home {
   0% { transform: scale(0.95); opacity: 0.7; }
   100% { transform: scale(1.05); opacity: 1; box-shadow: 0 0 60px #9d00ff, 0 0 20px #00ffff; }
 }

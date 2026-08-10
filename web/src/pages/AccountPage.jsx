@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
@@ -36,7 +37,8 @@ const PasswordInput = ({ label, value, onChange, show, toggleShow }) => (
   </div>
 );
 
-const AccountPage = ({ onBack, profileImage, setProfileImage }) => {
+const AccountPage = ({ profileImage, setProfileImage }) => {
+  const navigate = useNavigate();
   const { currentUser, userData } = useAuth();
   
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
@@ -89,7 +91,7 @@ const AccountPage = ({ onBack, profileImage, setProfileImage }) => {
     <div className="panel-layout-wrapper" style={{ '--panel-width': '800px' }}>
         <button 
           className="btn-neon back-btn-responsive" 
-          onClick={onBack} 
+          onClick={() => navigate('/dashboard')} 
           style={{ marginBottom: '20px' }}
         >
           &lt; Volver al Panel de Control Principal

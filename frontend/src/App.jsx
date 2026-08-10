@@ -136,8 +136,22 @@ function App() {
   const [profileImage, setProfileImage] = useState('/avatar_m.jpg');
   const [hashRoute, setHashRoute] = useState(window.location.hash);
   
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userData } = useAuth();
   const [gifts, setGifts] = useState([]);
+  
+  const isMissingFields = currentUser && (!userData?.email || !userData?.phone || !userData?.tiktok);
+  
+  const getHeaderTitle = () => {
+    switch(activeView) {
+      case 'dmwebview': return 'WEB VIEWER';
+      case 'subscription': return 'Suscripción y Pagos';
+      case 'support': return 'Contacto y Soporte';
+      case 'port': return 'Configuración de Puerto';
+      case 'terms': return 'Términos y Condiciones';
+      case 'account': return 'Cuenta Talking Crow';
+      default: return 'Panel de Control Principal';
+    }
+  };
   
   const [ttsVoice, setTtsVoice] = useState('es-MX-DaliaNeural');
   const [ttsRate, setTtsRate] = useState('+0%');
@@ -654,7 +668,7 @@ function App() {
         <div className="navbar-center" style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={() => setActiveView('main')}>
           <img src={titleImg} alt="Talking Crow" className="title-img" />
           <p className="neon-text-purple" style={{ position: 'relative', zIndex: 10, fontSize: '1.25rem', fontWeight: 'bold', letterSpacing: '1px', margin: '0' }}>
-            {activeView === 'dmwebview' ? 'WEB VIEWER' : 'Panel de Control Principal'}
+            {getHeaderTitle()}
           </p>
         </div>
         
@@ -668,7 +682,7 @@ function App() {
               title="Comprar más Croins"
             >
               <span style={{ fontSize: '1.2rem' }}>🪙</span>
-              <span className="neon-text-green" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{userProfile?.Croins || 0} Croins</span>
+              <span className="neon-text-green" style={{ fontWeight: 'bold', fontSize: '1.1rem', whiteSpace: 'nowrap' }}>{((userData?.purchased_croins || 0) + (userData?.promotional_croins || 0))} Croins</span>
             </div>
           ) : (
             <button className="btn-neon" style={{ padding: '8px 15px' }} onClick={() => setActiveView('login')}>Iniciar Sesión</button>
@@ -676,7 +690,10 @@ function App() {
 
           <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
             <img src={profileImage} alt="Menú de Usuario" className="avatar-placeholder" title="Menú de Usuario" style={{ objectFit: 'cover' }} />
-            <button className="settings-gear-btn" title="Ajustes" style={{ pointerEvents: 'none' }}>⚙️</button>
+            <button className="settings-gear-btn" title="Ajustes" style={{ pointerEvents: 'none' }}>
+              ⚙️
+              {isMissingFields && <span style={{ position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
+            </button>
           </div>
           
           {isDropdownOpen && (
@@ -684,10 +701,13 @@ function App() {
                <ul>
                  <li 
                    onClick={() => { setActiveView('account'); setIsDropdownOpen(false); }}
-                   style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(157, 0, 255, 0.3)', paddingBottom: '12px', marginBottom: '8px' }}
+                   style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(157, 0, 255, 0.3)', paddingBottom: '12px', marginBottom: '8px', color: '#00f0ff', fontWeight: 'bold' }}
                  >
                    <img src={profileImage} alt="Perfil" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--neon-purple)' }} />
-                   Cuenta Talking Crow
+                   <div style={{ display: 'flex', justifyContent: 'space-between', flex: 1, alignItems: 'center' }}>
+                     <span>Cuenta Talking Crow</span>
+                     {isMissingFields && <span style={{ width: '8px', height: '8px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
+                   </div>
                  </li>
                  <li onClick={() => { setActiveView('subscription'); setIsDropdownOpen(false); }}>Suscripción y Pagos</li>
                  <li onClick={() => { setActiveView('support'); setIsDropdownOpen(false); }}>Contacto y soporte</li>

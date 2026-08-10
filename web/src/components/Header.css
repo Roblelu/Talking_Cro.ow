@@ -10,9 +10,10 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
   position: relative;
   z-index: 1000;
-  margin-top: 10px; /* para que no pegue arriba */
-  margin-left: 20px; /* espaciado opcional si no lo tiene App.jsx en web */
-  margin-right: 20px;
+  margin: 30px auto 0 auto;
+  max-width: calc(1600px - 60px);
+  width: calc(100% - 60px);
+  box-sizing: border-box;
 }
 
 .main-navbar::before {
