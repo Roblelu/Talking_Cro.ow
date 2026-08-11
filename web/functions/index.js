@@ -63,6 +63,300 @@ exports.createPaymentIntent = onCall(async (request) => {
     }
 });
 
+exports.createSubscriptionCheckout = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Debe iniciar sesión para realizar compras.');
+    }
+    const uid = request.auth.uid;
+
+    try {
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            mode: 'subscription',
+            line_items: [{
+                price_data: {
+                    currency: 'mxn',
+                    recurring: { interval: 'month' },
+                    unit_amount: 15000,
+                    product_data: {
+                        name: 'Plan Pro - Talking Cro.ow',
+                        description: '1000 Créditos IA Mensuales'
+                    }
+                },
+                quantity: 1,
+            }],
+            metadata: {
+                uid: uid,
+                type: 'pro_subscription'
+            },
+            success_url: 'https://talkingcroow.com/dashboard',
+            cancel_url: 'https://talkingcroow.com/dashboard',
+        });
+        return { url: session.url };
+    } catch (error) {
+        logger.error(`Error en createSubscriptionCheckout: ${error.message}`);
+        throw new HttpsError('internal', error.message);
+    }
+});
+
+exports.claimWelcomeCredits = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Debe iniciar sesión.');
+    }
+    const uid = request.auth.uid;
+    const userRef = db.collection('users').doc(uid);
+
+    try {
+        await db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) {
+                throw new HttpsError('not-found', 'Usuario no encontrado.');
+            }
+            
+            const data = userDoc.data();
+            if (data.has_received_app_credits) {
+                return; // Ya los recibió
+            }
+            
+            // Otorgar 35 si tiene 0 (o si por error no tenía), si tiene más se queda igual
+            const currentCredits = data.creator_credits || 0;
+            const newCredits = currentCredits === 0 ? 35 : currentCredits;
+            
+            transaction.update(userRef, {
+                creator_credits: newCredits,
+                has_received_app_credits: true
+            });
+        });
+        return { success: true };
+    } catch (error) {
+        logger.error(`Error en claimWelcomeCredits: ${error.message}`);
+        throw new HttpsError('internal', error.message);
+    }
+});
+
+exports.consumeTTSCredit = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Debe iniciar sesión.');
+    }
+    const uid = request.auth.uid;
+    const userRef = db.collection('users').doc(uid);
+
+    try {
+        await db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) {
+                throw new HttpsError('not-found', 'Usuario no encontrado.');
+            }
+            
+            const data = userDoc.data();
+            if ((data.creator_credits || 0) <= 0) {
+                throw new HttpsError('failed-precondition', 'No tienes créditos suficientes.');
+            }
+            
+            // Restar 1 crédito
+            transaction.update(userRef, {
+                creator_credits: admin.firestore.FieldValue.increment(-1)
+            });
+        });
+        return { success: true };
+    } catch (error) {
+        logger.error(`Error en consumeTTSCredit: ${error.message}`);
+        throw new HttpsError('internal', error.message);
+    }
+});
+
+exports.processTTSMessage = onCall(async (request) => {
+    // TC-34: Validación estricta de identidad para evitar robo de saldo (Opción A)
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Acceso denegado: Se requiere autenticación.');
+    }
+
+    // Esta función es llamada desde el backend (Python) cuando un fan envía un mensaje de chat
+    const { tiktok_username, streamer_uid, cost = 12 } = request.data;
+    
+    if (!tiktok_username || !streamer_uid) {
+        throw new HttpsError('invalid-argument', 'Faltan parámetros requeridos (tiktok_username, streamer_uid).');
+    }
+
+    // Verificamos que el streamer solo pueda cobrar donaciones dirigidas a sí mismo
+    if (request.auth.uid !== streamer_uid) {
+        throw new HttpsError('permission-denied', 'No tienes permiso para acreditar Croins a otro streamer.');
+    }
+
+    const costInt = parseInt(cost, 10);
+    const streamerRef = db.collection('users').doc(streamer_uid);
+    
+    try {
+        await db.runTransaction(async (transaction) => {
+            // 1. Buscar al usuario donador por su tiktok_username
+            const cleanUsername = tiktok_username.startsWith('@') ? tiktok_username : `@${tiktok_username}`;
+            const usersQuery = await transaction.get(
+                db.collection('users').where('tiktok_username', '==', cleanUsername.toLowerCase()).limit(1)
+            );
+
+            if (usersQuery.empty) {
+                throw new HttpsError('not-found', 'El usuario de TikTok no está registrado en la base de datos.');
+            }
+
+            const userDoc = usersQuery.docs[0];
+            const userRef = userDoc.ref;
+            const userData = userDoc.data();
+
+            // 2. Verificar si el streamer existe
+            const streamerDoc = await transaction.get(streamerRef);
+            if (!streamerDoc.exists) {
+                throw new HttpsError('not-found', 'Streamer no encontrado.');
+            }
+
+            // 3. Verificar saldo del donador
+            const promotional = userData.promotional_croins || 0;
+            const purchased = userData.purchased_croins || 0;
+            
+            if (promotional + purchased < costInt) {
+                throw new HttpsError('failed-precondition', 'Saldo de Croins insuficiente.');
+            }
+
+            // 4. Calcular deducción de Croins
+            let deductPromo = 0;
+            let deductPurchased = 0;
+            
+            if (promotional >= costInt) {
+                deductPromo = costInt;
+            } else {
+                deductPromo = promotional;
+                deductPurchased = costInt - promotional;
+            }
+
+            transaction.update(userRef, {
+                promotional_croins: admin.firestore.FieldValue.increment(-deductPromo),
+                purchased_croins: admin.firestore.FieldValue.increment(-deductPurchased)
+            });
+
+            // 5. Calcular ganancias para el creador (Revenue Split)
+            // Lógica base: 12 Croins = $5.00 MXN -> Creador gana el 5% = $0.25 MXN
+            let earningsToAdd = 0;
+            if (deductPurchased > 0) {
+                // Solo las croins compradas generan dinero real
+                const percentage = 0.05; 
+                const baseValue = (deductPurchased / 12) * 5.00; // Si gastó 12 croins compradas, son $5.00 MXN
+                earningsToAdd = baseValue * percentage; 
+            }
+
+            if (earningsToAdd > 0) {
+                transaction.update(streamerRef, {
+                    creator_earnings: admin.firestore.FieldValue.increment(earningsToAdd)
+                });
+            }
+        });
+
+        return { success: true };
+    } catch (error) {
+        logger.error(`Error en processTTSMessage: ${error.message}`);
+        throw new HttpsError('internal', error.message); // El backend atrapará esto y no clonará la voz
+    }
+});
+
+// --- STRIPE CONNECT: ONBOARDING Y RETIROS ---
+
+exports.createConnectAccount = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Debes estar autenticado.');
+    }
+    const uid = request.auth.uid;
+    const userRef = db.collection('users').doc(uid);
+    const userDoc = await userRef.get();
+    
+    if (!userDoc.exists) {
+        throw new HttpsError('not-found', 'Usuario no encontrado.');
+    }
+
+    const userData = userDoc.data();
+    let accountId = userData.stripe_account_id;
+
+    try {
+        // Si no tiene cuenta, crearla
+        if (!accountId) {
+            const account = await stripe.accounts.create({
+                type: 'express',
+                country: 'MX', // O el país predeterminado
+                email: request.auth.token.email,
+                capabilities: {
+                    transfers: {requested: true},
+                },
+                business_type: 'individual',
+            });
+            accountId = account.id;
+            await userRef.update({ stripe_account_id: accountId });
+        }
+
+        // Crear link de validación KYC (Account Link)
+        const accountLink = await stripe.accountLinks.create({
+            account: accountId,
+            refresh_url: 'https://talking-crow.web.app/withdraw', // O localhost en dev
+            return_url: 'https://talking-crow.web.app/withdraw',
+            type: 'account_onboarding',
+        });
+
+        return { url: accountLink.url };
+    } catch (error) {
+        logger.error(`Error en createConnectAccount: ${error.message}`);
+        throw new HttpsError('internal', 'Error al crear la cuenta de Stripe Connect.');
+    }
+});
+
+exports.requestPayout = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Debes estar autenticado.');
+    }
+    const uid = request.auth.uid;
+    const userRef = db.collection('users').doc(uid);
+
+    try {
+        let success = false;
+        await db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) throw new HttpsError('not-found', 'Usuario no encontrado');
+            
+            const userData = userDoc.data();
+            const earnings = userData.creator_earnings || 0;
+            const accountId = userData.stripe_account_id;
+
+            if (earnings <= 0) {
+                throw new HttpsError('failed-precondition', 'No hay ganancias para retirar.');
+            }
+            if (!accountId) {
+                throw new HttpsError('failed-precondition', 'No tienes cuenta bancaria vinculada.');
+            }
+            // NOTA: Para enviar a producción, idealmente verificamos que userData.stripe_charges_enabled == true
+            // Esto se actualiza usualmente vía webhook account.updated
+
+            // 1. Ejecutar transferencia a la cuenta conectada (Stripe)
+            // Stripe usa centavos, así que multiplicamos por 100
+            const amountInCents = Math.floor(earnings * 100);
+            
+            await stripe.transfers.create({
+                amount: amountInCents,
+                currency: 'mxn',
+                destination: accountId,
+                description: `Retiro de Ganancias (Talking Cro.ow) - UID: ${uid}`
+            });
+
+            // 2. Descontar las ganancias
+            transaction.update(userRef, {
+                creator_earnings: 0, // Reiniciamos el balance
+                total_withdrawn: admin.firestore.FieldValue.increment(earnings) // Guardamos el histórico
+            });
+            
+            success = true;
+        });
+
+        return { success };
+    } catch (error) {
+        logger.error(`Error en requestPayout: ${error.message}`);
+        throw new HttpsError('internal', error.message);
+    }
+});
+
 exports.stripeWebhook = onRequest((req, res) => {
     cors(req, res, async () => {
         const sig = req.headers['stripe-signature'];
@@ -114,6 +408,45 @@ exports.stripeWebhook = onRequest((req, res) => {
                 }
             } else {
                 logger.warn("⚠️ Webhook: Pago exitoso pero sin fan_uid o croins en metadatos.");
+            }
+        } else if (event.type === 'checkout.session.completed') {
+            const session = event.data.object;
+            if (session.mode === 'subscription' && session.metadata.uid) {
+                // Pasamos el UID de la sesión a la suscripción
+                await stripe.subscriptions.update(session.subscription, {
+                    metadata: { uid: session.metadata.uid }
+                });
+            }
+        } else if (event.type === 'invoice.payment_succeeded') {
+            const invoice = event.data.object;
+            if (invoice.subscription) {
+                const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
+                const uid = subscription.metadata.uid;
+                const eventId = event.id;
+
+                if (uid) {
+                    try {
+                        const eventRef = db.collection("processed_events").doc(eventId);
+                        const userRef = db.collection("users").doc(uid);
+
+                        await db.runTransaction(async (transaction) => {
+                            const eventDoc = await transaction.get(eventRef);
+                            if (eventDoc.exists) { return; }
+
+                            transaction.set(eventRef, { processedAt: admin.firestore.FieldValue.serverTimestamp() });
+                            
+                            transaction.set(userRef, {
+                                creator_credits: admin.firestore.FieldValue.increment(1000),
+                                isPro: true,
+                                last_subscription_payment: admin.firestore.FieldValue.serverTimestamp()
+                            }, { merge: true });
+                        });
+                        logger.info(`✅ Webhook: Se recargaron 1000 Créditos IA al UID: ${uid}`);
+                    } catch (dbErr) {
+                        logger.error(`❌ Webhook Error DB: ${dbErr.message}`);
+                        return res.status(500).send(`Database Error: ${dbErr.message}`);
+                    }
+                }
             }
         }
 
@@ -202,59 +535,4 @@ exports.consumeFeature = onCall(async (request) => {
     }
 });
 
-// Función temporal para migrar los usuarios (TC-19)
-exports.migrateLegacyUsers = onRequest(async (req, res) => {
-    try {
-        const donadoresRef = db.collection("streamers").doc("vridel").collection("donadores");
-        const snapshot = await donadoresRef.get();
-        let migrated = 0;
-        let skipped = 0;
-
-        for (const doc of snapshot.docs) {
-            const data = doc.data();
-            const docId = doc.id;
-
-            // Si tiene email directamente en la raíz, es una cuenta vieja
-            if (data.email) {
-                try {
-                    // Buscar UID real en Firebase Auth
-                    const userRecord = await admin.auth().getUserByEmail(data.email);
-                    const uid = userRecord.uid;
-
-                    // Clonar datos básicos al nuevo documento con ID = uid
-                    await donadoresRef.doc(uid).set({
-                        Croins: data.Croins || 0,
-                        isPro: data.isPro || false,
-                        username: data.username || docId,
-                        createdAt: data.createdAt || admin.firestore.FieldValue.serverTimestamp()
-                    });
-
-                    // Mover datos privados (PII) a la subcolección
-                    await donadoresRef.doc(uid).collection("private").doc("contact").set({
-                        email: data.email,
-                        phone: data.phone || ""
-                    });
-
-                    // Borrar documento viejo (si el ID era diferente al UID)
-                    if (uid !== docId) {
-                        await donadoresRef.doc(docId).delete();
-                    } else {
-                        // Si era el mismo, solo borrar los campos de PII expuestos
-                        await donadoresRef.doc(docId).update({
-                            email: admin.firestore.FieldValue.delete(),
-                            phone: admin.firestore.FieldValue.delete()
-                        });
-                    }
-                    migrated++;
-                } catch (e) {
-                    logger.error(`Error migrando ${docId}:`, e);
-                }
-            } else {
-                skipped++;
-            }
-        }
-        res.json({ success: true, migrated, skipped });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+// TC-25: La función migrateLegacyUsers fue eliminada por motivos de seguridad.

@@ -13,8 +13,9 @@ import TermsPage from './pages/TermsPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import { useAuth } from './context/AuthContext';
-import { auth } from './firebase';
+import { auth, db, functions } from './firebase';
 import { signOut } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
 
 // Modal Component
 const Modal = ({ isOpen, title, message, type, onConfirm, onCancel, confirmText = 'Aceptar' }) => {
@@ -63,6 +64,11 @@ const AudioPlayItem = ({ audio, isFirst, handlePlayAudio, handleRejectAudio }) =
   const [progress, setProgress] = useState(0);
   const [hasActed, setHasActed] = useState(false);
 
+  const audioQueueRef = useRef([]);
+
+
+
+  // Manejo de audios recibidos desde IPC
   const handlePlayRef = React.useRef(handlePlayAudio);
   React.useEffect(() => { handlePlayRef.current = handlePlayAudio; }, [handlePlayAudio]);
 
@@ -141,6 +147,16 @@ function App() {
   
   const isMissingFields = currentUser && (!userData?.email || !userData?.phone || !userData?.tiktok);
   
+  // TC: Asignar créditos gratuitos de manera segura (Backend)
+  useEffect(() => {
+    if (currentUser && userData) {
+      if (userData.has_received_app_credits === undefined) {
+        const claimCredits = httpsCallable(functions, 'claimWelcomeCredits');
+        claimCredits().catch(err => console.error("Error asignando créditos de bienvenida:", err));
+      }
+    }
+  }, [currentUser, userData]);
+
   const getHeaderTitle = () => {
     switch(activeView) {
       case 'dmwebview': return 'WEB VIEWER';
@@ -148,7 +164,7 @@ function App() {
       case 'support': return 'Contacto y Soporte';
       case 'port': return 'Configuración de Puerto';
       case 'terms': return 'Términos y Condiciones';
-      case 'account': return 'Cuenta Talking Crow';
+      case 'account': return 'Cuenta Talking Cro.ow';
       default: return 'Panel de Control Principal';
     }
   };
@@ -203,7 +219,12 @@ function App() {
               
             fetch(API_BASE + '/api/tts/state')
               .then(r => r.json())
-              .then(d => { if (isMounted) setIsTtsLiveEnabled(d.enabled); })
+              .then(d => { 
+                if (isMounted) {
+                  setIsTtsLiveEnabled(d.enabled);
+                  setTtsRequiredGift(d.required_gift || 'All');
+                }
+              })
               .catch(err => console.error(err));
           }
         })
@@ -238,12 +259,27 @@ function App() {
       const res = await fetch(API_BASE + '/api/tts/state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: newState })
+        body: JSON.stringify({ enabled: newState, required_gift: ttsRequiredGift })
       });
       const data = await res.json();
       setIsTtsLiveEnabled(data.enabled);
     } catch (e) {
       console.error("Error toggling TTS:", e);
+    }
+  };
+
+  const changeTtsRequiredGift = async (e) => {
+    const val = e.target.value;
+    setTtsRequiredGift(val);
+    try {
+      const API_BASE = 'http://127.0.0.1:8763';
+      await fetch(API_BASE + '/api/tts/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: isTtsLiveEnabled, required_gift: val })
+      });
+    } catch(err) {
+      console.error("Error cambiando el regalo requerido para TTS:", err);
     }
   };
 
@@ -349,6 +385,8 @@ function App() {
   const [isDmsOpen, setIsDmsOpen] = useState(false);
   const [liveEvents, setLiveEvents] = useState([]);
   const [isTtsLiveEnabled, setIsTtsLiveEnabled] = useState(false);
+  const [ttsRequiredGift, setTtsRequiredGift] = useState('All');
+  const [isTtsGiftDropdownOpen, setIsTtsGiftDropdownOpen] = useState(false);
   const [audioQueue, setAudioQueue] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -420,14 +458,40 @@ function App() {
             
             // Si el evento es un chat o un regalo, guardamos al usuario para los DMs
             if (data.type === 'chat' || data.type === 'gift') {
-              setDonators(prev => {
+                setOnlineUsers(prev => {
+                    const exists = prev.find(u => u.username === data.username);
+                    if (!exists) {
+                        return [...prev, { username: data.username, firstSeen: new Date().toLocaleTimeString() }];
+                    }
+                    return prev;
+                });
+            }
+
+            // --- LÓGICA DE CROINS PARA TTS (CHAT) ---
+            if (data.type === 'chat' && currentUser) {
+                // Intentar cobrar 12 Croins al usuario
+                const processTTS = httpsCallable(functions, 'processTTSMessage');
+                processTTS({ 
+                    tiktok_username: data.username, 
+                    streamer_uid: currentUser.uid, 
+                    cost: 12 
+                }).then(result => {
+                    if (result.data.success) {
+                        console.log(`[Croins] 12 Croins descontados a ${data.username} para TTS premium.`);
+                        // TODO: Aquí llamaremos a ElevenLabs / clonación de voz
+                    }
+                }).catch(err => {
+                    // Si falla (ej. no está en DB o no tiene saldo), ignoramos silenciosamente
+                });
+            }
+            
+            setDonators(prev => {
                  if (!prev.find(d => d.username === data.username)) {
                     // Lo añadimos al inicio de la lista
                     return [{ id: Date.now().toString() + Math.random(), username: data.username, isNew: true }, ...prev];
                  }
                  return prev;
-              });
-            }
+            });
 
             // Añadir al FINAL para que con flexDirection: column los nuevos salgan abajo
             setLiveEvents(prev => {
@@ -588,6 +652,15 @@ function App() {
   };
 
   const handlePlayAudio = (id, url) => {
+    if ((userData?.creator_credits || 0) <= 0) {
+       showModal("Sin Créditos de Streamer", "Ya no tienes créditos para reproducir TTS. Adquiere más en la sección de Suscripciones.", "error");
+       setAudioQueue(prev => prev.filter(a => a.id !== id));
+       if (id) {
+           fetch(`http://127.0.0.1:8763/api/audio/${id}`, { method: 'DELETE' }).catch(e=>console.log(e));
+       }
+       return;
+    }
+
     let finalUrl = url;
     if (!finalUrl) {
       const audioData = audioQueue.find(a => a.id === id);
@@ -596,6 +669,11 @@ function App() {
 
     if (finalUrl) {
        console.log("Reproduciendo audio id:", id);
+       
+       // Consumir 1 crédito en el servidor
+       const consumeCredit = httpsCallable(functions, 'consumeTTSCredit');
+       consumeCredit().catch(err => console.error("Error consumiendo crédito:", err));
+
        const snd = new Audio(finalUrl);
        snd.play().catch(e => {
            console.error("Error al reproducir el audio HTML5:", e);
@@ -662,11 +740,11 @@ function App() {
         <>
       <header className="main-navbar">
         <div className="navbar-left navbar-side" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', position: 'relative' }} onClick={() => setActiveView('main')}>
-          <img src={logoImg} alt="Talking Crow Logo" className="logo-img" />
+          <img src={logoImg} alt="Talking Cro.ow Logo" className="logo-img" />
         </div>
         
         <div className="navbar-center" style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={() => setActiveView('main')}>
-          <img src={titleImg} alt="Talking Crow" className="title-img" />
+          <img src={titleImg} alt="Talking Cro.ow" className="title-img" />
           <p className="neon-text-purple" style={{ position: 'relative', zIndex: 10, fontSize: '1.25rem', fontWeight: 'bold', letterSpacing: '1px', margin: '0' }}>
             {getHeaderTitle()}
           </p>
@@ -676,13 +754,26 @@ function App() {
           
           {/* Indicador de Croins o Botón Iniciar Sesión */}
           {currentUser ? (
-            <div 
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: 'rgba(0,255,204,0.1)', padding: '8px 15px', borderRadius: '25px', border: '1px solid var(--neon-green)', transition: 'all 0.3s' }}
-              onClick={() => setActiveView('subscription')}
-              title="Comprar más Croins"
-            >
-              <span style={{ fontSize: '1.2rem' }}>🪙</span>
-              <span className="neon-text-green" style={{ fontWeight: 'bold', fontSize: '1.1rem', whiteSpace: 'nowrap' }}>{((userData?.purchased_croins || 0) + (userData?.promotional_croins || 0))} Croins</span>
+            <div className="credits-wrapper">
+              <div 
+                className="header-indicator"
+                style={{ background: 'rgba(0,255,204,0.1)', border: '1px solid var(--neon-green)' }}
+                onClick={() => setActiveView('subscription')}
+                title="Comprar más Croins"
+              >
+                <span style={{ fontSize: '1.2rem' }}>🪙</span>
+                <span className="neon-text-green" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{((userData?.purchased_croins || 0) + (userData?.promotional_croins || 0))} Croins</span>
+              </div>
+              
+              <div 
+                className="header-indicator"
+                style={{ background: 'rgba(255,117,24,0.1)', border: '1px solid var(--neon-orange)' }}
+                onClick={() => setActiveView('subscription')}
+                title="Créditos de Streamer"
+              >
+                <span style={{ fontSize: '1.2rem' }}>✨</span>
+                <span className="neon-text-orange" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{userData?.creator_credits || 0} Créditos</span>
+              </div>
             </div>
           ) : (
             <button className="btn-neon" style={{ padding: '8px 15px' }} onClick={() => setActiveView('login')}>Iniciar Sesión</button>
@@ -705,7 +796,7 @@ function App() {
                  >
                    <img src={profileImage} alt="Perfil" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--neon-purple)' }} />
                    <div style={{ display: 'flex', justifyContent: 'space-between', flex: 1, alignItems: 'center' }}>
-                     <span>Cuenta Talking Crow</span>
+                     <span>Cuenta Talking Cro.ow</span>
                      {isMissingFields && <span style={{ width: '8px', height: '8px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
                    </div>
                  </li>
@@ -893,27 +984,28 @@ function App() {
         </section>
 
         {/* Columna 2: Monitor en Vivo */}
-        <section className="panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', minHeight: 0 }}>
+        <section className="panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: isTtsGiftDropdownOpen ? 'visible' : 'hidden', minHeight: 0, zIndex: isTtsGiftDropdownOpen ? 100 : 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '1px solid rgba(57, 255, 20, 0.3)', paddingBottom: '10px' }}>
             <h2 className="neon-text-green" style={{ margin: 0 }}>
               Monitor en Vivo
             </h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={toggleTts} title="Activar/Desactivar Texto a Voz Local">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={toggleTts} title="Activar/Desactivar Texto a Voz Local">
               <span style={{ color: isTtsLiveEnabled ? '#39ff14' : '#ff003c', fontWeight: 'bold', fontSize: '1.05rem', textShadow: isTtsLiveEnabled ? '0 0 5px #39ff14' : '0 0 5px #ff003c', transition: 'all 0.3s' }}>TTS</span>
               <div 
                 style={{ 
-                  width: '46px', height: '24px', 
+                  width: '40px', height: '24px', 
                   borderRadius: '12px', 
                   background: isTtsLiveEnabled ? 'rgba(57, 255, 20, 0.2)' : 'rgba(255, 0, 60, 0.1)',
                   border: `2px solid ${isTtsLiveEnabled ? '#39ff14' : '#ff003c'}`,
                   position: 'relative',
                   transition: 'all 0.3s',
-                  boxShadow: isTtsLiveEnabled ? '0 0 10px rgba(57,255,20,0.4)' : 'none'
+                  boxShadow: isTtsLiveEnabled ? '0 0 10px rgba(57,255,20,0.4)' : 'none',
+                  boxSizing: 'border-box'
                 }}
               >
                 <div style={{
-                  position: 'absolute', top: '2px', left: isTtsLiveEnabled ? '24px' : '2px',
-                  width: '16px', height: '16px', borderRadius: '50%',
+                  position: 'absolute', top: '1px', left: isTtsLiveEnabled ? '16px' : '1px',
+                  width: '18px', height: '18px', borderRadius: '50%',
                   background: isTtsLiveEnabled ? '#39ff14' : '#ff003c',
                   transition: 'all 0.3s',
                   boxShadow: `0 0 8px ${isTtsLiveEnabled ? '#39ff14' : '#ff003c'}`
@@ -1073,10 +1165,89 @@ function App() {
           </section>
 
           {/* Panel de Configuración TTS */}
-          <div className={`extras-container ${!isDmsOpen ? 'visible' : ''}`} style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-             <section className="panel" style={{ maxHeight: '100%', minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className={`extras-container ${!isDmsOpen ? 'visible' : ''}`} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+             
+             {/* Panel de Configuración TTS original */}
+             <section className="panel" style={{ overflow: isTtsGiftDropdownOpen ? 'visible' : 'hidden', display: 'flex', flexDirection: 'column', gap: '15px', flexShrink: 0 }}>
+                
+                {/* Cabecera original (título, dropdown y engranaje) */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                   <h2 className="neon-text-orange" style={{ margin: 0, fontSize: '1.2rem', textAlign: 'left' }}>Configuración TTS</h2>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                     <h2 className="neon-text-orange" style={{ margin: 0, fontSize: '1.2rem', textAlign: 'left' }}>Configuración TTS</h2>
+                     
+                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                       <button 
+                         className="btn-neon btn-neon-orange"
+                         onClick={() => setIsTtsGiftDropdownOpen(!isTtsGiftDropdownOpen)}
+                         style={{
+                           padding: '5px 10px',
+                           fontSize: '0.9rem',
+                           display: 'flex',
+                           alignItems: 'center',
+                           justifyContent: 'center',
+                           minWidth: '60px',
+                           height: '32px',
+                           margin: 0,
+                           gap: '8px'
+                         }}
+                         title="Regalo requerido para TTS"
+                       >
+                         <span className={`accordion-arrow ${isTtsGiftDropdownOpen ? 'open' : ''}`} style={{ fontSize: '0.7rem' }}>▶</span>
+                         {ttsRequiredGift === 'All' ? 'All' : (
+                           <img 
+                             src={`/gifts/${topTikTokGifts.find(g => g.key === ttsRequiredGift)?.img || 'rose.png'}`} 
+                             alt={ttsRequiredGift} 
+                             style={{ width: '20px', height: '20px', objectFit: 'contain' }} 
+                             onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'inline-block'; }}
+                           />
+                         )}
+                         {ttsRequiredGift !== 'All' && <span style={{ display: 'none', fontSize: '1.2rem' }}>🎁</span>}
+                       </button>
+
+                       {isTtsGiftDropdownOpen && (
+                         <>
+                           <div 
+                             style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998 }}
+                             onClick={() => setIsTtsGiftDropdownOpen(false)}
+                           />
+                           <div style={{ 
+                             position: 'absolute', 
+                             top: '100%', 
+                             left: '50%',
+                             transform: 'translateX(-50%)',
+                             marginTop: '5px',
+                             background: '#111', 
+                             border: '1px solid var(--neon-orange)', 
+                             borderRadius: '5px',
+                             zIndex: 9999,
+                             display: 'flex',
+                             flexDirection: 'column',
+                             gap: '5px',
+                             padding: '5px',
+                             boxShadow: '0 0 15px rgba(255,140,0,0.6)'
+                           }}>
+                             <div 
+                               onClick={() => { changeTtsRequiredGift({target:{value:'All'}}); setIsTtsGiftDropdownOpen(false); }}
+                               style={{ padding: '5px 10px', cursor: 'pointer', color: '#ff7700', textAlign: 'center', fontWeight: 'bold' }}
+                             >
+                               All
+                             </div>
+                             {topTikTokGifts.map(g => (
+                               <div 
+                                 key={g.key}
+                                 onClick={() => { changeTtsRequiredGift({target:{value:g.key}}); setIsTtsGiftDropdownOpen(false); }}
+                                 style={{ padding: '5px', cursor: 'pointer', display: 'flex', justifyContent: 'center' }}
+                                 title={g.name}
+                               >
+                                 <img src={`/gifts/${g.img}`} alt={g.name} style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                               </div>
+                             ))}
+                           </div>
+                         </>
+                       )}
+                     </div>
+                   </div>
+
                    <button 
                      onClick={() => setIsTtsSettingsOpen(!isTtsSettingsOpen)}
                      style={{ background: 'transparent', border: 'none', color: 'var(--neon-orange)', fontSize: '1.1rem', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}
@@ -1085,9 +1256,9 @@ function App() {
                      <span style={{ transition: 'transform 0.3s ease', transform: isTtsSettingsOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>⚙️</span>
                    </button>
                 </div>
-                
+
+                {/* Contenido del Acordeón (Voces y Velocidad) */}
                 <div className={`accordion-content ${isTtsSettingsOpen ? 'open' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '15px', flexShrink: 0 }}>
-                   
                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                       <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                         Voz Inteligente: <span style={{ color: 'var(--neon-orange)' }}>
@@ -1162,7 +1333,8 @@ function App() {
                       </div>
                    </div>
                 </div>
-                
+
+                {/* Volumen (Fuera del acordeón, pero dentro del panel) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flexShrink: 0 }}>
                    <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Volumen (dB)</label>
                    <div className="obs-fader-container">
@@ -1192,8 +1364,8 @@ function App() {
                 <button className="btn-neon btn-neon-cyan" style={{ flex: 1, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => ipcRenderer?.send('open-secondary-window', 'stickers', 'Stickers')}>
                    STICKERS
                 </button>
-             </div>
-          </div>
+              </div>
+           </div>
         </div>
 
         </div>

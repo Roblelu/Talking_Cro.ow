@@ -37,6 +37,7 @@ export default function Login({ onNavigate }) {
     setError("");
     try {
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
       const userCredential = await signInWithPopup(auth, provider);
       const user = userCredential.user;
       
@@ -56,7 +57,7 @@ export default function Login({ onNavigate }) {
           }
           
           await setDoc(targetUsernameRef, { uid: user.uid });
-          const newData = { purchased_croins: 0, promotional_croins: 0, creator_credits: 0, creator_earnings: 0, isPro: false, username: finalUsername, createdAt: new Date() };
+          const newData = { purchased_croins: 0, promotional_croins: 0, creator_credits: 35, creator_earnings: 0, isPro: false, username: finalUsername, createdAt: new Date() };
           await setDoc(docRef, newData);
           const privateDocRef = doc(db, "users", user.uid, "private", "contact");
           const privateData = { email: user.email, phone: user.phoneNumber || "" };
@@ -83,7 +84,7 @@ export default function Login({ onNavigate }) {
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
               required 
-              style={{ padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(157, 0, 255, 0.3)', color: '#fff' }}
+              style={{ margin: 0, padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(157, 0, 255, 0.3)', color: '#fff' }}
             />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -94,7 +95,7 @@ export default function Login({ onNavigate }) {
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)} 
                 required 
-                style={{ flex: 1, width: '100%', background: 'transparent', border: 'none', color: '#fff', outline: 'none', padding: 0 }}
+                style={{ margin: 0, flex: 1, width: '100%', background: 'transparent', border: 'none', color: '#fff', outline: 'none', padding: 0 }}
               />
               <button 
                 type="button"

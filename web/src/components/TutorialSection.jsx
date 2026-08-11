@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './TutorialSection.css';
+import tutorialImg from '../assets/tutorial-dashboard.png';
 
 const TutorialSection = () => {
   const [activeHotspot, setActiveHotspot] = useState(null);
@@ -17,7 +18,7 @@ const TutorialSection = () => {
       <p className="tutorial-subtitle">Haz clic en los íconos (+) para explorar lo que puedes hacer en cada área.</p>
       
       <div className="tutorial-image-wrapper">
-        <img src="/tutorial-dashboard.png" alt="Dashboard Tutorial" className="tutorial-img" />
+        <img src={tutorialImg} alt="Dashboard Tutorial" className="tutorial-img" />
         <div className="tutorial-overlay"></div>
         
         {hotspots.map(spot => (

@@ -80,7 +80,7 @@ const EcoVoicesPage = () => {
           <div className="eco-step-card">
             <div className="eco-step-icon">👤</div>
             <div className="eco-step-content">
-              <h3><span className="step-gray">Paso 1:</span> Regístrate en Talking Crow</h3>
+              <h3><span className="step-gray">Paso 1:</span> Regístrate en Talking Cro.ow</h3>
               <p>Durante el proceso vincula tu cuenta TikTok: @Nombre_de_Usuario.</p>
             </div>
           </div>

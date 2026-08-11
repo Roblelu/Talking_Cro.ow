@@ -29,10 +29,10 @@ service cloud.firestore {
                     
       // Las actualizaciones del perfil general desde el cliente no pueden alterar los saldos o privilegios
       // (Los saldos solo pueden ser modificados por Firebase Functions/Admin)
+      // TC-30: Validación estricta del esquema para evitar inyección de campos arbitrarios.
+      // El cliente solo puede actualizar su usuario de TikTok. Los saldos y privilegios los maneja el Admin SDK.
       allow update: if request.auth != null && request.auth.uid == uid 
-                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-                      'purchased_croins', 'promotional_croins', 'creator_credits', 'creator_earnings', 'isPro'
-                    ]);
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tiktok_username']);
       
       // 4. Subcolección privada de contacto (PII)
       match /private/contact {

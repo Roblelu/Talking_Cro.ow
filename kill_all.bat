@@ -1,6 +1,6 @@
 @echo off
 echo =========================================
-echo Limpiando sistema Talking Crow...
+echo Limpiando sistema Talking Cro.ow...
 echo =========================================
 
 :: Matar Node.js (Vite/Electron)

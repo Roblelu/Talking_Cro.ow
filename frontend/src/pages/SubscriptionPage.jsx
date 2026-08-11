@@ -1,13 +1,35 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { functions } from '../firebase';
+import { httpsCallable } from 'firebase/functions';
 
 const SubscriptionPage = ({ onBack }) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubscribe = async () => {
+    setLoading(true);
+    try {
+      const createCheckout = httpsCallable(functions, 'createSubscriptionCheckout');
+      const response = await createCheckout();
+      if (response.data && response.data.url) {
+        window.open(response.data.url, '_blank');
+      } else {
+        alert("Error al generar el link de pago.");
+      }
+    } catch (error) {
+      console.error("Subscription error:", error);
+      alert("Error al iniciar suscripción.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="panel-layout-wrapper" style={{ '--panel-width': '1000px' }}>
       <button 
         className="btn-neon back-btn-responsive" 
         onClick={onBack} 
       >
-        &lt; Volver al Panel de Control Principal
+        &lt; Volver al Dashboard
       </button>
 
       <div className="panel" style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -21,15 +43,17 @@ const SubscriptionPage = ({ onBack }) => {
         <div style={{ display: 'flex', gap: '20px', marginBottom: '40px' }}>
           <div className="panel" style={{ flex: 1, border: '1px solid var(--text-secondary)' }}>
             <h4 style={{ color: 'var(--text-primary)', marginBottom: '10px' }}>Plan Gratuito</h4>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>Acceso básico a regalos y reacciones. Voz por defecto.</p>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>35 créditos iniciales de prueba (sin recarga mensual). Acceso básico a regalos y reacciones.</p>
             <h2 style={{ marginBottom: '15px' }}>$0 <span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>/ mes</span></h2>
             <button className="btn-neon" style={{ width: '100%', borderColor: 'var(--text-secondary)', color: 'var(--text-secondary)' }} disabled>Plan Actual</button>
           </div>
           <div className="panel" style={{ flex: 1, border: '1px solid var(--neon-orange)', boxShadow: '0 0 15px rgba(255,117,24,0.1)' }}>
-            <h4 className="neon-text-orange" style={{ marginBottom: '10px' }}>Plan Pro (Clonación TTS)</h4>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>Clonación de voz en tiempo real con F5-TTS, respuestas personalizadas.</p>
-            <h2 className="neon-text-orange" style={{ marginBottom: '15px' }}>$9.99 <span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>/ mes</span></h2>
-            <button className="btn-neon btn-neon-orange" style={{ width: '100%' }}>Mejorar a Pro</button>
+            <h4 className="neon-text-orange" style={{ marginBottom: '10px' }}>Plan Pro</h4>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>Incluye 1000 créditos mensuales para respuestas de IA personalizadas.</p>
+            <h2 className="neon-text-orange" style={{ marginBottom: '15px' }}>$150 <span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>MXN / mes</span></h2>
+            <button className="btn-neon btn-neon-orange" style={{ width: '100%' }} onClick={handleSubscribe} disabled={loading}>
+              {loading ? "Cargando..." : "Mejorar a Pro"}
+            </button>
           </div>
         </div>
 

@@ -9,7 +9,7 @@ const SupportPage = () => {
         className="btn-neon back-btn-responsive" 
         onClick={() => navigate('/dashboard')} 
       >
-        &lt; Volver al Panel de Control Principal
+        &lt; Volver al Dashboard
       </button>
 
       <div className="panel" style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>

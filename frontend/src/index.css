@@ -485,6 +485,8 @@ input[type="file"]::file-selector-button:hover {
 
 .title-img {
   height: 132px;
+  max-width: 100%;
+  object-fit: contain;
   margin-top: -10px;
   margin-bottom: -5px;
   transition: all 0.3s ease;
@@ -512,6 +514,38 @@ input[type="file"]::file-selector-button:hover {
   .title-img { height: 50px; }
   .navbar-side { width: 100%; justify-content: center !important; }
   .navbar-left { justify-content: center !important; }
+}
+
+.credits-wrapper {
+  display: flex;
+  gap: 15px;
+}
+
+.header-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 15px;
+  border-radius: 25px;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+@media (max-width: 1300px) {
+  .credits-wrapper {
+    flex-direction: column;
+    gap: 5px;
+  }
+  .header-indicator {
+    padding: 4px 10px;
+  }
+  .header-indicator .neon-text-green, .header-indicator .neon-text-orange {
+    font-size: 0.95rem !important;
+  }
+  .header-indicator span:first-child {
+    font-size: 1rem !important;
+  }
 }
 
 .navbar-center {
@@ -570,7 +604,7 @@ input[type="file"]::file-selector-button:hover {
   border: 1px solid rgba(157, 0, 255, 0.4);
   border-radius: 8px;
   padding: 10px 0;
-  width: 250px;
+  width: 280px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.9), 0 0 20px rgba(157, 0, 255, 0.2);
   z-index: 200;
   animation: dropdownFadeIn 0.3s ease forwards;

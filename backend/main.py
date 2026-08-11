@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-app = FastAPI(title="Talking Crow API")
+app = FastAPI(title="Talking Cro.ow API")
 
 # Permitir a la UI (Vite) comunicarse
 app.add_middleware(
@@ -22,7 +22,7 @@ class GiftEvent(BaseModel):
 
 @app.get("/")
 def read_root():
-    return {"status": "Talking Crow Backend Running"}
+    return {"status": "Talking Cro.ow Backend Running"}
 
 @app.post("/api/simulate_gift")
 def simulate_gift(event: GiftEvent):

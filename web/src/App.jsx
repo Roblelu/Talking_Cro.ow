@@ -11,6 +11,7 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import AccountPage from './pages/AccountPage'
 import SubscriptionPage from './pages/SubscriptionPage'
+import WithdrawPage from './pages/WithdrawPage'
 import Store from './pages/Store'
 import SupportPage from './pages/SupportPage'
 import PortConfigPage from './pages/PortConfigPage'
@@ -47,6 +48,7 @@ function App() {
               <Route path="/store/:streamerId" element={<PrivateRoute><Store /></PrivateRoute>} />
               <Route path="/account" element={<PrivateRoute><AccountPage /></PrivateRoute>} />
               <Route path="/subscription" element={<PrivateRoute><SubscriptionPage /></PrivateRoute>} />
+              <Route path="/withdraw" element={<PrivateRoute><WithdrawPage /></PrivateRoute>} />
               <Route path="/support" element={<PrivateRoute><SupportPage /></PrivateRoute>} />
               <Route path="/port" element={<PrivateRoute><PortConfigPage /></PrivateRoute>} />
               <Route path="/terms" element={<PrivateRoute><TermsPage /></PrivateRoute>} />

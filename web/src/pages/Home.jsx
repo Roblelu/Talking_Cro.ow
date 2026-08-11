@@ -17,8 +17,8 @@ const Home = () => {
             Activa el texto a voz para que el chat cobre vida y escuches la voz clonada de tu comunidad.
           </p>
           <div className="hero-buttons">
-            <button className="btn-hero secondary" onClick={() => navigate('/creadores')}>Soy Creador de Contenido</button>
-            <button className="btn-hero secondary" onClick={() => navigate('/ecovoices')}>Quiero Participar con las Eco Voices</button>
+            <button className="btn-hero secondary" onClick={() => navigate('/creadores')}>Soy Creador</button>
+            <button className="btn-hero secondary" onClick={() => navigate('/ecovoices')}>Soy Eco Voices</button>
           </div>
         </div>
         <div className="hero-visual">

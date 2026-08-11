@@ -30,16 +30,19 @@ const Header = () => {
       {/* Left: Circular Logo */}
       <div className="navbar-left navbar-side" style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
         <Link to="/" style={{ textDecoration: 'none' }}>
-          <img src={logoImg} alt="Talking Crow Logo" className="logo-img" />
+          <img src={logoImg} alt="Talking Cro.ow Logo" className="logo-img" />
         </Link>
       </div>
 
       {/* Center: Title & Navigation */}
       <div className="navbar-center" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div style={{ cursor: 'pointer' }} onClick={() => navigate('/')}>
-          <img src={titleImg} alt="Talking Crow" className="title-img" />
+          <img src={titleImg} alt="Talking Cro.ow" className="title-img" />
         </div>
         <nav style={{ display: 'flex', gap: '20px', position: 'relative', zIndex: 10 }}>
+          {currentUser && (
+            <NavLink to="/dashboard" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Dashboard</NavLink>
+          )}
           <NavLink to="/" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Inicio</NavLink>
           <NavLink to="/creadores" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Creadores</NavLink>
           <NavLink to="/ecovoices" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Eco Voices</NavLink>
@@ -50,15 +53,43 @@ const Header = () => {
       {/* Right: Croins Indicator & User Profile Dropdown */}
       <div className="navbar-right navbar-side" ref={dropdownRef} style={{ display: 'flex', alignItems: 'center', gap: '20px', justifyContent: 'flex-end' }}>
         {currentUser ? (
-          <>
+          <div className="credits-wrapper">
             <div 
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: 'rgba(0,255,204,0.1)', padding: '8px 15px', borderRadius: '25px', border: '1px solid var(--neon-green)', transition: 'all 0.3s' }}
+              className="header-indicator"
+              style={{ background: 'rgba(0,255,204,0.1)', border: '1px solid var(--neon-green)' }}
               onClick={() => navigate('/dashboard')}
               title="Comprar más Croins"
             >
               <span style={{ fontSize: '1.2rem' }}>🪙</span>
-              <span className="neon-text-green" style={{ fontWeight: 'bold', fontSize: '1.1rem', whiteSpace: 'nowrap' }}>{((userData?.purchased_croins || 0) + (userData?.promotional_croins || 0))} Croins</span>
+              <span className="neon-text-green" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{((userData?.purchased_croins || 0) + (userData?.promotional_croins || 0))} Croins</span>
             </div>
+            
+            {(userData?.has_received_app_credits || userData?.creator_credits > 0 || userData?.isPro) && (
+              <div 
+                className="header-indicator"
+                style={{ background: 'rgba(255,117,24,0.1)', border: '1px solid var(--neon-orange)' }}
+                onClick={() => navigate('/dashboard')}
+                title="Créditos de Streamer"
+              >
+                <span style={{ fontSize: '1.2rem' }}>✨</span>
+                <span className="neon-text-orange" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{userData?.creator_credits || 0} Créditos</span>
+              </div>
+            )}
+
+            {(userData?.creator_earnings > 0 || userData?.isPro) && (
+              <div 
+                className="header-indicator"
+                style={{ background: 'rgba(157, 0, 255, 0.1)', border: '1px solid var(--neon-purple)' }}
+                onClick={() => navigate('/withdraw')}
+                title="Ganancias Retirables"
+              >
+                <span style={{ fontSize: '1.2rem' }}>🏦</span>
+                <span className="neon-text-purple" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
+                  ${(userData?.creator_earnings || 0).toFixed(2)} MXN
+                </span>
+              </div>
+            )}
+          </div>
             
             <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
               <img src={'/avatar_m.jpg'} alt="Menú de Usuario" className="avatar-placeholder" title="Menú de Usuario" style={{ objectFit: 'cover' }} />
@@ -77,7 +108,7 @@ const Header = () => {
                    >
                      <img src={'/avatar_m.jpg'} alt="Perfil" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--neon-purple)' }} />
                      <div style={{ display: 'flex', justifyContent: 'space-between', flex: 1, alignItems: 'center' }}>
-                       <span>Cuenta Talking Crow</span>
+                       <span>Cuenta Talking Cro.ow</span>
                        {isMissingFields && <span style={{ width: '8px', height: '8px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
                      </div>
                    </li>

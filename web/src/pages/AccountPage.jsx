@@ -78,6 +78,10 @@ const AccountPage = ({ profileImage, setProfileImage }) => {
     try {
       const privateDocRef = doc(db, "users", currentUser.uid, "private", "contact");
       await setDoc(privateDocRef, { email, phone, tiktok }, { merge: true });
+      
+      const userDocRef = doc(db, "users", currentUser.uid);
+      await setDoc(userDocRef, { tiktok_username: tiktok.trim().toLowerCase() }, { merge: true });
+      
       alert('Perfil actualizado con éxito');
     } catch (err) {
       console.error(err);
@@ -94,12 +98,12 @@ const AccountPage = ({ profileImage, setProfileImage }) => {
           onClick={() => navigate('/dashboard')} 
           style={{ marginBottom: '20px' }}
         >
-          &lt; Volver al Panel de Control Principal
+          &lt; Volver al Dashboard
         </button>
 
         <div className="panel" style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-            <h2 className="neon-text-purple" style={{ margin: 0 }}>Cuenta Talking Crow</h2>
+            <h2 className="neon-text-purple" style={{ margin: 0 }}>Cuenta Talking Cro.ow</h2>
           </div>
 
           <div style={{ padding: '20px' }}>

@@ -97,7 +97,7 @@ const AccountPage = ({ onBack, profileImage, setProfileImage }) => {
 
         <div className="panel" style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
           <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-            <h2 className="neon-text-purple" style={{ margin: 0 }}>Cuenta Talking Crow</h2>
+            <h2 className="neon-text-purple" style={{ margin: 0 }}>Cuenta Talking Cro.ow</h2>
           </div>
 
           <div style={{ padding: '20px' }}>

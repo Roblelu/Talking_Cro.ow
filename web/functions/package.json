@@ -1,6 +1,6 @@
 {
   "name": "functions",
-  "description": "Cloud Functions for Talking Crow Backend",
+  "description": "Cloud Functions for Talking Cro.ow Backend",
   "scripts": {
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",

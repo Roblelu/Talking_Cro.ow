@@ -84,6 +84,7 @@ export default function Register() {
     setError("");
     try {
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
       const userCredential = await signInWithPopup(auth, provider);
       const user = userCredential.user;
       
@@ -132,7 +133,7 @@ export default function Register() {
               onChange={(e) => setUsername(e.target.value)} 
               required 
               placeholder="Ej. User_Name"
-              style={{ padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(157, 0, 255, 0.3)', color: '#fff' }}
+              style={{ margin: 0, padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(157, 0, 255, 0.3)', color: '#fff' }}
             />
           </div>
 
@@ -143,7 +144,7 @@ export default function Register() {
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
               required 
-              style={{ padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(157, 0, 255, 0.3)', color: '#fff' }}
+              style={{ margin: 0, padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(157, 0, 255, 0.3)', color: '#fff' }}
             />
           </div>
 
@@ -155,7 +156,7 @@ export default function Register() {
               onChange={(e) => setPhone(e.target.value)} 
               required 
               placeholder="Ej. +52 123 456 7890"
-              style={{ padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(157, 0, 255, 0.3)', color: '#fff' }}
+              style={{ margin: 0, padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(157, 0, 255, 0.3)', color: '#fff' }}
             />
           </div>
 
@@ -167,7 +168,7 @@ export default function Register() {
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)} 
                 required 
-                style={{ width: '100%', boxSizing: 'border-box', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(157, 0, 255, 0.3)', color: '#fff', paddingRight: '40px' }}
+                style={{ margin: 0, width: '100%', boxSizing: 'border-box', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(157, 0, 255, 0.3)', color: '#fff', paddingRight: '40px' }}
               />
               <button 
                 type="button"
@@ -187,7 +188,7 @@ export default function Register() {
                 value={confirmPassword} 
                 onChange={(e) => setConfirmPassword(e.target.value)} 
                 required 
-                style={{ width: '100%', boxSizing: 'border-box', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(157, 0, 255, 0.3)', color: '#fff' }}
+                style={{ margin: 0, width: '100%', boxSizing: 'border-box', padding: '10px', borderRadius: '8px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(157, 0, 255, 0.3)', color: '#fff' }}
               />
             </div>
           </div>

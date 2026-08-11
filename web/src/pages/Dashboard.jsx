@@ -19,37 +19,28 @@ export default function Dashboard() {
       
       {/* Header Info */}
       <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-        <h2 className="neon-text-green" style={{ fontSize: '2.5rem', marginBottom: '10px' }}>Tienda y Suscripciones</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>Administra tus Croins y Beneficios</p>
+        <h2 className="neon-text-green" style={{ fontSize: '2.5rem', marginBottom: '10px' }}>Dashboard</h2>
       </div>
 
-      {/* Toggles */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '40px' }}>
-        <button 
-          className={`btn-neon ${activeTab === 'donador' ? 'btn-neon-green' : ''}`}
-          style={{ width: '250px', opacity: activeTab === 'donador' ? 1 : 0.5 }}
-          onClick={() => setActiveTab('donador')}
-        >
-          Usuario / Donador
-        </button>
-        <button 
-          className={`btn-neon ${activeTab === 'streamer' ? 'btn-neon-orange' : ''}`}
-          style={{ width: '250px', opacity: activeTab === 'streamer' ? 1 : 0.5, borderColor: activeTab === 'streamer' ? 'var(--neon-orange)' : 'var(--neon-green)', color: activeTab === 'streamer' ? 'var(--neon-orange)' : 'var(--neon-green)' }}
-          onClick={() => setActiveTab('streamer')}
-        >
-          Creador / Streamer
-        </button>
-      </div>
-
-      {/* Vistas Condicionales */}
+      {/* Vistas */}
       <div className="panel" style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', flexDirection: 'column', width: '100%' }}>
         
-        {activeTab === 'donador' && (
           <div className="donador-view">
-            <div style={{ marginBottom: '30px', padding: '20px', border: '1px solid var(--neon-green)', borderRadius: '8px', background: 'rgba(0,255,204,0.1)', textAlign: 'center' }}>
-              <h3 style={{ margin: 0, color: 'var(--text-secondary)' }}>Saldo Actual</h3>
-              <h1 className="neon-text-green" style={{ fontSize: '3rem', margin: '10px 0' }}>🪙 {((userData?.purchased_croins || 0) + (userData?.promotional_croins || 0))}</h1>
-              <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Croins Disponibles</p>
+            <div style={{ display: 'flex', gap: '20px', marginBottom: '30px', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '250px', padding: '20px', border: '1px solid var(--neon-green)', borderRadius: '8px', background: 'rgba(0,255,204,0.1)', textAlign: 'center' }}>
+                <h3 style={{ margin: 0, color: 'var(--text-secondary)' }}>Saldo Actual</h3>
+                <h1 className="neon-text-green" style={{ fontSize: '3rem', margin: '10px 0' }}>🪙 {((userData?.purchased_croins || 0) + (userData?.promotional_croins || 0))}</h1>
+                <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Croins Disponibles</p>
+              </div>
+              
+              {(userData?.has_received_app_credits || userData?.creator_credits > 0 || userData?.isPro) && (
+                <div style={{ flex: 1, minWidth: '250px', padding: '20px', border: '1px solid var(--neon-orange)', borderRadius: '8px', background: 'rgba(255,117,24,0.1)', textAlign: 'center' }}>
+                  <h3 style={{ margin: 0, color: 'var(--text-secondary)' }}>Créditos de Streamer</h3>
+                  <h1 className="neon-text-orange" style={{ fontSize: '3rem', margin: '10px 0' }}>✨ {userData.creator_credits || 0}</h1>
+                  <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Disponibles</p>
+                  <p style={{ margin: '10px 0 0 0', fontSize: '0.85rem', color: '#ff7518', opacity: 0.9 }}>Para recargar créditos mensuales, debes ingresar desde la App de Escritorio.</p>
+                </div>
+              )}
             </div>
 
             <h3 className="neon-text-purple" style={{ marginBottom: '15px' }}>Comprar Croins 🪙</h3>
@@ -109,66 +100,6 @@ export default function Dashboard() {
 
             </div>
           </div>
-        )}
-
-        {activeTab === 'streamer' && (
-          <div className="streamer-view">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '40px' }}>
-              <div style={{ padding: '20px', border: '1px solid var(--neon-orange)', borderRadius: '8px', background: 'rgba(255,117,24,0.1)', textAlign: 'center' }}>
-                <h4 style={{ margin: 0, color: 'var(--text-secondary)' }}>Creator Credits</h4>
-                <h2 className="neon-text-orange" style={{ margin: '10px 0' }}>{userData?.creator_credits || 0}</h2>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Créditos para uso propio</p>
-              </div>
-              <div style={{ padding: '20px', border: '1px solid var(--neon-purple)', borderRadius: '8px', background: 'rgba(157,0,255,0.1)', textAlign: 'center' }}>
-                <h4 style={{ margin: 0, color: 'var(--text-secondary)' }}>Ingresos Generados</h4>
-                <h2 className="neon-text-purple" style={{ margin: '10px 0' }}>🪙 {userData?.creator_earnings || 0}</h2>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Croins convertibles a dinero</p>
-              </div>
-              <div style={{ padding: '20px', border: '1px solid var(--neon-green)', borderRadius: '8px', background: 'rgba(0,255,204,0.1)', textAlign: 'center' }}>
-                <h4 style={{ margin: 0, color: 'var(--text-secondary)' }}>Revenue Share</h4>
-                <h2 className="neon-text-green" style={{ margin: '10px 0' }}>5%</h2>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Porcentaje de ganancias actual</p>
-              </div>
-            </div>
-
-            <h3 className="neon-text-orange" style={{ marginBottom: '15px' }}>Suscripción para Streamers 🎙️</h3>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '25px' }}>
-              Activa la clonación de voz IA en tiempo real para tu transmisión y monetiza a tus donadores.
-            </p>
-
-            <div style={{ display: 'flex', gap: '20px', marginBottom: '40px', flexWrap: 'wrap' }}>
-              <div className="panel" style={{ flex: 1, minWidth: '300px', border: '1px solid var(--text-secondary)' }}>
-                <h4 style={{ color: 'var(--text-primary)', marginBottom: '10px' }}>Plan Gratuito</h4>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>Acceso básico a regalos y reacciones. Voz genérica por defecto.</p>
-                <h2 style={{ marginBottom: '15px' }}>$0 <span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>/ mes</span></h2>
-                <button className="btn-neon" style={{ width: '100%', borderColor: 'var(--text-secondary)', color: 'var(--text-secondary)' }} disabled>Plan Actual</button>
-              </div>
-              
-              <div className="panel" style={{ flex: 1, minWidth: '300px', border: '1px solid var(--neon-orange)', boxShadow: '0 0 15px rgba(255,117,24,0.1)' }}>
-                <h4 className="neon-text-orange" style={{ marginBottom: '10px' }}>Plan Pro (Clonación TTS)</h4>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>Clonación de voz en tiempo real con F5-TTS, respuestas ilimitadas.</p>
-                <h2 className="neon-text-orange" style={{ marginBottom: '15px' }}>$125 MXN <span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>/ mes</span></h2>
-                <button className="btn-neon btn-neon-orange" style={{ width: '100%' }}>Mejorar a Pro</button>
-              </div>
-            </div>
-
-            <div style={{ marginTop: '40px' }}>
-              <h3 className="neon-text-green" style={{ marginBottom: '15px' }}>Seguridad del Backend (Local) 🔐</h3>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>
-                Pega aquí la API Key que aparece en la consola de tu backend de Python para poder usar el Panel de Moderación.
-              </p>
-              <div style={{ display: 'flex', gap: '10px', maxWidth: '500px' }}>
-                <input 
-                  type="password" 
-                  placeholder="Ej: abc123def456..."
-                  defaultValue={sessionStorage.getItem("local_api_key") || ""}
-                  onChange={(e) => sessionStorage.setItem("local_api_key", e.target.value)}
-                  style={{ flex: 1, padding: '10px', background: 'rgba(0,0,0,0.5)', border: '1px solid var(--neon-green)', color: '#fff', borderRadius: '4px' }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Historial de Pagos Común */}
         <div style={{ marginTop: '20px' }}>

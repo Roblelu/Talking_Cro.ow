@@ -56,7 +56,7 @@ async def verify_token(api_key: str = Depends(api_key_header)):
     return token
 import tts_engine
 
-app = FastAPI(title="Talking Crow API")
+app = FastAPI(title="Talking Cro.ow API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -271,12 +271,17 @@ async def connect_tiktok(req: TikTokConnectRequest):
         @client.on(CommentEvent)
         async def on_comment(event: CommentEvent):
             await broadcast_event(LiveEvent(type="chat", username=event.user.nickname, message=event.comment))
-            global tts_global_enabled, tts_queue
+            global tts_global_enabled, tts_queue, tts_required_gift, tts_allowed_users
             if tts_global_enabled and tts_queue is not None:
                 clean_msg = is_valid_and_clean_message(event.comment)
                 if clean_msg:
                     text_to_speak = f"{event.user.nickname} dice: {clean_msg}"
-                    await tts_queue.put(text_to_speak)
+                    if tts_required_gift == "All":
+                        await tts_queue.put(text_to_speak)
+                    else:
+                        if event.user.nickname in tts_allowed_users:
+                            await tts_queue.put(text_to_speak)
+                            tts_allowed_users.discard(event.user.nickname)
                 else:
                     print(f"[Filtro] Mensaje silenciado (Basura/Profanidad): {event.comment}")
 
@@ -307,6 +312,11 @@ async def connect_tiktok(req: TikTokConnectRequest):
 
                 if should_broadcast:
                     await broadcast_event(LiveEvent(type="gift", username=event.user.nickname, message=msg, img_url=img_url))
+                    
+                    global tts_required_gift, tts_allowed_users
+                    if tts_required_gift != "All" and event.gift.name.lower() == tts_required_gift.lower():
+                        tts_allowed_users.add(event.user.nickname)
+
             except Exception as e:
                 print("Gift parse error:", e)
 
@@ -353,19 +363,23 @@ async def disconnect_tiktok():
 # ---------------------------------------------------------
 
 tts_global_enabled = False
+tts_required_gift = "All"
+tts_allowed_users = set()
 
 class TTSState(BaseModel):
     enabled: bool
+    required_gift: Optional[str] = "All"
 
 @app.get("/api/tts/state", dependencies=[Depends(verify_token)])
 def get_tts_state():
-    return {"enabled": tts_global_enabled}
+    return {"enabled": tts_global_enabled, "required_gift": tts_required_gift}
 
 @app.post("/api/tts/state", dependencies=[Depends(verify_token)])
 def set_tts_state(state: TTSState):
-    global tts_global_enabled
+    global tts_global_enabled, tts_required_gift
     tts_global_enabled = state.enabled
-    return {"status": "ok", "enabled": tts_global_enabled}
+    tts_required_gift = state.required_gift if state.required_gift else "All"
+    return {"status": "ok", "enabled": tts_global_enabled, "required_gift": tts_required_gift}
 
 class TTSTestRequest(BaseModel):
     text: str
@@ -466,7 +480,7 @@ def reject_text(token: str):
 def shutdown_server():
     import os
     import subprocess
-    print("Recibida señal de apagado. Deteniendo Talking Crow...")
+    print("Recibida señal de apagado. Deteniendo Talking Cro.ow...")
     
     # Ejecutar kill_all.bat de forma independiente
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -554,7 +568,7 @@ async def serve_frontend(full_path: str):
         return FileResponse(index_path)
     
     # Si todavía no hay build de React, mostramos mensaje amigable
-    return {"message": "Talking Crow Backend is running. Please build the frontend."}
+    return {"message": "Talking Cro.ow Backend is running. Please build the frontend."}
 
 if __name__ == "__main__":
     import uvicorn
@@ -569,5 +583,5 @@ if __name__ == "__main__":
         except Exception as e:
             print("Error leyendo config.json:", e)
 
-    print(f"Iniciando Servidor Unificado de Talking Crow en el puerto: {port}")
+    print(f"Iniciando Servidor Unificado de Talking Cro.ow en el puerto: {port}")
     uvicorn.run(app, host="127.0.0.1", port=port)
