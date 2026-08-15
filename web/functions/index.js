@@ -681,6 +681,26 @@ exports.createEcoVoice = onCall({
             throw new HttpsError('invalid-argument', 'El audio está vacío o supera 10 MB.');
         }
         
+        // 2.5. Guardar el audio original en Firebase Storage para respaldos a largo plazo
+        try {
+            const bucket = admin.storage().bucket();
+            const filePath = `eco_voices/${uid}/voice_sample${extensionByMime[mimeType]}`;
+            const file = bucket.file(filePath);
+            await file.save(audioBuffer, {
+                contentType: mimeType,
+                metadata: {
+                    metadata: {
+                        uid: uid,
+                        createdAt: new Date().toISOString()
+                    }
+                }
+            });
+            logger.info(`Audio de voz guardado en Storage exitosamente para ${uid} en la ruta: ${filePath}`);
+        } catch (storageError) {
+            logger.warn(`No se pudo guardar el audio en Storage para ${uid}. Error: ${storageError.message}`);
+            // Continuamos de todos modos porque lo importante es enviarlo a ElevenLabs
+        }
+        
         // 3. Preparar FormData para ElevenLabs
         const form = new FormData();
         form.append('name', `EcoVoice_${uid.substring(0, 8)}`);
@@ -719,5 +739,43 @@ exports.createEcoVoice = onCall({
         if (error instanceof HttpsError) throw error;
         logger.error(`Error clonando voz para ${uid}: ${error.response ? JSON.stringify(error.response.data) : error.message}`);
         throw new HttpsError('internal', 'Error al procesar el clonado de voz con el proveedor.');
+    }
+});
+
+// ---------------------------------------------------------
+// Herramientas de Superusuario (Admin DEV)
+// ---------------------------------------------------------
+exports.adminAddCredits = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Debes estar autenticado.');
+    }
+    const uid = request.auth.uid;
+    const userRef = db.collection('users').doc(uid);
+    
+    try {
+        await db.runTransaction(async (t) => {
+            const userDoc = await t.get(userRef);
+            if (!userDoc.exists) {
+                throw new HttpsError('not-found', 'Usuario no encontrado.');
+            }
+            
+            // Verificamos si el correo es uno de los autorizados
+            const email = request.auth.token.email;
+            const allowedEmails = ['cnkrxdu@gmail.com', 'roblecro.ow@gmail.com'];
+            
+            if (!email || !allowedEmails.includes(email.toLowerCase())) {
+                throw new HttpsError('permission-denied', 'No eres superusuario (correo no autorizado).');
+            }
+            
+            t.update(userRef, {
+                promotional_croins: admin.firestore.FieldValue.increment(35),
+                creator_credits: admin.firestore.FieldValue.increment(35)
+            });
+        });
+        return { success: true };
+    } catch (error) {
+        logger.error(`Error en adminAddCredits: ${error.message}`);
+        if (error instanceof HttpsError) throw error;
+        throw new HttpsError('internal', 'No se pudieron acreditar las monedas de superusuario.');
     }
 });

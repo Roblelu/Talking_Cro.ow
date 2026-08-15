@@ -66,7 +66,9 @@ const AudioPlayItem = ({ audio, isFirst, handlePlayAudio, handleRejectAudio }) =
 
   const audioQueueRef = useRef([]);
 
-
+  const themeColor = audio.isEcoVoice ? '#ffd700' : '#00f0ff';
+  const themeBg = audio.isEcoVoice ? 'rgba(255, 215, 0, 0.1)' : 'rgba(0, 240, 255, 0.1)';
+  const themeGrad = audio.isEcoVoice ? 'rgba(255, 215, 0, 0.3)' : 'rgba(0, 240, 255, 0.3)';
 
   // Manejo de audios recibidos desde IPC
   const handlePlayRef = React.useRef(handlePlayAudio);
@@ -97,9 +99,9 @@ const AudioPlayItem = ({ audio, isFirst, handlePlayAudio, handleRejectAudio }) =
   }, [audio.id, audio.audio_url, isFirst, hasActed]);
 
   return (
-    <div style={{ padding: '12px', borderLeft: '4px solid #00f0ff', background: 'rgba(0, 240, 255, 0.1)', borderRadius: '0 8px 8px 0', animation: 'fadeIn 0.3s ease-out' }}>
+    <div style={{ marginBottom: '15px', padding: '12px', borderLeft: `4px solid ${themeColor}`, background: themeBg, borderRadius: '0 8px 8px 0', animation: 'fadeIn 0.3s ease-out' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-         <strong style={{ color: '#00f0ff', textShadow: '0 0 5px #00f0ff' }}>{audio.username}</strong>
+         <strong style={{ color: themeColor, textShadow: `0 0 5px ${themeColor}` }}>{audio.username} {audio.isEcoVoice ? '(Eco Voice)' : '(TTS)'}</strong>
          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{audio.timestamp.toLocaleTimeString()}</div>
       </div>
       <div style={{ margin: '8px 0', color: 'var(--text-primary)', fontStyle: 'italic' }}>"{audio.message}"</div>
@@ -110,12 +112,12 @@ const AudioPlayItem = ({ audio, isFirst, handlePlayAudio, handleRejectAudio }) =
            disabled={hasActed}
            style={{ 
              flex: 1, 
-             borderColor: '#00f0ff', 
-             color: '#00f0ff', 
+             borderColor: themeColor, 
+             color: themeColor, 
              padding: '5px', 
              fontSize: '0.85rem',
-             background: `linear-gradient(90deg, rgba(0, 240, 255, 0.3) ${progress}%, transparent ${progress}%)`,
-             boxShadow: progress > 0 ? `0 0 ${progress / 5}px #00f0ff` : 'none',
+             background: `linear-gradient(90deg, ${themeGrad} ${progress}%, transparent ${progress}%)`,
+             boxShadow: progress > 0 ? `0 0 ${progress / 5}px ${themeColor}` : 'none',
              transition: 'box-shadow 0.1s linear',
              opacity: hasActed ? 0.7 : 1,
              cursor: hasActed ? 'default' : 'pointer'
@@ -172,6 +174,7 @@ function App() {
   const [ttsVoice, setTtsVoice] = useState('es-MX-DaliaNeural');
   const [ttsRate, setTtsRate] = useState('+0%');
   const [ttsVolume, setTtsVolume] = useState('+0%');
+  const [ttsReadUsername, setTtsReadUsername] = useState(true);
   const [isTtsSettingsOpen, setIsTtsSettingsOpen] = useState(false);
   const [soundsVolume, setSoundsVolume] = useState('100');
   const [stickersVolume, setStickersVolume] = useState('100');
@@ -209,6 +212,7 @@ function App() {
                  if (data.tts_voice) setTtsVoice(data.tts_voice);
                  if (data.tts_rate) setTtsRate(data.tts_rate);
                  if (data.tts_volume) setTtsVolume(data.tts_volume);
+                 if (data.tts_read_username !== undefined) setTtsReadUsername(data.tts_read_username === 1);
               }
             });
             
@@ -283,7 +287,7 @@ function App() {
     }
   };
 
-  const saveTtsSettings = async (voice, rate, volume) => {
+  const saveTtsSettings = async (voice, rate, volume, readUser) => {
     const API_BASE = 'http://127.0.0.1:8763';
     const cleanUsername = tiktokUsername.replace('@', '').trim() || 'SoyVridel';
     fetch(API_BASE + '/api/settings', {
@@ -294,7 +298,8 @@ function App() {
          base_audio_path: '',
          tts_voice: voice,
          tts_rate: rate,
-         tts_volume: volume
+         tts_volume: volume,
+         tts_read_username: readUser ? 1 : 0
       })
     }).catch(e => console.log(e));
   };
@@ -302,17 +307,22 @@ function App() {
   const handleVoiceChange = (e) => {
     const v = e.target.value;
     setTtsVoice(v);
-    saveTtsSettings(v, ttsRate, ttsVolume);
+    saveTtsSettings(v, ttsRate, ttsVolume, ttsReadUsername);
   };
   const handleRateChange = (e) => {
     const v = e.target.value;
     setTtsRate(v);
-    saveTtsSettings(ttsVoice, v, ttsVolume);
+    saveTtsSettings(ttsVoice, v, ttsVolume, ttsReadUsername);
   };
   const handleVolumeChange = (e) => {
     const v = e.target.value;
     setTtsVolume(v);
-    saveTtsSettings(ttsVoice, ttsRate, v);
+    saveTtsSettings(ttsVoice, ttsRate, v, ttsReadUsername);
+  };
+  const handleReadUsernameChange = (e) => {
+    const v = e.target.checked;
+    setTtsReadUsername(v);
+    saveTtsSettings(ttsVoice, ttsRate, ttsVolume, v);
   };
 
   const handleShutdown = async () => {
@@ -456,6 +466,7 @@ function App() {
         } else if (data.type === 'priority_audio') {
             const newAudio = { ...data, timestamp: new Date(), id: Date.now().toString() };
             setAudioQueue(prev => [...prev, newAudio]);
+            setLiveEvents(prev => [...prev.slice(-49), newAudio]);
         } else {
             const newEvent = { ...data, timestamp: new Date() };
             
@@ -464,16 +475,30 @@ function App() {
             // --- LÓGICA DE CROINS PARA TTS (CHAT) ---
             if (data.type === 'chat' && currentUser) {
                 // Verificar si el mensaje tiene el comando "Eco Voice" (case-insensitive)
+                // Fallback para eliminar emojis si el backend no lo hizo (p. ej. si no se reinició app.py)
+                const removeEmojis = (str) => {
+  if (!str) return '';
+  // Eliminar emojis unicode y luego los emojis personalizados de TikTok que vienen en [corchetes]
+  let cleaned = str.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '');
+  return cleaned.replace(/\[.*?\]/g, '').trim();
+};
+                let cleanMessage = data.clean_message || removeEmojis(data.message);
+                let cleanUsername = data.clean_username || removeEmojis(data.uniqueId);
+                
                 const lowerMsg = data.message.toLowerCase().trim();
+                const lowerClean = cleanMessage.toLowerCase().trim();
                 const ecoVoicePrefix = 'eco voice ';
                 let isEcoVoiceCommand = false;
-                let cleanMessage = data.message;
                 
-                if (lowerMsg.startsWith(ecoVoicePrefix)) {
+                if (lowerMsg.startsWith(ecoVoicePrefix) || lowerClean.startsWith(ecoVoicePrefix)) {
                     isEcoVoiceCommand = true;
                     // Extraer el mensaje sin el comando para enviarlo a ElevenLabs
-                    cleanMessage = data.message.substring(ecoVoicePrefix.length).trim();
-                } else if (lowerMsg === 'eco voice') {
+                    if (lowerClean.startsWith(ecoVoicePrefix)) {
+                        cleanMessage = cleanMessage.substring(ecoVoicePrefix.length).trim();
+                    } else {
+                        cleanMessage = data.message.substring(ecoVoicePrefix.length).trim();
+                    }
+                } else if (lowerMsg === 'eco voice' || lowerClean === 'eco voice') {
                     // Si solo dicen 'eco voice' sin texto adicional, ignoramos o tomamos como vacío
                     isEcoVoiceCommand = true;
                     cleanMessage = '';
@@ -483,16 +508,25 @@ function App() {
                     // Intentar cobrar 12 Croins al usuario
                     const processTTS = httpsCallable(functions, 'processTTSMessage');
                     processTTS({ 
-                        tiktok_username: data.username, 
+                        tiktok_username: data.uniqueId || cleanUsername, 
                         streamer_uid: currentUser.uid, 
                         message: cleanMessage
                     }).then(result => {
                         console.log("[TTS] Respuesta de Firebase processTTS:", result.data);
                         if (result.data.success) {
-                            console.log(`[EcoVoices] 12 Croins descontados a ${data.username} para TTS premium.`);
+                            console.log(`[EcoVoices] 12 Croins descontados a ${cleanUsername} para TTS premium.`);
                             const audioSource = `data:audio/mp3;base64,${result.data.audioBase64}`;
-                            const snd = new Audio(audioSource);
-                            snd.play().catch(e => console.error("Error al reproducir audio EcoVoices:", e));
+                            const newAudio = { 
+                                type: 'priority_audio', 
+                                username: cleanUsername, 
+                                message: cleanMessage,
+                                audio_url: audioSource,
+                                isEcoVoice: true,
+                                timestamp: new Date(), 
+                                id: Date.now().toString() 
+                            };
+                            setAudioQueue(prev => [...prev, newAudio]);
+                            setLiveEvents(prev => [...prev.slice(-49), newAudio]);
                         }
                     }).catch(err => {
                         console.error("[TTS] Error llamando a processTTSMessage:", err);
@@ -630,7 +664,7 @@ function App() {
     fetch(API_BASE + '/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tiktok_username: cleanUsername, base_audio_path: '', tts_voice: ttsVoice, tts_rate: ttsRate, tts_volume: ttsVolume })
+      body: JSON.stringify({ tiktok_username: cleanUsername, base_audio_path: '', tts_voice: ttsVoice, tts_rate: ttsRate, tts_volume: ttsVolume, tts_read_username: ttsReadUsername ? 1 : 0 })
     }).catch(e => console.log(e));
     
     try {
@@ -678,17 +712,22 @@ function App() {
     }
 
     let finalUrl = url;
+    let audioData = null;
     if (!finalUrl) {
-      const audioData = audioQueue.find(a => a.id === id);
+      audioData = audioQueue.find(a => a.id === id);
       finalUrl = audioData ? audioData.audio_url : null;
+    } else {
+      audioData = audioQueue.find(a => a.id === id);
     }
 
     if (finalUrl) {
        console.log("Reproduciendo audio id:", id);
        
-       // Consumir 1 crédito en el servidor
-       const consumeCredit = httpsCallable(functions, 'consumeTTSCredit');
-       consumeCredit().catch(err => console.error("Error consumiendo crédito:", err));
+       // Consumir 1 crédito en el servidor (solo si no es Eco Voice pagado por el usuario)
+       if (audioData && !audioData.isEcoVoice) {
+           const consumeCredit = httpsCallable(functions, 'consumeTTSCredit');
+           consumeCredit().catch(err => console.error("Error consumiendo crédito:", err));
+       }
 
        const snd = new Audio(finalUrl);
        snd.play().catch(e => {
@@ -755,8 +794,28 @@ function App() {
       {!hashRoute && (
         <>
       <header className="main-navbar">
-        <div className="navbar-left navbar-side" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', position: 'relative' }} onClick={() => setActiveView('main')}>
+        <div className="navbar-left navbar-side" onClick={() => setActiveView('main')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px' }}>
           <img src={logoImg} alt="Talking Cro.ow Logo" className="logo-img" />
+          {currentUser && ['cnkrxdu@gmail.com', 'roblecro.ow@gmail.com'].includes(currentUser.email?.toLowerCase()) && (
+            <div 
+              className="header-indicator"
+              style={{ background: 'rgba(255,0,0,0.2)', border: '1px solid red', cursor: 'pointer', padding: '5px 10px' }}
+              onClick={async (e) => {
+                e.stopPropagation(); // Evitar que cambie la vista al main
+                try {
+                  const adminAdd = httpsCallable(functions, 'adminAddCredits');
+                  await adminAdd();
+                  alert('Saldo DEV otorgado (35 Croins y Créditos).');
+                } catch (err) {
+                  alert('Error: ' + err.message);
+                }
+              }}
+              title="Añadir saldo de Superusuario (DEV)"
+            >
+              <span style={{ fontSize: '1rem' }}>🛠️</span>
+              <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#ff4444' }}>+Saldo</span>
+            </div>
+          )}
         </div>
         
         <div className="navbar-center" style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={() => setActiveView('main')}>
@@ -1030,14 +1089,7 @@ function App() {
             </div>
           </div>
           
-          {audioQueue.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                 {audioQueue.map((audio, index) => (
-                   <AudioPlayItem key={audio.id} audio={audio} isFirst={index === 0} handlePlayAudio={handlePlayAudio} handleRejectAudio={handleRejectAudio} />
-                 ))}
-              </div>
-          )}
-          
+
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.4)', padding: '20px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '0', minHeight: 0 }}
                ref={(el) => { if(el) el.scrollTop = el.scrollHeight; }} >
             {liveEvents.length === 0 ? (
@@ -1046,6 +1098,15 @@ function App() {
               </div>
             ) : (
               liveEvents.map((evt, idx) => (
+                evt.type === 'priority_audio' ? (
+                  <AudioPlayItem 
+                    key={evt.id || idx} 
+                    audio={evt} 
+                    isFirst={audioQueue.length > 0 && audioQueue[0].id === evt.id} 
+                    handlePlayAudio={handlePlayAudio} 
+                    handleRejectAudio={handleRejectAudio} 
+                  />
+                ) : (
                 <div key={idx} style={{ marginBottom: '15px', padding: '12px', borderLeft: '3px solid var(--neon-purple)', background: 'rgba(157, 0, 255, 0.05)', borderRadius: '0 4px 4px 0', animation: 'fadeIn 0.3s ease-out' }}>
                   <strong className="neon-text-green">{evt.username}</strong> 
                   {evt.type === 'gift' && (
@@ -1064,6 +1125,7 @@ function App() {
                   {evt.type === 'connection' && <span> <span className="neon-text-purple" style={{ fontWeight: 'bold' }}>{evt.message}</span></span>}
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '6px' }}>{evt.timestamp.toLocaleTimeString()}</div>
                 </div>
+                )
               ))
             )}
           </div>
@@ -1298,7 +1360,7 @@ function App() {
                               key={voice.id}
                               onClick={async () => {
                                 setTtsVoice(voice.id);
-                                saveTtsSettings(voice.id, ttsRate, ttsVolume);
+                                saveTtsSettings(voice.id, ttsRate, ttsVolume, ttsReadUsername);
                                 try {
                                   const username = userProfile?.username || 'Usuario';
                                   const API_BASE = 'http://127.0.0.1:8763';
@@ -1352,7 +1414,18 @@ function App() {
 
                 {/* Volumen (Fuera del acordeón, pero dentro del panel) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flexShrink: 0 }}>
-                   <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Volumen (dB)</label>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                     <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Volumen (dB)</label>
+                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                       <span style={{ fontSize: '0.8rem', color: ttsReadUsername ? 'var(--neon-green)' : 'var(--text-secondary)' }}>Usuario Dice</span>
+                       <div 
+                         style={{ width: '40px', height: '22px', background: ttsReadUsername ? 'rgba(57, 255, 20, 0.2)' : 'rgba(255, 0, 60, 0.1)', border: `2px solid ${ttsReadUsername ? '#39ff14' : '#ff003c'}`, borderRadius: '20px', position: 'relative', cursor: 'pointer', transition: 'all 0.3s', boxShadow: ttsReadUsername ? '0 0 10px rgba(57,255,20,0.4)' : 'none' }}
+                         onClick={() => handleReadUsernameChange({ target: { checked: !ttsReadUsername } })}
+                       >
+                         <div style={{ width: '16px', height: '16px', borderRadius: '50%', position: 'absolute', top: '1px', left: ttsReadUsername ? '19px' : '1px', background: ttsReadUsername ? '#39ff14' : '#ff003c', transition: 'all 0.3s', boxShadow: `0 0 8px ${ttsReadUsername ? '#39ff14' : '#ff003c'}` }}></div>
+                       </div>
+                     </div>
+                   </div>
                    <div className="obs-fader-container">
                       <div className="obs-fader-track" style={{ '--fill-ratio': (getDbFromPercentage(ttsVolume) + 60) / 72 }}>
                         <input 

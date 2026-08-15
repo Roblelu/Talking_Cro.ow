@@ -58,6 +58,7 @@ const AccountPage = ({ onBack, profileImage, setProfileImage }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -234,36 +235,94 @@ const AccountPage = ({ onBack, profileImage, setProfileImage }) => {
             {/* Subida de Archivo Local */}
             <div style={{ marginTop: '25px', textAlign: 'center', borderTop: '1px dashed rgba(0, 255, 204, 0.2)', paddingTop: '20px' }}>
               <p style={{ fontSize: '0.9rem', color: '#ccc', marginBottom: '10px' }}>O sube un archivo de audio de tu PC:</p>
-              <label 
-                style={{ 
-                  cursor: 'pointer', 
-                  display: 'inline-block', 
-                  padding: '8px 20px', 
-                  background: 'rgba(255, 255, 255, 0.05)', 
-                  border: '1px solid rgba(255, 255, 255, 0.3)', 
-                  borderRadius: '8px', 
-                  color: 'var(--text-primary)', 
-                  fontSize: '0.9rem', 
-                  transition: 'all 0.3s' 
-                }}
-                onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'var(--neon-green)'; e.currentTarget.style.boxShadow = '0 0 10px rgba(57,255,20,0.3)'; }}
-                onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'; e.currentTarget.style.boxShadow = 'none'; }}
-              >
-                <input 
-                  type="file" 
-                  accept=".mp3,.wav,.m4a" 
-                  style={{ display: 'none' }} 
-                  onChange={(e) => {
-                    if(e.target.files.length > 0) {
-                      alert('Archivo ' + e.target.files[0].name + ' seleccionado. (Función de subida al servidor en desarrollo)');
-                    }
-                  }} 
-                />
-                📂 Seleccionar Archivo
-              </label>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '10px' }}>
-                Formatos aceptados: <span style={{ color: 'var(--neon-green)' }}>.mp3, .wav, .m4a</span>
-              </p>
+              
+              {isUploadingFile ? (
+                <div style={{ padding: '20px' }}>
+                  <span className="neon-text-green" style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    Subiendo Archivo<span className="dot-1">.</span><span className="dot-2">.</span><span className="dot-3">.</span>
+                  </span>
+                  <p style={{ fontSize: '0.8rem', color: '#999', marginTop: '10px' }}>Por favor no cierres esta ventana</p>
+                </div>
+              ) : (
+                <>
+                  <label 
+                    style={{ 
+                      cursor: 'pointer', 
+                      display: 'inline-block', 
+                      padding: '8px 20px', 
+                      background: 'rgba(255, 255, 255, 0.05)', 
+                      border: '1px solid rgba(255, 255, 255, 0.3)', 
+                      borderRadius: '8px', 
+                      color: 'var(--text-primary)', 
+                      fontSize: '0.9rem', 
+                      transition: 'all 0.3s' 
+                    }}
+                    onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'var(--neon-green)'; e.currentTarget.style.boxShadow = '0 0 10px rgba(57,255,20,0.3)'; }}
+                    onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'; e.currentTarget.style.boxShadow = 'none'; }}
+                  >
+                    <input 
+                      type="file" 
+                      accept=".mp3,.wav,.m4a" 
+                      style={{ display: 'none' }} 
+                      onChange={async (e) => {
+                        if(e.target.files.length > 0) {
+                          const file = e.target.files[0];
+                          if (file.size > 10 * 1024 * 1024) {
+                            alert('El archivo supera el límite de 10 MB.');
+                            return;
+                          }
+                          
+                          setIsUploadingFile(true);
+                          try {
+                            const dataUrl = await new Promise((resolve, reject) => {
+                              const reader = new FileReader();
+                              reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
+                              reader.onloadend = () => resolve(reader.result);
+                              reader.readAsDataURL(file);
+                            });
+                            
+                            const base64data = dataUrl.split(',')[1];
+                            
+                            let mimeType = file.type;
+                            if (!mimeType) {
+                              const ext = file.name.split('.').pop().toLowerCase();
+                              if (ext === 'mp3') mimeType = 'audio/mpeg';
+                              else if (ext === 'wav') mimeType = 'audio/wav';
+                              else if (ext === 'm4a') mimeType = 'audio/mp4';
+                              else mimeType = 'audio/webm';
+                            }
+                            
+                            const { getFunctions, httpsCallable } = await import('firebase/functions');
+                            const { functions } = await import('../firebase');
+                            const createEcoVoice = httpsCallable(functions, 'createEcoVoice');
+                            
+                            const result = await createEcoVoice({
+                              base64Audio: base64data,
+                              fileName: file.name,
+                              mimeType: mimeType
+                            });
+                            
+                            if (result.data.success) {
+                              alert('¡Tu EcoVoice se ha creado con éxito desde el archivo!');
+                              setEcoVoiceId(result.data.voice_id); 
+                            }
+                          } catch (error) {
+                            alert('Error al subir archivo: ' + error.message);
+                          } finally {
+                            setIsUploadingFile(false);
+                            // Limpiar el input para permitir volver a seleccionar el mismo archivo si hubo error
+                            e.target.value = null;
+                          }
+                        }
+                      }} 
+                    />
+                    📂 Seleccionar Archivo
+                  </label>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '10px' }}>
+                    Formatos aceptados: <span style={{ color: 'var(--neon-green)' }}>.mp3, .wav, .m4a</span>
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>

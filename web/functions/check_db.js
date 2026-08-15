@@ -1,0 +1,1 @@
+const admin = require('firebase-admin'); admin.initializeApp(); const db = admin.firestore(); async function run() { const snapshot = await db.collection('users').where('tiktok_username', '==', '@hevelgate').get(); if(snapshot.empty) console.log('Empty'); else snapshot.forEach(doc => console.log(doc.data())); } run();

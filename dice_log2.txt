@@ -1,0 +1,20 @@
+
+  +                    // Extraer el mensaje sin el comando para enviarlo a ElevenLabs
+  +                    cleanMessage = data.message.substring(ecoVoicePrefix.length).trim();
+  +                } else if (lowerMsg === 'eco voice') {
+> +                    // Si solo dicen 'eco voice' sin texto adicional, ignoramos o tomamos como vac├¡o
+  +                    isEcoVoiceCommand = true;
+  +                    cleanMessage = '';
+  +                }
+  +                      )}
+  +                    </span></span>
+  +                  )}
+> +                  {evt.type === 'chat' && <span> dice: <span className="neon-text-orange" style={{ fontWeight: 
+'bold', fontStyle: 'italic' }}>"{evt.message}"</span></span>}
+  +                  {evt.type === 'connection' && <span> <span className="neon-text-purple" style={{ fontWeight: 
+'bold' }}>{evt.message}</span></span>}
+  +                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '6px' 
+}}>{evt.timestamp.toLocaleTimeString()}</div>
+  +                </div>
+
+

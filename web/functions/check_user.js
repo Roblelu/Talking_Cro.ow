@@ -7,7 +7,7 @@ admin.initializeApp({
 const db = admin.firestore();
 
 async function checkUser() {
-    const username = "@roblecro.ow";
+    const username = "@hevelgate";
     const snapshot = await db.collection('users').where('tiktok_username', '==', username.toLowerCase()).limit(1).get();
     if (snapshot.empty) {
         console.log(`Usuario ${username} no encontrado en la base de datos.`);

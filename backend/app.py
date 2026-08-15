@@ -169,6 +169,7 @@ class Settings(BaseModel):
     tts_voice: str = "es-MX-DaliaNeural"
     tts_rate: str = "+0%"
     tts_volume: str = "+0%"
+    tts_read_username: int = 1
 
 @app.get("/api/settings")
 def get_settings():
@@ -182,8 +183,8 @@ def get_settings():
 @app.post("/api/settings", dependencies=[Depends(verify_token)])
 def update_settings(settings: Settings):
     conn = database.get_db_connection()
-    conn.execute("UPDATE settings SET tiktok_username = ?, base_audio_path = ?, tts_voice = ?, tts_rate = ?, tts_volume = ?", 
-                 (settings.tiktok_username, settings.base_audio_path, settings.tts_voice, settings.tts_rate, settings.tts_volume))
+    conn.execute("UPDATE settings SET tiktok_username = ?, base_audio_path = ?, tts_voice = ?, tts_rate = ?, tts_volume = ?, tts_read_username = ?", 
+                 (settings.tiktok_username, settings.base_audio_path, settings.tts_voice, settings.tts_rate, settings.tts_volume, settings.tts_read_username))
     conn.commit()
     conn.close()
     return {"status": "ok"}
@@ -263,8 +264,11 @@ async def connect_tiktok(req: TikTokConnectRequest):
             if not text:
                 return ""
             
-            # 1. Eliminar caracteres que no sean letras, números o puntuación básica
-            text_cleaned = "".join(c for c in text if unicodedata.category(c).startswith(('L', 'N', 'P', 'Z', 'S')))
+            # 0. Eliminar emojis personalizados de TikTok que vienen entre corchetes, ej: [rockyloveit]
+            text = re.sub(r'\[.*?\]', '', text)
+            
+            # 1. Eliminar caracteres que no sean letras, números o puntuación básica (Excluimos 'So' que contiene los emojis)
+            text_cleaned = "".join(c for c in text if unicodedata.category(c).startswith(('L', 'N', 'P', 'Z')) or unicodedata.category(c) in ('Sm', 'Sc', 'Sk'))
             text_cleaned = text_cleaned.strip()
             
             # Ignorar si es demasiado corto o puro emoji (que fue filtrado)
@@ -291,12 +295,36 @@ async def connect_tiktok(req: TikTokConnectRequest):
         @client.on(CommentEvent)
         async def on_comment(event: CommentEvent):
             print(f"[Chat Debug] Recibido comentario de {event.user.nickname}: {event.comment}")
-            await broadcast_event(LiveEvent(type="chat", username=event.user.nickname, message=event.comment))
+            clean_msg = is_valid_and_clean_message(event.comment)
+            clean_uname = is_valid_and_clean_message(event.user.nickname) or "Usuario"
+            
+            await broadcast_event(LiveEvent(
+                type="chat", 
+                username=event.user.nickname, 
+                uniqueId=event.user.unique_id,
+                message=event.comment,
+                clean_username=clean_uname,
+                clean_message=clean_msg
+            ))
+            
+            # Evitar enviar a Edge TTS si es un comando "Eco Voice"
+            if event.comment.lower().strip().startswith("eco voice "):
+                print(f"[Comando] {event.user.nickname} solicitó Eco Voice. Delegando a Frontend/Firebase.")
+                return
+
             global tts_global_enabled, tts_queue, tts_required_gift, tts_allowed_users
             if tts_global_enabled and tts_queue is not None:
                 clean_msg = is_valid_and_clean_message(event.comment)
                 if clean_msg:
-                    text_to_speak = f"{event.user.nickname} dice: {clean_msg}"
+                    conn = database.get_db_connection()
+                    db_settings = conn.execute("SELECT tts_read_username FROM settings LIMIT 1").fetchone()
+                    conn.close()
+                    read_user = db_settings["tts_read_username"] if db_settings else 1
+                    
+                    if read_user == 1:
+                        text_to_speak = f"{clean_uname} dice: {clean_msg}"
+                    else:
+                        text_to_speak = clean_msg
                     if tts_required_gift == "All":
                         await tts_queue.put(text_to_speak)
                     else:
@@ -546,7 +574,10 @@ async def sse_live_events():
 class LiveEvent(BaseModel):
     type: str
     username: str
+    uniqueId: Optional[str] = None
     message: Optional[str] = None
+    clean_username: str = ""
+    clean_message: str = ""
     img_url: Optional[str] = None
     audio_url: Optional[str] = None
     audio_id: Optional[str] = None
@@ -557,10 +588,13 @@ async def broadcast_event(event: LiveEvent):
         await q.put({
             "type": event.type, 
             "username": event.username, 
+            "uniqueId": event.uniqueId,
             "message": event.message, 
+            "clean_username": event.clean_username,
+            "clean_message": event.clean_message,
             "img_url": event.img_url,
-            "audio_url": getattr(event, "audio_url", None),
-            "audio_id": getattr(event, "audio_id", None)
+            "audio_url": event.audio_url,
+            "audio_id": event.audio_id
         })
     return {"status": "ok"}
 
