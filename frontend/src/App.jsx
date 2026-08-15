@@ -1420,7 +1420,7 @@ function App() {
                                 setTtsVoice(voice.id);
                                 saveTtsSettings(voice.id, ttsRate, ttsVolume, ttsReadUsername, ttsDelay);
                                 try {
-                                  const username = (tiktokUsername || 'Usuario').replace('@', '');
+                                  const username = userData?.username || 'Usuario';
                                   const API_BASE = 'http://127.0.0.1:8763';
                                   const res = await fetch(API_BASE + '/api/tts/test', {
                                     method: 'POST',
