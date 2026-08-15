@@ -51,7 +51,7 @@ function App() {
               <Route path="/withdraw" element={<PrivateRoute><WithdrawPage /></PrivateRoute>} />
               <Route path="/support" element={<PrivateRoute><SupportPage /></PrivateRoute>} />
               <Route path="/port" element={<PrivateRoute><PortConfigPage /></PrivateRoute>} />
-              <Route path="/terms" element={<PrivateRoute><TermsPage /></PrivateRoute>} />
+              <Route path="/terms" element={<TermsPage />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </main>

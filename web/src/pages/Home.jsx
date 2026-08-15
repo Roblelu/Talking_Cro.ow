@@ -18,7 +18,7 @@ const Home = () => {
           </p>
           <div className="hero-buttons">
             <button className="btn-hero secondary" onClick={() => navigate('/creadores')}>Soy Creador</button>
-            <button className="btn-hero secondary" onClick={() => navigate('/ecovoices')}>Soy Eco Voices</button>
+            <button className="btn-hero secondary" onClick={() => navigate('/ecovoices')}>Soy Eco Voice</button>
           </div>
         </div>
         <div className="hero-visual">

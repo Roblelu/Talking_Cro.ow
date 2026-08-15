@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { auth, db } from "../firebase";
 import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
-import { useNavigate, Link } from "react-router-dom";
+import { doc, getDoc, writeBatch, serverTimestamp } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
 
 const EyeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--neon-green)' }}>
@@ -24,6 +24,7 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [consentAccepted, setConsentAccepted] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
@@ -34,10 +35,17 @@ export default function Register() {
     if (password !== confirmPassword) {
       return setError("Las contraseñas no coinciden.");
     }
+    const cleanUsername = username.trim().toLowerCase();
+    if (!/^[a-z0-9_]{3,20}$/.test(cleanUsername)) {
+      return setError("El usuario debe tener 3 a 20 caracteres: letras, números o guion bajo.");
+    }
+    if (!consentAccepted) {
+      return setError("Debes aceptar el procesamiento de mensajes para continuar.");
+    }
 
     try {
       // TC-11: Comprobar que el nombre de usuario no esté ocupado (usando la colección usernames)
-      const usernameRef = doc(db, "usernames", username);
+      const usernameRef = doc(db, "usernames", cleanUsername);
       const usernameSnap = await getDoc(usernameRef);
       
       if (usernameSnap.exists()) {
@@ -49,29 +57,32 @@ export default function Register() {
       const user = userCredential.user;
 
       // 2. Actualizar el displayName con el username
-      await updateProfile(user, { displayName: username });
-
-      // 3. Crear su documento público en Firestore usando su UID y saldos iniciales
+      // 3. Crear perfil, datos privados y reserva en una sola operación atómica.
       const docRef = doc(db, "users", user.uid);
-      await setDoc(docRef, {
+      const privateDocRef = doc(db, "users", user.uid, "private", "contact");
+      const batch = writeBatch(db);
+      batch.set(docRef, {
         purchased_croins: 0,
         promotional_croins: 0,
         creator_credits: 0,
         creator_earnings: 0,
         isPro: false,
-        username: username,
-        createdAt: new Date()
+        username: cleanUsername,
+        createdAt: serverTimestamp()
       });
-
-      // 4. Guardar datos sensibles (PII) en una subcolección privada aislada
-      const privateDocRef = doc(db, "users", user.uid, "private", "contact");
-      await setDoc(privateDocRef, {
+      batch.set(privateDocRef, {
         email: email,
-        phone: phone
+        phone: phone,
+        ai_processing_consent: {
+          accepted: true,
+          version: "2026-08-13",
+          method: "email",
+          acceptedAt: serverTimestamp()
+        }
       });
-
-      // 5. Reservar el nombre de usuario en la colección usernames
-      await setDoc(usernameRef, { uid: user.uid });
+      batch.set(usernameRef, { uid: user.uid });
+      await batch.commit();
+      await updateProfile(user, { displayName: cleanUsername });
 
       navigate("/dashboard");
     } catch (err) {
@@ -82,6 +93,9 @@ export default function Register() {
 
   const handleGoogleRegister = async () => {
     setError("");
+    if (!consentAccepted) {
+      return setError("Debes aceptar el procesamiento de mensajes antes de continuar con Google.");
+    }
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
@@ -92,23 +106,30 @@ export default function Register() {
       const docSnap = await getDoc(docRef);
       if (!docSnap.exists()) {
           const baseName = user.displayName || user.email.split('@')[0];
-          let finalUsername = baseName.replace(/\s+/g, '_').toLowerCase();
+          let finalUsername = baseName.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 20);
+          if (finalUsername.length < 3) finalUsername = `user_${user.uid.slice(0, 6)}`;
           
           const usernameRef = doc(db, "usernames", finalUsername);
           const usernameSnap = await getDoc(usernameRef);
           
           let targetUsernameRef = usernameRef;
           if (usernameSnap.exists()) {
-            finalUsername = `${finalUsername}_${Math.floor(1000 + Math.random() * 9000)}`;
+            finalUsername = `${finalUsername.slice(0, 13)}_${user.uid.slice(0, 6)}`;
             targetUsernameRef = doc(db, "usernames", finalUsername);
           }
-          
-          await setDoc(targetUsernameRef, { uid: user.uid });
-          const newData = { purchased_croins: 0, promotional_croins: 0, creator_credits: 0, creator_earnings: 0, isPro: false, username: finalUsername, createdAt: new Date() };
-          await setDoc(docRef, newData);
+
+          const batch = writeBatch(db);
+          batch.set(targetUsernameRef, { uid: user.uid });
+          const newData = { purchased_croins: 0, promotional_croins: 0, creator_credits: 0, creator_earnings: 0, isPro: false, username: finalUsername, createdAt: serverTimestamp() };
+          batch.set(docRef, newData);
           const privateDocRef = doc(db, "users", user.uid, "private", "contact");
-          const privateData = { email: user.email, phone: user.phoneNumber || "" };
-          await setDoc(privateDocRef, privateData);
+          const privateData = {
+            email: user.email,
+            phone: user.phoneNumber || "",
+            ai_processing_consent: { accepted: true, version: "2026-08-13", method: "google", acceptedAt: serverTimestamp() }
+          };
+          batch.set(privateDocRef, privateData);
+          await batch.commit();
       }
       
       navigate("/dashboard");
@@ -194,7 +215,7 @@ export default function Register() {
           </div>
 
           <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginTop: '5px' }}>
-            <input type="checkbox" required id="privacy_consent" style={{ marginTop: '3px' }} />
+            <input type="checkbox" required id="privacy_consent" checked={consentAccepted} onChange={(e) => setConsentAccepted(e.target.checked)} style={{ marginTop: '3px' }} />
             <label htmlFor="privacy_consent" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'left', lineHeight: '1.4' }}>
               Acepto que mis mensajes y nombre de usuario pueden ser procesados temporalmente por modelos de Inteligencia Artificial (TTS) para la generación de audio.
             </label>

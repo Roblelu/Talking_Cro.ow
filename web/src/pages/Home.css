@@ -5,10 +5,16 @@
   width: 100%;
   color: #fff;
   font-family: 'Space Grotesk', sans-serif;
-  background: radial-gradient(circle at 10% 20%, #0b0f19, #000000);
   min-height: 100vh;
-  margin-top: -250px;
-  padding-top: 200px;
+  padding-top: 40px;
+}
+
+.home-container::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: radial-gradient(circle at 10% 20%, #0b0f19, #000000);
+  z-index: -1;
 }
 
 /* Hero Section */
@@ -222,6 +228,12 @@
     flex-direction: column;
     text-align: center;
     padding-top: 20px;
+    padding-bottom: 0px;
+    min-height: auto;
+  }
+  
+  .features-section {
+    padding-top: 20px;
   }
   
   .hero-buttons {
@@ -232,8 +244,29 @@
     font-size: 2.5rem;
   }
   
+  .section-title {
+    font-size: 2rem;
+  }
+  
   .visual-orb {
-    margin-top: 40px;
-    transform: scale(0.8);
+    display: none; /* Ocultar en móviles porque no aporta valor y ocupa espacio */
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 2rem;
+  }
+  
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+  
+  .section-title {
+    font-size: 1.5rem;
+  }
+  
+  .visual-orb {
+    transform: scale(0.6);
   }
 }

@@ -1,12 +1,17 @@
-/* Streamers.css */
 .streamers-container {
   min-height: 100vh;
-  background: radial-gradient(circle at 10% 20%, #0b1910, #000000);
   color: #fff;
   font-family: 'Inter', sans-serif;
-  margin-top: -250px;
-  padding: 300px 20px 50px;
+  padding: 40px 20px 50px;
   overflow: hidden;
+}
+
+.streamers-container::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: radial-gradient(circle at 10% 20%, #0b1910, #000000);
+  z-index: -1;
 }
 
 .streamers-hero {
@@ -168,5 +173,8 @@
   .streamers-hero {
     flex-direction: column;
     text-align: center;
+  }
+  .streamers-visual {
+    display: none !important;
   }
 }

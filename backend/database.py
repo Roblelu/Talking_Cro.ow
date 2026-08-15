@@ -33,6 +33,11 @@ def init_db():
         c.execute("ALTER TABLE settings ADD COLUMN tts_volume TEXT DEFAULT '+0%'")
     except sqlite3.OperationalError:
         pass # Las columnas ya existen
+
+    try:
+        c.execute("ALTER TABLE settings ADD COLUMN tts_read_username INTEGER DEFAULT 1")
+    except sqlite3.OperationalError:
+        pass
         
     # Tabla Regalos
     c.execute('''

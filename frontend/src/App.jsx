@@ -321,7 +321,10 @@ function App() {
         return;
     }
     try {
-      await fetch('http://127.0.0.1:8763/api/shutdown', { method: 'POST' });
+      await fetch('http://127.0.0.1:8763/api/shutdown', { 
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${window.API_KEY || ''}` }
+      });
     } catch (e) {
       console.log("Servidor cerrado.");
     }
@@ -456,33 +459,46 @@ function App() {
         } else {
             const newEvent = { ...data, timestamp: new Date() };
             
-            // Si el evento es un chat o un regalo, guardamos al usuario para los DMs
-            if (data.type === 'chat' || data.type === 'gift') {
-                setOnlineUsers(prev => {
-                    const exists = prev.find(u => u.username === data.username);
-                    if (!exists) {
-                        return [...prev, { username: data.username, firstSeen: new Date().toLocaleTimeString() }];
-                    }
-                    return prev;
-                });
-            }
+            // Removed undefined setOnlineUsers
 
             // --- LÓGICA DE CROINS PARA TTS (CHAT) ---
             if (data.type === 'chat' && currentUser) {
-                // Intentar cobrar 12 Croins al usuario
-                const processTTS = httpsCallable(functions, 'processTTSMessage');
-                processTTS({ 
-                    tiktok_username: data.username, 
-                    streamer_uid: currentUser.uid, 
-                    cost: 12 
-                }).then(result => {
-                    if (result.data.success) {
-                        console.log(`[Croins] 12 Croins descontados a ${data.username} para TTS premium.`);
-                        // TODO: Aquí llamaremos a ElevenLabs / clonación de voz
-                    }
-                }).catch(err => {
-                    // Si falla (ej. no está en DB o no tiene saldo), ignoramos silenciosamente
-                });
+                // Verificar si el mensaje tiene el comando "Eco Voice" (case-insensitive)
+                const lowerMsg = data.message.toLowerCase().trim();
+                const ecoVoicePrefix = 'eco voice ';
+                let isEcoVoiceCommand = false;
+                let cleanMessage = data.message;
+                
+                if (lowerMsg.startsWith(ecoVoicePrefix)) {
+                    isEcoVoiceCommand = true;
+                    // Extraer el mensaje sin el comando para enviarlo a ElevenLabs
+                    cleanMessage = data.message.substring(ecoVoicePrefix.length).trim();
+                } else if (lowerMsg === 'eco voice') {
+                    // Si solo dicen 'eco voice' sin texto adicional, ignoramos o tomamos como vacío
+                    isEcoVoiceCommand = true;
+                    cleanMessage = '';
+                }
+
+                if (isEcoVoiceCommand && cleanMessage !== '') {
+                    // Intentar cobrar 12 Croins al usuario
+                    const processTTS = httpsCallable(functions, 'processTTSMessage');
+                    processTTS({ 
+                        tiktok_username: data.username, 
+                        streamer_uid: currentUser.uid, 
+                        message: cleanMessage
+                    }).then(result => {
+                        console.log("[TTS] Respuesta de Firebase processTTS:", result.data);
+                        if (result.data.success) {
+                            console.log(`[EcoVoices] 12 Croins descontados a ${data.username} para TTS premium.`);
+                            const audioSource = `data:audio/mp3;base64,${result.data.audioBase64}`;
+                            const snd = new Audio(audioSource);
+                            snd.play().catch(e => console.error("Error al reproducir audio EcoVoices:", e));
+                        }
+                    }).catch(err => {
+                        console.error("[TTS] Error llamando a processTTSMessage:", err);
+                        // Si falla (ej. no está en DB o no tiene saldo), ignoramos silenciosamente
+                    });
+                }
             }
             
             setDonators(prev => {

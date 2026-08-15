@@ -34,7 +34,7 @@ const OnlineCreatorsPage = () => {
   return (
     <div className="online-page-container">
       <div className="online-hero">
-        <h1 className="online-page-title">Bienvenidos My Little Crow</h1>
+        <h1 className="online-page-title">Bienvenido My Little Cro.ow</h1>
         <p className="online-page-subtitle">Descubre a los creadores de contenido que estan en linea que cuentan con el sistema Talking Cro.ow con quienes puedes reproducir tu voz clonada!!!</p>
         
         <div className="filter-container">

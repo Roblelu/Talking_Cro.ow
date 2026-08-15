@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import sys
 
@@ -21,8 +22,10 @@ async def test_audio():
         "audio_id": filename
     }
     
-    # Mandamos con el token local
-    headers = {"Authorization": "Bearer 2b09bddee14344e570592397a17fe5bf"}
+    local_config_path = os.path.join(os.path.dirname(__file__), "local_config.json")
+    with open(local_config_path, "r", encoding="utf-8") as config_file:
+        local_api_key = json.load(config_file)["api_key"]
+    headers = {"Authorization": f"Bearer {local_api_key}"}
     res = requests.post(url, json=data, headers=headers)
     print("Respuesta de broadcast:", res.text)
 

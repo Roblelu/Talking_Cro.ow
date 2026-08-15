@@ -101,27 +101,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-        {/* Historial de Pagos Común */}
-        <div style={{ marginTop: '20px' }}>
-          <h3 className="neon-text-purple" style={{ marginBottom: '15px' }}>Historial de Pagos</h3>
-          <div style={{ background: 'rgba(0,0,0,0.4)', padding: '20px', borderRadius: '8px', border: '1px solid rgba(157, 0, 255, 0.2)' }}>
-            <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                  <th style={{ padding: '10px', color: 'var(--text-secondary)' }}>Fecha</th>
-                  <th style={{ padding: '10px', color: 'var(--text-secondary)' }}>Descripción</th>
-                  <th style={{ padding: '10px', color: 'var(--text-secondary)' }}>Monto</th>
-                  <th style={{ padding: '10px', color: 'var(--text-secondary)' }}>Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td colSpan="4" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>No hay pagos recientes.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+
 
         <div style={{ marginTop: '40px', textAlign: 'center' }}>
           <button className="btn-neon" style={{ borderColor: '#ff003c', color: '#ff003c' }} onClick={handleLogout}>

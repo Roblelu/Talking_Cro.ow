@@ -1,8 +1,12 @@
 import asyncio
+import os
 from TikTokLive import TikTokLiveClient
 from TikTokLive.client.web.web_settings import WebDefaults
 
-WebDefaults.sign_api_key = "euler_Y2E0OTVjMDJjNzQyNTNkNmIzZTM4OTU1NjhhNTY1MzUzODdlODlhZDRlODg3MTY1NTc0Mzdi"
+sign_api_key = os.environ.get("TIKTOK_SIGN_API_KEY")
+if not sign_api_key:
+    raise RuntimeError("Define TIKTOK_SIGN_API_KEY antes de ejecutar esta prueba")
+WebDefaults.sign_api_key = sign_api_key
 
 async def test():
     c = TikTokLiveClient('facuuparejas')

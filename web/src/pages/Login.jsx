@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { auth, db } from "../firebase";
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { useNavigate, Link } from "react-router-dom";
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
 
 const EyeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--neon-green)' }}>
@@ -30,7 +30,7 @@ export default function Login() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       navigate("/dashboard");
-    } catch (err) {
+    } catch {
       setError("Error al iniciar sesión. Revisa tus credenciales.");
     }
   };
@@ -46,24 +46,9 @@ export default function Login() {
       const docRef = doc(db, "users", user.uid);
       const docSnap = await getDoc(docRef);
       if (!docSnap.exists()) {
-          const baseName = user.displayName || user.email.split('@')[0];
-          let finalUsername = baseName.replace(/\s+/g, '_').toLowerCase();
-          
-          const usernameRef = doc(db, "usernames", finalUsername);
-          const usernameSnap = await getDoc(usernameRef);
-          
-          let targetUsernameRef = usernameRef;
-          if (usernameSnap.exists()) {
-            finalUsername = `${finalUsername}_${Math.floor(1000 + Math.random() * 9000)}`;
-            targetUsernameRef = doc(db, "usernames", finalUsername);
-          }
-          
-          await setDoc(targetUsernameRef, { uid: user.uid });
-          const newData = { purchased_croins: 0, promotional_croins: 0, creator_credits: 0, creator_earnings: 0, isPro: false, username: finalUsername, createdAt: new Date() };
-          await setDoc(docRef, newData);
-          const privateDocRef = doc(db, "users", user.uid, "private", "contact");
-          const privateData = { email: user.email, phone: user.phoneNumber || "" };
-          await setDoc(privateDocRef, privateData);
+        await signOut(auth);
+        setError("Esta cuenta aún no está registrada. Usa Registro para aceptar el aviso de privacidad y crear tu perfil.");
+        return;
       }
       
       navigate("/dashboard");

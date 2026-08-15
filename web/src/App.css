@@ -69,10 +69,17 @@
   padding: 2.5rem;
   border-radius: 12px;
   box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
-  width: 100%;
+  width: 90%;
   max-width: 400px;
   border: 1px solid rgba(0, 255, 204, 0.1);
   backdrop-filter: blur(10px);
+}
+
+@media (max-width: 768px) {
+  .login-card {
+    padding: 1.5rem; /* Padding reducido para celulares */
+    width: 95%;
+  }
 }
 
 .login-card h2 {

@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../firebase';
+import { db, functions } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import VoiceRecorderModal from '../components/VoiceRecorderModal';
+import './AccountPage.css';
 
 const PasswordInput = ({ label, value, onChange, show, toggleShow }) => (
   <div style={{ marginBottom: '15px' }}>
@@ -48,6 +52,10 @@ const AccountPage = ({ profileImage, setProfileImage }) => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [tiktok, setTiktok] = useState('');
+  const [username, setUsername] = useState('');
+  const [ecoVoiceId, setEcoVoiceId] = useState('');
+  
+  const [isRecorderOpen, setIsRecorderOpen] = useState(false);
   
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -62,15 +70,37 @@ const AccountPage = ({ profileImage, setProfileImage }) => {
       setEmail(userData.email || '');
       setPhone(userData.phone || '');
       setTiktok(userData.tiktok || '');
+      setUsername(userData.username || '');
+      setEcoVoiceId(userData.eco_voice_id || '');
     }
   }, [userData]);
 
-  const handlePasswordSubmit = () => {
-    console.log('Cambiando contraseña...', { currentPassword, newPassword, confirmPassword });
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setIsPasswordOpen(false);
+  const handlePasswordSubmit = async () => {
+    if (!currentUser?.email || !currentUser.providerData.some((provider) => provider.providerId === 'password')) {
+      alert('Esta cuenta no usa contraseña. Gestiona el acceso desde tu proveedor de inicio de sesión.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      alert('Las contraseñas nuevas no coinciden.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      alert('La nueva contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+    try {
+      const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+      await reauthenticateWithCredential(currentUser, credential);
+      await updatePassword(currentUser, newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setIsPasswordOpen(false);
+      alert('Contraseña actualizada correctamente.');
+    } catch (error) {
+      console.error('No se pudo actualizar la contraseña:', error.code);
+      alert('No se pudo actualizar la contraseña. Verifica tu contraseña actual.');
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -80,16 +110,33 @@ const AccountPage = ({ profileImage, setProfileImage }) => {
       await setDoc(privateDocRef, { email, phone, tiktok }, { merge: true });
       
       const userDocRef = doc(db, "users", currentUser.uid);
-      await setDoc(userDocRef, { tiktok_username: tiktok.trim().toLowerCase() }, { merge: true });
+      await setDoc(userDocRef, { 
+        tiktok_username: tiktok.trim().toLowerCase()
+      }, { merge: true });
       
-      alert('Perfil actualizado con éxito');
+      // Actualizar username si cambió
+      if (username.trim().toLowerCase() !== (userData?.username || '').toLowerCase()) {
+        const { getFunctions, httpsCallable } = await import('firebase/functions');
+        const functions = getFunctions();
+        const updateUsernameFn = httpsCallable(functions, 'updateUsername');
+        
+        try {
+          await updateUsernameFn({ newUsername: username });
+          alert('Perfil y nombre de usuario actualizados con éxito');
+        } catch (usernameErr) {
+          console.error("Error al actualizar nombre de usuario:", usernameErr);
+          alert(`Perfil guardado, pero falló el nombre de usuario: ${usernameErr.message}`);
+          setUsername(userData?.username || ''); // Revertir
+        }
+      } else {
+        alert('Perfil actualizado con éxito');
+      }
+      
     } catch (err) {
       console.error(err);
-      alert('Error al guardar el perfil');
+      alert(`Error al guardar el perfil: ${err.message}`);
     }
   };
-
-  const isMissingFields = !email || !tiktok;
 
   return (
     <div className="panel-layout-wrapper" style={{ '--panel-width': '800px' }}>
@@ -121,6 +168,27 @@ const AccountPage = ({ profileImage, setProfileImage }) => {
               </div>
             </div>
             
+        <div className="account-columns">
+          {/* Columna Izquierda (Datos Básicos) */}
+          <div className="account-col-left">
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
+              <label style={{ color: 'var(--text-secondary)', margin: 0 }}>Nombre de Usuario</label>
+              {!username && <span style={{ color: '#ff003c', fontSize: '0.8rem' }}><span style={{ animation: 'pulse 1.5s infinite', display: 'inline-block', borderRadius: '50%' }}>🔴</span> Requerido</span>}
+            </div>
+            <input 
+              type="text" 
+              placeholder="Tu nombre de usuario" 
+              value={username} 
+              onChange={(e) => setUsername(e.target.value)} 
+              style={{ marginBottom: username !== (userData?.username || '') ? '5px' : '15px', border: !username ? '1px solid #ff003c' : '1px solid rgba(0,255,204,0.3)' }} 
+            />
+            {username !== (userData?.username || '') && (
+              <small style={{color: 'var(--neon-orange)', fontSize: '0.8rem', display: 'block', marginBottom: '15px'}}>
+                El nombre de usuario debe ser único y solo puede cambiarse una vez por semana.
+              </small>
+            )}
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
               <label style={{ color: 'var(--text-secondary)', margin: 0 }}>Correo Electrónico</label>
               {!email && <span style={{ color: '#ff003c', fontSize: '0.8rem' }}><span style={{ animation: 'pulse 1.5s infinite', display: 'inline-block', borderRadius: '50%' }}>🔴</span> Requerido</span>}
@@ -137,8 +205,111 @@ const AccountPage = ({ profileImage, setProfileImage }) => {
               {!tiktok && <span style={{ color: '#ff003c', fontSize: '0.8rem' }}><span style={{ animation: 'pulse 1.5s infinite', display: 'inline-block', borderRadius: '50%' }}>🔴</span> Requerido</span>}
             </div>
             <input type="text" placeholder="@tu_cuenta" value={tiktok} onChange={(e) => setTiktok(e.target.value)} style={{ marginBottom: '15px', border: !tiktok ? '1px solid #ff003c' : '1px solid rgba(0,255,204,0.3)' }} />
+          </div>
+
+          {/* Columna Derecha (EcoVoice) */}
+          <div className="account-col-right">
+            <h3 style={{ color: 'var(--neon-purple)', marginTop: 0 }}>Graba tu Eco Voice</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '20px' }}>
+              Sorprende a todos con tu propia voz en el directo de tu streamer afiliado favorito
+            </p>
+
+            {ecoVoiceId ? (
+              <div style={{ backgroundColor: 'rgba(0, 255, 204, 0.1)', padding: '15px', borderRadius: '8px', border: '1px solid rgba(0, 255, 204, 0.4)', textAlign: 'center' }}>
+                <span style={{ fontSize: '2rem', display: 'block', marginBottom: '10px' }}>🎙️</span>
+                <strong style={{ color: 'var(--neon-green)' }}>¡Voz Configurada!</strong>
+                <p style={{ fontSize: '0.85rem', color: '#ccc', marginTop: '5px' }}>
+                  Tu voz está lista para usarse.
+                </p>
+                <button className="btn-neon btn-neon-orange" onClick={() => setIsRecorderOpen(true)} style={{ marginTop: '10px', padding: '8px 15px', fontSize: '0.9rem' }}>
+                  Regrabar mi voz
+                </button>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '3rem', opacity: 0.5, marginBottom: '10px' }}>🎙️</div>
+                <button className="btn-neon btn-neon-green" onClick={() => setIsRecorderOpen(true)}>
+                  Grabar mi Voz
+                </button>
+                <p style={{ fontSize: '0.8rem', color: '#999', marginTop: '10px' }}>
+                  Tomará menos de 1 minuto.
+                </p>
+              </div>
+            )}
+
+            <div style={{ marginTop: '25px', textAlign: 'center', borderTop: '1px dashed rgba(0, 255, 204, 0.2)', paddingTop: '20px' }}>
+              <p style={{ fontSize: '0.9rem', color: '#ccc', marginBottom: '10px' }}>O sube un archivo de audio de tu PC:</p>
+              <label 
+                style={{ 
+                  cursor: 'pointer', 
+                  display: 'inline-block', 
+                  padding: '8px 20px', 
+                  background: 'rgba(255, 255, 255, 0.05)', 
+                  border: '1px solid rgba(255, 255, 255, 0.3)', 
+                  borderRadius: '8px', 
+                  color: 'var(--text-primary)', 
+                  fontSize: '0.9rem', 
+                  transition: 'all 0.3s' 
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'var(--neon-green)'; e.currentTarget.style.boxShadow = '0 0 10px rgba(57,255,20,0.3)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'; e.currentTarget.style.boxShadow = 'none'; }}
+              >
+                <input 
+                  type="file" 
+                  accept=".mp3,.wav,.m4a" 
+                  style={{ display: 'none' }} 
+                  onChange={async (e) => {
+                    if(e.target.files.length > 0) {
+                      const file = e.target.files[0];
+                      if(file.size > 10 * 1024 * 1024) {
+                        alert("El archivo es muy pesado. Máximo 10MB.");
+                        return;
+                      }
+                      try {
+                        alert("Procesando y clonando tu voz. Por favor espera, esto puede tardar unos segundos...");
+                        const dataUrl = await new Promise((resolve, reject) => {
+                          const reader = new FileReader();
+                          reader.onerror = () => reject(new Error('No se pudo leer el archivo de audio.'));
+                          reader.onloadend = () => resolve(reader.result);
+                          reader.readAsDataURL(file);
+                        });
+                        const base64Data = dataUrl.split(',')[1];
+                        const createEcoVoice = httpsCallable(functions, 'createEcoVoice');
+                        const result = await createEcoVoice({
+                          base64Audio: base64Data,
+                          fileName: file.name,
+                          mimeType: file.type
+                        });
+                        if(result.data.success) {
+                          alert("¡Voz clonada y configurada con éxito!");
+                          window.location.reload();
+                        }
+                      } catch (error) {
+                        console.error(error);
+                        alert("Error al clonar la voz: " + error.message);
+                      }
+                    }
+                  }} 
+                />
+                📂 Seleccionar Archivo
+              </label>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '10px' }}>
+                Formatos aceptados: <span style={{ color: 'var(--neon-green)' }}>.mp3, .wav, .m4a</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <VoiceRecorderModal 
+          isOpen={isRecorderOpen} 
+          onClose={() => setIsRecorderOpen(false)} 
+          onSuccess={() => {
+            // Recargar datos o forzar re-render si fuera necesario
+            alert("Voz actualizada. Recarga la página si no ves el cambio.");
+          }} 
+        />
             
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px', marginBottom: '30px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '40px', marginBottom: '30px' }}>
               <button className="btn-neon" onClick={handleSaveProfile}>Guardar Cambios de Perfil</button>
             </div>
 
@@ -167,7 +338,7 @@ const AccountPage = ({ profileImage, setProfileImage }) => {
                   
                   <PasswordInput 
                     label="Nueva contraseña" 
-                    value={newPassword} 
+                    value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)} 
                     show={showNewPassword} 
                     toggleShow={() => setShowNewPassword(!showNewPassword)} 

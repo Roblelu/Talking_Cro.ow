@@ -4,7 +4,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 15px 30px;
-  background: #0d0c14;
+  background: rgba(13, 12, 20, 0.7);
+  backdrop-filter: blur(15px);
   border-bottom: 1px solid rgba(57, 255, 20, 0.2);
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
@@ -46,16 +47,28 @@
 }
 
 .navbar-side {
-  width: 250px;
+  flex: 1;
+}
+
+.navbar-right {
+  justify-content: flex-end;
+}
+
+.navbar-center {
+  flex: 0 1 auto;
 }
 
 .logo-img {
-  width: 249px;
+  width: 300px;
   position: absolute;
-  top: -90px;
-  left: -15px;
+  top: -110px;
+  left: -25px;
   z-index: 10;
   transition: all 0.3s ease;
+}
+
+.mobile-logo {
+  display: none;
 }
 
 .title-img {
@@ -67,32 +80,96 @@
   transition: all 0.3s ease;
 }
 
+@media (max-width: 1450px) {
+  .title-img { height: 100px; }
+  .logo-img { width: 250px; top: -90px; left: -15px; }
+}
+
 @media (max-width: 1200px) {
-  .logo-img { width: 200px; top: -80px; }
-  .title-img { height: 110px; }
+  .logo-img { width: 200px; top: -75px; left: -10px; }
+  .title-img { height: 85px; }
   .navbar-side { width: 200px; }
   .avatar-placeholder { width: 80px; height: 80px; }
 }
 
 @media (max-width: 900px) {
-  .main-navbar { padding: 10px 15px; }
-  .logo-img { width: 140px; top: -50px; left: -10px; }
-  .title-img { height: 75px; margin-top: 0; }
-  .navbar-side { width: auto; flex: 1; }
+  .main-navbar { 
+    flex-direction: column; 
+    padding: 20px; 
+    gap: 15px; 
+  }
+  .desktop-logo { display: none; }
+  .mobile-logo { 
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, calc(-50% + 10px));
+    width: 350px !important;
+    z-index: 0;
+  }
+  .mobile-logo-container {
+    height: 100px;
+    position: relative;
+    z-index: 1;
+  }
+  .title-img { 
+    width: 100%; 
+    height: auto; 
+    max-width: 600px;
+    padding: 0 15px;
+    box-sizing: border-box;
+    margin-top: 15px; 
+    position: relative;
+    z-index: 2;
+    transform: scale(0.9);
+  }
+  .navbar-side { width: 100%; justify-content: center !important; }
+  .navbar-left { justify-content: center; width: 100%; }
+  .navbar-right { 
+    width: 100% !important;
+    justify-content: center; 
+    flex-direction: column-reverse; 
+    align-items: center !important; 
+    gap: 15px; 
+  }
   .avatar-placeholder { width: 60px; height: 60px; }
+  .navbar-center { flex-direction: column; gap: 10px; width: 100%; align-items: center; }
+  
+  /* Mostrar de nuevo los textos de croins/creditos */
+  .header-indicator .neon-text-green, 
+  .header-indicator .neon-text-orange, 
+  .header-indicator .neon-text-purple { display: inline-block; font-size: 0.9rem !important; }
+  
+  .credits-wrapper { 
+    display: grid !important; 
+    grid-template-columns: 140px 140px !important; 
+    justify-content: center !important;
+    gap: 10px; 
+    width: 100% !important; 
+    margin: 0 auto !important;
+    transform: none !important;
+  }
+  .header-indicator {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 6px 0 !important;
+    box-sizing: border-box !important;
+  }
+  .credits-wrapper > div:nth-child(3) { grid-column: 1 / -1 !important; width: 180px !important; justify-self: center !important; }
 }
 
-@media (max-width: 600px) {
-  .main-navbar { flex-direction: column; gap: 15px; padding: 20px 10px; }
-  .logo-img { position: relative; top: 0; left: 0; width: 120px; }
-  .title-img { height: 50px; }
-  .navbar-side { width: 100%; justify-content: center !important; }
-  .navbar-left { justify-content: center !important; }
-}
+
 
 .credits-wrapper {
-  display: flex;
-  gap: 15px;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 10px;
+  justify-items: center;
+}
+
+.credits-wrapper > div:nth-child(3) {
+  grid-column: 1 / -1;
 }
 
 .header-indicator {
@@ -106,19 +183,30 @@
   white-space: nowrap;
 }
 
-@media (max-width: 1300px) {
+@media (max-width: 1250px) {
   .credits-wrapper {
-    flex-direction: column;
-    gap: 5px;
+    transform: scale(0.85);
+    transform-origin: right center;
   }
+}
+
+@media (max-width: 1100px) {
+  .credits-wrapper {
+    transform: scale(0.75);
+  }
+}
+
+@media (max-width: 1300px) {
+  .main-nav { gap: 2px !important; }
+  .nav-link { font-size: 0.7rem !important; padding: 2px 4px !important; }
   .header-indicator {
-    padding: 4px 10px;
+    padding: 2px 8px;
   }
-  .header-indicator .neon-text-green, .header-indicator .neon-text-orange {
-    font-size: 0.95rem !important;
+  .header-indicator .neon-text-green, .header-indicator .neon-text-orange, .header-indicator .neon-text-purple {
+    font-size: 0.85rem !important;
   }
   .header-indicator span:first-child {
-    font-size: 1rem !important;
+    font-size: 0.9rem !important;
   }
 }
 
@@ -158,6 +246,72 @@
 
 .nav-link:hover::after, .nav-link.active::after {
   width: 100%;
+}
+
+/* --- MENÚ MÓVIL (Hamburguesa) --- */
+.mobile-menu-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  z-index: 1000;
+  margin: 10px auto;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, filter 0.3s ease;
+}
+
+.mobile-menu-btn:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2) drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+}
+
+.main-nav {
+  display: flex;
+  gap: 20px;
+  position: relative;
+  z-index: 10;
+}
+
+@media (max-width: 1450px) {
+  .main-nav {
+    gap: 10px;
+  }
+  .nav-link {
+    font-size: 0.85rem;
+    padding: 6px 8px;
+  }
+}
+
+@media (max-width: 900px) {
+  .mobile-menu-btn {
+    display: flex;
+  }
+
+  .main-nav {
+    display: flex;
+    flex-direction: column;
+    position: static; /* Ya no flota encima, empuja el contenido hacia abajo */
+    width: 100%;
+    background: transparent;
+    padding: 0;
+    gap: 15px;
+    
+    /* Animación de altura (Acordeón) */
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.4s ease, opacity 0.3s ease, margin 0.3s ease;
+    margin-top: 0;
+  }
+
+  .main-nav.open {
+    max-height: 400px; /* Suficiente para los enlaces */
+    opacity: 1;
+    margin-top: 15px;
+    margin-bottom: 15px;
+  }
 }
 
 /* Avatar y Settings Gear */

@@ -5,12 +5,14 @@ import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 import './Header.css';
 import logoImg from '../assets/logo.png';
+import logoDegradado from '../assets/logo-degradado.png';
 import titleImg from '../assets/title.png';
 
 const Header = () => {
   const { currentUser, userData } = useAuth();
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -28,9 +30,10 @@ const Header = () => {
   return (
     <header className="main-navbar">
       {/* Left: Circular Logo */}
-      <div className="navbar-left navbar-side" style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-        <Link to="/" style={{ textDecoration: 'none' }}>
-          <img src={logoImg} alt="Talking Cro.ow Logo" className="logo-img" />
+      <div className="navbar-left navbar-side mobile-logo-container" style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+        <Link to="/" style={{ textDecoration: 'none', display: 'flex', justifyContent: 'center', width: '100%', height: '100%' }}>
+          <img src={logoImg} alt="Talking Cro.ow Logo" className="logo-img desktop-logo" />
+          <img src={logoDegradado} alt="Talking Cro.ow Logo" className="logo-img mobile-logo" />
         </Link>
       </div>
 
@@ -39,20 +42,38 @@ const Header = () => {
         <div style={{ cursor: 'pointer' }} onClick={() => navigate('/')}>
           <img src={titleImg} alt="Talking Cro.ow" className="title-img" />
         </div>
-        <nav style={{ display: 'flex', gap: '20px', position: 'relative', zIndex: 10 }}>
-          {currentUser && (
-            <NavLink to="/dashboard" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Dashboard</NavLink>
+        
+        {/* Botón de Menú Hamburguesa (visible solo en móviles) */}
+        <button 
+          className="mobile-menu-btn"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          {isMobileMenuOpen ? (
+            <svg viewBox="0 0 24 24" width="30" height="30" fill="var(--neon-orange)">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="var(--neon-green)">
+              <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+            </svg>
           )}
-          <NavLink to="/" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Inicio</NavLink>
-          <NavLink to="/creadores" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Creadores</NavLink>
-          <NavLink to="/ecovoices" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Eco Voices</NavLink>
-          <NavLink to="/creadores-online" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Creadores Online</NavLink>
+        </button>
+
+        <nav className={`main-nav ${isMobileMenuOpen ? 'open' : ''}`}>
+          {currentUser && (
+            <NavLink to="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Dashboard</NavLink>
+          )}
+          <NavLink to="/" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Inicio</NavLink>
+          <NavLink to="/creadores" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Creadores</NavLink>
+          <NavLink to="/ecovoices" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Eco Voices</NavLink>
+          <NavLink to="/creadores-online" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Creadores Online</NavLink>
         </nav>
       </div>
 
       {/* Right: Croins Indicator & User Profile Dropdown */}
-      <div className="navbar-right navbar-side" ref={dropdownRef} style={{ display: 'flex', alignItems: 'center', gap: '20px', justifyContent: 'flex-end' }}>
+      <div className="navbar-right navbar-side" ref={dropdownRef}>
         {currentUser ? (
+          <>
           <div className="credits-wrapper">
             <div 
               className="header-indicator"
@@ -76,23 +97,23 @@ const Header = () => {
               </div>
             )}
 
-            {(userData?.creator_earnings > 0 || userData?.isPro) && (
+            {(userData?.has_received_app_credits || userData?.creator_credits > 0 || userData?.isPro) && (
               <div 
                 className="header-indicator"
                 style={{ background: 'rgba(157, 0, 255, 0.1)', border: '1px solid var(--neon-purple)' }}
                 onClick={() => navigate('/withdraw')}
                 title="Ganancias Retirables"
               >
-                <span style={{ fontSize: '1.2rem' }}>🏦</span>
+                <span style={{ fontSize: '1.2rem' }}>💰</span>
                 <span className="neon-text-purple" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
-                  ${(userData?.creator_earnings || 0).toFixed(2)} MXN
+                  {userData?.croin_cash || 0} Croin Cash
                 </span>
               </div>
             )}
           </div>
             
             <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-              <img src={'/avatar_m.jpg'} alt="Menú de Usuario" className="avatar-placeholder" title="Menú de Usuario" style={{ objectFit: 'cover' }} />
+              <img src={'/avatar_user.png'} alt="Menú de Usuario" className="avatar-placeholder" title="Menú de Usuario" style={{ objectFit: 'cover' }} />
               <button className="settings-gear-btn" title="Ajustes" style={{ pointerEvents: 'none' }}>
                 ⚙️
                 {isMissingFields && <span style={{ position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
@@ -106,7 +127,7 @@ const Header = () => {
                      onClick={() => { navigate('/account'); setIsDropdownOpen(false); }}
                      style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(157, 0, 255, 0.3)', paddingBottom: '12px', marginBottom: '8px', color: '#00f0ff', fontWeight: 'bold' }}
                    >
-                     <img src={'/avatar_m.jpg'} alt="Perfil" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--neon-purple)' }} />
+                     <img src={'/avatar_user.png'} alt="Perfil" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--neon-purple)' }} />
                      <div style={{ display: 'flex', justifyContent: 'space-between', flex: 1, alignItems: 'center' }}>
                        <span>Cuenta Talking Cro.ow</span>
                        {isMissingFields && <span style={{ width: '8px', height: '8px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}

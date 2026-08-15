@@ -9,8 +9,13 @@ service cloud.firestore {
     
     // 2. Reglas para nombres de usuario (disponibilidad)
     match /usernames/{username} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.auth != null
+                    && !exists(/databases/$(database)/documents/usernames/$(username))
+                    && request.resource.data.keys().hasOnly(['uid'])
+                    && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
     }
 
     // 3. Reglas para perfiles unificados (creadores y donadores)
@@ -20,6 +25,10 @@ service cloud.firestore {
       
       // La creación exige iniciar los saldos en 0
       allow create: if request.auth != null && request.auth.uid == uid 
+                    && request.resource.data.keys().hasOnly([
+                      'purchased_croins', 'promotional_croins', 'creator_credits',
+                      'creator_earnings', 'isPro', 'username', 'createdAt'
+                    ])
                     && request.resource.data.purchased_croins == 0
                     && request.resource.data.promotional_croins == 0
                     && request.resource.data.creator_credits == 0
@@ -29,9 +38,9 @@ service cloud.firestore {
       // Las actualizaciones del perfil general desde el cliente no pueden alterar los saldos o privilegios
       // (Los saldos solo pueden ser modificados por Firebase Functions/Admin)
       allow update: if request.auth != null && request.auth.uid == uid 
-                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-                      'purchased_croins', 'promotional_croins', 'creator_credits', 'creator_earnings', 'isPro'
-                    ]);
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tiktok_username'])
+                    && request.resource.data.tiktok_username is string
+                    && request.resource.data.tiktok_username.size() <= 80;
       
       // 3. Subcolección privada de contacto (PII)
       match /private/contact {

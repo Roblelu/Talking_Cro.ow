@@ -15,7 +15,7 @@ import sys
 import httpx
 import requests
 from TikTokLive import TikTokLiveClient
-from TikTokLive.events import ConnectEvent, CommentEvent, GiftEvent
+from TikTokLive.events import ConnectEvent, CommentEvent, GiftEvent, DisconnectEvent
 from TikTokLive.client.web.web_settings import WebDefaults
 
 # WebDefaults setting for Euler Stream API (Se inicializa dinámicamente)
@@ -26,6 +26,8 @@ import tts_engine
 import secrets
 
 config_path = os.path.join(os.path.dirname(__file__), "config.json")
+local_config_path = os.path.join(os.path.dirname(__file__), "local_config.json")
+
 config_data = {"port": 8763}
 if os.path.exists(config_path):
     try:
@@ -34,13 +36,21 @@ if os.path.exists(config_path):
     except Exception:
         pass
 
-if "api_key" not in config_data:
-    config_data["api_key"] = secrets.token_hex(16)
-    with open(config_path, "w") as f:
-        json.dump(config_data, f, indent=4)
+local_config_data = {}
+if os.path.exists(local_config_path):
+    try:
+        with open(local_config_path, "r") as f:
+            local_config_data = json.load(f)
+    except Exception:
+        local_config_data = {}
 
-LOCAL_API_KEY = config_data["api_key"]
-print(f"\\n{'='*50}\\n🔑 Tu API Key Local es: {LOCAL_API_KEY}\\n{'='*50}\\n")
+if "api_key" not in local_config_data:
+    local_config_data["api_key"] = secrets.token_hex(16)
+    with open(local_config_path, "w") as f:
+        json.dump(local_config_data, f, indent=4)
+
+LOCAL_API_KEY = local_config_data["api_key"]
+print(f"\n{'='*50}\n--- Tu API Key Local es: {LOCAL_API_KEY} ---\n{'='*50}\n")
 
 from fastapi import Depends
 from fastapi.security import APIKeyHeader
@@ -160,7 +170,7 @@ class Settings(BaseModel):
     tts_rate: str = "+0%"
     tts_volume: str = "+0%"
 
-@app.get("/api/settings", dependencies=[Depends(verify_token)])
+@app.get("/api/settings")
 def get_settings():
     conn = database.get_db_connection()
     settings = conn.execute("SELECT * FROM settings LIMIT 1").fetchone()
@@ -206,7 +216,12 @@ async def connect_tiktok(req: TikTokConnectRequest):
         except Exception as e:
             print(f"[Sistema WARNING] Fallo obteniendo llave segura: {e}")
             
-        client = TikTokLiveClient(unique_id=req.username)
+        session_id = config_data.get("session_id", "")
+        if session_id:
+            print("[Sistema] Inyectando Session ID local para evadir bloqueo Anti-Bot...")
+            client = TikTokLiveClient(unique_id=req.username, web_kwargs={"session_id": session_id})
+        else:
+            client = TikTokLiveClient(unique_id=req.username)
         active_tiktok_client = client
 
         async def get_tiktok_avatar(unique_id: str):
@@ -219,6 +234,11 @@ async def connect_tiktok(req: TikTokConnectRequest):
             except:
                 pass
             return None
+
+        @client.on(DisconnectEvent)
+        async def on_disconnect(event: DisconnectEvent):
+            print("[TikTok] Conexión cerrada.")
+            await broadcast_event(LiveEvent(type="connection", username="Sistema", message="Desconectado (Conexión cerrada por TikTok)"))
 
         @client.on(ConnectEvent)
         async def on_connect(event: ConnectEvent):
@@ -270,6 +290,7 @@ async def connect_tiktok(req: TikTokConnectRequest):
 
         @client.on(CommentEvent)
         async def on_comment(event: CommentEvent):
+            print(f"[Chat Debug] Recibido comentario de {event.user.nickname}: {event.comment}")
             await broadcast_event(LiveEvent(type="chat", username=event.user.nickname, message=event.comment))
             global tts_global_enabled, tts_queue, tts_required_gift, tts_allowed_users
             if tts_global_enabled and tts_queue is not None:
@@ -488,8 +509,10 @@ def shutdown_server():
     
     if os.path.exists(kill_script):
         subprocess.Popen(["cmd.exe", "/c", kill_script], creationflags=subprocess.CREATE_NEW_CONSOLE | 0x08000000)
-    else:
-        os._exit(0)
+    
+    # Forzar el cierre de este proceso de Python un segundo después para asegurar que se mande la respuesta HTTP
+    import threading
+    threading.Timer(1.0, lambda: os._exit(0)).start()
         
     return {"status": "shutting_down"}
 
@@ -502,7 +525,7 @@ from fastapi.responses import StreamingResponse
 
 sse_clients = []
 
-@app.get("/api/live_events", dependencies=[Depends(verify_token)])
+@app.get("/api/live_events")
 async def sse_live_events():
     queue = asyncio.Queue()
     sse_clients.append(queue)

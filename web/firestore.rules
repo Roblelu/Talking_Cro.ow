@@ -11,7 +11,11 @@ service cloud.firestore {
     match /usernames/{username} {
       allow get: if true; // Permite verificar si un username existe
       allow list: if false; // Bloquea obtener la lista de todos los usuarios
-      allow write: if request.auth != null; // Solo usuarios autenticados pueden registrar su username
+      allow create: if request.auth != null
+                    && !exists(/databases/$(database)/documents/usernames/$(username))
+                    && request.resource.data.keys().hasOnly(['uid'])
+                    && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false; // Los cambios de nombre pasan por updateUsername (Admin SDK)
     }
 
     // 3. Reglas para perfiles unificados (creadores y donadores)
@@ -21,6 +25,10 @@ service cloud.firestore {
       
       // La creación exige iniciar los saldos en 0
       allow create: if request.auth != null && request.auth.uid == uid 
+                    && request.resource.data.keys().hasOnly([
+                      'purchased_croins', 'promotional_croins', 'creator_credits',
+                      'creator_earnings', 'isPro', 'username', 'createdAt'
+                    ])
                     && request.resource.data.purchased_croins == 0
                     && request.resource.data.promotional_croins == 0
                     && request.resource.data.creator_credits == 0
@@ -32,7 +40,9 @@ service cloud.firestore {
       // TC-30: Validación estricta del esquema para evitar inyección de campos arbitrarios.
       // El cliente solo puede actualizar su usuario de TikTok. Los saldos y privilegios los maneja el Admin SDK.
       allow update: if request.auth != null && request.auth.uid == uid 
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tiktok_username']);
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tiktok_username'])
+                    && request.resource.data.tiktok_username is string
+                    && request.resource.data.tiktok_username.size() <= 80;
       
       // 4. Subcolección privada de contacto (PII)
       match /private/contact {
