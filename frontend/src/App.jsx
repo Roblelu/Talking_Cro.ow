@@ -60,7 +60,7 @@ const exampleScripts = [
   }
 ];
 
-const AudioPlayItem = ({ audio, isFirst, handlePlayAudio, handleRejectAudio }) => {
+const AudioPlayItem = ({ audio, isFirst, handlePlayAudio, handleRejectAudio, delaySeconds = 1 }) => {
   const [progress, setProgress] = useState(0);
   const [hasActed, setHasActed] = useState(false);
 
@@ -79,10 +79,16 @@ const AudioPlayItem = ({ audio, isFirst, handlePlayAudio, handleRejectAudio }) =
     
     let startTime = Date.now();
     let animationFrame;
-    const DURATION = 1000;
+    const DURATION = delaySeconds * 1000;
 
     const animate = () => {
       if (hasActed) return;
+      if (DURATION === 0) {
+        setProgress(100);
+        setHasActed(true);
+        handlePlayRef.current(audio.id, audio.audio_url);
+        return;
+      }
       const now = Date.now();
       const elapsed = now - startTime;
       if (elapsed >= DURATION) {
@@ -175,6 +181,7 @@ function App() {
   const [ttsRate, setTtsRate] = useState('+0%');
   const [ttsVolume, setTtsVolume] = useState('+0%');
   const [ttsReadUsername, setTtsReadUsername] = useState(true);
+  const [ttsDelay, setTtsDelay] = useState(0);
   const [isTtsSettingsOpen, setIsTtsSettingsOpen] = useState(false);
   const [soundsVolume, setSoundsVolume] = useState('100');
   const [stickersVolume, setStickersVolume] = useState('100');
@@ -213,6 +220,7 @@ function App() {
                  if (data.tts_rate) setTtsRate(data.tts_rate);
                  if (data.tts_volume) setTtsVolume(data.tts_volume);
                  if (data.tts_read_username !== undefined) setTtsReadUsername(data.tts_read_username === 1);
+                 if (data.tts_delay !== undefined) setTtsDelay(data.tts_delay);
               }
             });
             
@@ -287,7 +295,7 @@ function App() {
     }
   };
 
-  const saveTtsSettings = async (voice, rate, volume, readUser) => {
+  const saveTtsSettings = async (voice, rate, volume, readUser, delay) => {
     const API_BASE = 'http://127.0.0.1:8763';
     const cleanUsername = tiktokUsername.replace('@', '').trim() || 'SoyVridel';
     fetch(API_BASE + '/api/settings', {
@@ -299,7 +307,8 @@ function App() {
          tts_voice: voice,
          tts_rate: rate,
          tts_volume: volume,
-         tts_read_username: readUser ? 1 : 0
+         tts_read_username: readUser ? 1 : 0,
+         tts_delay: delay !== undefined ? delay : ttsDelay
       })
     }).catch(e => console.log(e));
   };
@@ -307,22 +316,27 @@ function App() {
   const handleVoiceChange = (e) => {
     const v = e.target.value;
     setTtsVoice(v);
-    saveTtsSettings(v, ttsRate, ttsVolume, ttsReadUsername);
+    saveTtsSettings(v, ttsRate, ttsVolume, ttsReadUsername, ttsDelay);
   };
   const handleRateChange = (e) => {
     const v = e.target.value;
     setTtsRate(v);
-    saveTtsSettings(ttsVoice, v, ttsVolume, ttsReadUsername);
+    saveTtsSettings(ttsVoice, v, ttsVolume, ttsReadUsername, ttsDelay);
   };
   const handleVolumeChange = (e) => {
     const v = e.target.value;
     setTtsVolume(v);
-    saveTtsSettings(ttsVoice, ttsRate, v, ttsReadUsername);
+    saveTtsSettings(ttsVoice, ttsRate, v, ttsReadUsername, ttsDelay);
   };
   const handleReadUsernameChange = (e) => {
     const v = e.target.checked;
     setTtsReadUsername(v);
-    saveTtsSettings(ttsVoice, ttsRate, ttsVolume, v);
+    saveTtsSettings(ttsVoice, ttsRate, ttsVolume, v, ttsDelay);
+  };
+  const handleDelayChange = (e) => {
+    const v = parseInt(e.target.value) || 0;
+    setTtsDelay(v);
+    saveTtsSettings(ttsVoice, ttsRate, ttsVolume, ttsReadUsername, v);
   };
 
   const handleShutdown = async () => {
@@ -487,7 +501,7 @@ function App() {
                 
                 const lowerMsg = data.message.toLowerCase().trim();
                 const lowerClean = cleanMessage.toLowerCase().trim();
-                const ecoVoicePrefix = 'eco voice ';
+                const ecoVoicePrefix = 'eco ';
                 let isEcoVoiceCommand = false;
                 
                 if (lowerMsg.startsWith(ecoVoicePrefix) || lowerClean.startsWith(ecoVoicePrefix)) {
@@ -498,8 +512,8 @@ function App() {
                     } else {
                         cleanMessage = data.message.substring(ecoVoicePrefix.length).trim();
                     }
-                } else if (lowerMsg === 'eco voice' || lowerClean === 'eco voice') {
-                    // Si solo dicen 'eco voice' sin texto adicional, ignoramos o tomamos como vacío
+                } else if (lowerMsg === 'eco' || lowerClean === 'eco') {
+                    // Si solo dicen 'eco' sin texto adicional, ignoramos o tomamos como vacío
                     isEcoVoiceCommand = true;
                     cleanMessage = '';
                 }
@@ -664,7 +678,7 @@ function App() {
     fetch(API_BASE + '/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tiktok_username: cleanUsername, base_audio_path: '', tts_voice: ttsVoice, tts_rate: ttsRate, tts_volume: ttsVolume, tts_read_username: ttsReadUsername ? 1 : 0 })
+      body: JSON.stringify({ tiktok_username: cleanUsername, base_audio_path: '', tts_voice: ttsVoice, tts_rate: ttsRate, tts_volume: ttsVolume, tts_read_username: ttsReadUsername ? 1 : 0, tts_delay: ttsDelay })
     }).catch(e => console.log(e));
     
     try {
@@ -799,7 +813,7 @@ function App() {
           {currentUser && ['cnkrxdu@gmail.com', 'roblecro.ow@gmail.com'].includes(currentUser.email?.toLowerCase()) && (
             <div 
               className="header-indicator"
-              style={{ background: 'rgba(255,0,0,0.2)', border: '1px solid red', cursor: 'pointer', padding: '5px 10px' }}
+              style={{ background: 'rgba(255,0,0,0.2)', border: '1px solid red', cursor: 'pointer', padding: '5px 10px', marginLeft: '240px', position: 'relative', zIndex: 20 }}
               onClick={async (e) => {
                 e.stopPropagation(); // Evitar que cambie la vista al main
                 try {
@@ -1105,6 +1119,7 @@ function App() {
                     isFirst={audioQueue.length > 0 && audioQueue[0].id === evt.id} 
                     handlePlayAudio={handlePlayAudio} 
                     handleRejectAudio={handleRejectAudio} 
+                    delaySeconds={ttsDelay}
                   />
                 ) : (
                 <div key={idx} style={{ marginBottom: '15px', padding: '12px', borderLeft: '3px solid var(--neon-purple)', background: 'rgba(157, 0, 255, 0.05)', borderRadius: '0 4px 4px 0', animation: 'fadeIn 0.3s ease-out' }}>
@@ -1243,7 +1258,7 @@ function App() {
           </section>
 
           {/* Panel de Configuración TTS */}
-          <div className={`extras-container ${!isDmsOpen ? 'visible' : ''}`} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className={`extras-container ${!isDmsOpen ? 'visible' : ''}`} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', paddingRight: '5px' }}>
              
              {/* Panel de Configuración TTS original */}
              <section className="panel" style={{ overflow: isTtsGiftDropdownOpen ? 'visible' : 'hidden', display: 'flex', flexDirection: 'column', gap: '15px', flexShrink: 0 }}>
@@ -1252,78 +1267,6 @@ function App() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                      <h2 className="neon-text-orange" style={{ margin: 0, fontSize: '1.2rem', textAlign: 'left' }}>Configuración TTS</h2>
-                     
-                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                       <button 
-                         className="btn-neon btn-neon-orange"
-                         onClick={() => setIsTtsGiftDropdownOpen(!isTtsGiftDropdownOpen)}
-                         style={{
-                           padding: '5px 10px',
-                           fontSize: '0.9rem',
-                           display: 'flex',
-                           alignItems: 'center',
-                           justifyContent: 'center',
-                           minWidth: '60px',
-                           height: '32px',
-                           margin: 0,
-                           gap: '8px'
-                         }}
-                         title="Regalo requerido para TTS"
-                       >
-                         <span className={`accordion-arrow ${isTtsGiftDropdownOpen ? 'open' : ''}`} style={{ fontSize: '0.7rem' }}>▶</span>
-                         {ttsRequiredGift === 'All' ? 'All' : (
-                           <img 
-                             src={`/gifts/${topTikTokGifts.find(g => g.key === ttsRequiredGift)?.img || 'rose.png'}`} 
-                             alt={ttsRequiredGift} 
-                             style={{ width: '20px', height: '20px', objectFit: 'contain' }} 
-                             onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'inline-block'; }}
-                           />
-                         )}
-                         {ttsRequiredGift !== 'All' && <span style={{ display: 'none', fontSize: '1.2rem' }}>🎁</span>}
-                       </button>
-
-                       {isTtsGiftDropdownOpen && (
-                         <>
-                           <div 
-                             style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998 }}
-                             onClick={() => setIsTtsGiftDropdownOpen(false)}
-                           />
-                           <div style={{ 
-                             position: 'absolute', 
-                             top: '100%', 
-                             left: '50%',
-                             transform: 'translateX(-50%)',
-                             marginTop: '5px',
-                             background: '#111', 
-                             border: '1px solid var(--neon-orange)', 
-                             borderRadius: '5px',
-                             zIndex: 9999,
-                             display: 'flex',
-                             flexDirection: 'column',
-                             gap: '5px',
-                             padding: '5px',
-                             boxShadow: '0 0 15px rgba(255,140,0,0.6)'
-                           }}>
-                             <div 
-                               onClick={() => { changeTtsRequiredGift({target:{value:'All'}}); setIsTtsGiftDropdownOpen(false); }}
-                               style={{ padding: '5px 10px', cursor: 'pointer', color: '#ff7700', textAlign: 'center', fontWeight: 'bold' }}
-                             >
-                               All
-                             </div>
-                             {topTikTokGifts.map(g => (
-                               <div 
-                                 key={g.key}
-                                 onClick={() => { changeTtsRequiredGift({target:{value:g.key}}); setIsTtsGiftDropdownOpen(false); }}
-                                 style={{ padding: '5px', cursor: 'pointer', display: 'flex', justifyContent: 'center' }}
-                                 title={g.name}
-                               >
-                                 <img src={`/gifts/${g.img}`} alt={g.name} style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
-                               </div>
-                             ))}
-                           </div>
-                         </>
-                       )}
-                     </div>
                    </div>
 
                    <button 
@@ -1336,7 +1279,122 @@ function App() {
                 </div>
 
                 {/* Contenido del Acordeón (Voces y Velocidad) */}
-                <div className={`accordion-content ${isTtsSettingsOpen ? 'open' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '15px', flexShrink: 0 }}>
+                <div className={`accordion-content ${isTtsSettingsOpen ? 'open' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '15px', flexShrink: 0, overflow: isTtsGiftDropdownOpen ? 'visible' : '' }}>
+                   
+                   {/* Nueva sección de Filtro y Retraso */}
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '10px 15px', borderRadius: '8px', border: '1px solid rgba(255,117,24,0.3)' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Filtro por Regalos</label>
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                         <button 
+                           className="btn-neon btn-neon-orange"
+                           onClick={() => setIsTtsGiftDropdownOpen(!isTtsGiftDropdownOpen)}
+                           style={{
+                             padding: '5px 10px',
+                             fontSize: '0.9rem',
+                             display: 'flex',
+                             alignItems: 'center',
+                             justifyContent: 'center',
+                             minWidth: '60px',
+                             height: '32px',
+                             margin: 0,
+                             gap: '8px',
+                             background: '#111'
+                           }}
+                           title="Regalo requerido para TTS"
+                         >
+                           <span className={`accordion-arrow ${isTtsGiftDropdownOpen ? 'open' : ''}`} style={{ fontSize: '0.7rem' }}>▶</span>
+                           {ttsRequiredGift === 'All' ? 'All' : (
+                             <img 
+                               src={`/gifts/${topTikTokGifts.find(g => g.key === ttsRequiredGift)?.img || 'rose.png'}`} 
+                               alt={ttsRequiredGift} 
+                               style={{ width: '20px', height: '20px', objectFit: 'contain' }} 
+                               onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'inline-block'; }}
+                             />
+                           )}
+                           {ttsRequiredGift !== 'All' && <span style={{ display: 'none', fontSize: '1.2rem' }}>🎁</span>}
+                         </button>
+
+                         {isTtsGiftDropdownOpen && (
+                           <>
+                             <div 
+                               style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998 }}
+                               onClick={() => setIsTtsGiftDropdownOpen(false)}
+                             />
+                             <div style={{ 
+                               position: 'absolute', 
+                               top: '100%', 
+                               left: '50%',
+                               transform: 'translateX(-50%)',
+                               marginTop: '5px',
+                               background: '#111', 
+                               border: '1px solid var(--neon-orange)', 
+                               borderRadius: '5px',
+                               zIndex: 9999,
+                               maxHeight: '200px',
+                               overflowY: 'auto',
+                               display: 'flex',
+                               flexDirection: 'column',
+                               gap: '5px',
+                               padding: '5px',
+                               boxShadow: '0 0 15px rgba(255,140,0,0.6)'
+                             }}>
+                               <div 
+                                 onClick={() => { changeTtsRequiredGift({target:{value:'All'}}); setIsTtsGiftDropdownOpen(false); }}
+                                 style={{ padding: '5px 10px', cursor: 'pointer', color: '#ff7700', textAlign: 'center', fontWeight: 'bold' }}
+                               >
+                                 All
+                               </div>
+                               {topTikTokGifts.map(g => (
+                                 <div 
+                                   key={g.key}
+                                   onClick={() => { changeTtsRequiredGift({target:{value:g.key}}); setIsTtsGiftDropdownOpen(false); }}
+                                   style={{ padding: '5px', cursor: 'pointer', display: 'flex', justifyContent: 'center' }}
+                                   title={g.name}
+                                 >
+                                   <img src={`/gifts/${g.img}`} alt={g.name} style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                                 </div>
+                               ))}
+                             </div>
+                           </>
+                         )}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Segundos antes de reproducción</label>
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                          <span style={{ position: 'absolute', left: '10px', fontSize: '0.7rem', color: 'var(--neon-orange)', pointerEvents: 'none' }}>▼</span>
+                          <select 
+                            className="btn-neon btn-neon-orange" 
+                            style={{ 
+                              width: '100%', 
+                              minWidth: '120px', 
+                              padding: '5px 10px 5px 25px', 
+                              margin: 0, 
+                              background: '#111',
+                              height: '32px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.9rem',
+                              outline: 'none',
+                              cursor: 'pointer',
+                              appearance: 'none', // Quita la flecha nativa en algunos navegadores
+                              textAlign: 'center'
+                            }}
+                            value={ttsDelay}
+                            onChange={handleDelayChange}
+                          >
+                            <option value={0}>0s (Inmediato)</option>
+                            <option value={1}>1 SEGUNDO</option>
+                            <option value={2}>2 SEGUNDOS</option>
+                            <option value={3}>3 SEGUNDOS</option>
+                          </select>
+                        </div>
+                      </div>
+                   </div>
+
                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                       <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                         Voz Inteligente: <span style={{ color: 'var(--neon-orange)' }}>
@@ -1360,7 +1418,7 @@ function App() {
                               key={voice.id}
                               onClick={async () => {
                                 setTtsVoice(voice.id);
-                                saveTtsSettings(voice.id, ttsRate, ttsVolume, ttsReadUsername);
+                                saveTtsSettings(voice.id, ttsRate, ttsVolume, ttsReadUsername, ttsDelay);
                                 try {
                                   const username = userProfile?.username || 'Usuario';
                                   const API_BASE = 'http://127.0.0.1:8763';

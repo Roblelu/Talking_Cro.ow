@@ -170,6 +170,7 @@ class Settings(BaseModel):
     tts_rate: str = "+0%"
     tts_volume: str = "+0%"
     tts_read_username: int = 1
+    tts_delay: int = 0
 
 @app.get("/api/settings")
 def get_settings():
@@ -178,13 +179,13 @@ def get_settings():
     conn.close()
     if settings:
         return dict(settings)
-    return {"tiktok_username": "@SoyVridel", "base_audio_path": "", "tts_voice": "es-MX-DaliaNeural", "tts_rate": "+0%", "tts_volume": "+0%"}
+    return {"tiktok_username": "@SoyVridel", "base_audio_path": "", "tts_voice": "es-MX-DaliaNeural", "tts_rate": "+0%", "tts_volume": "+0%", "tts_read_username": 1, "tts_delay": 0}
 
 @app.post("/api/settings", dependencies=[Depends(verify_token)])
 def update_settings(settings: Settings):
     conn = database.get_db_connection()
-    conn.execute("UPDATE settings SET tiktok_username = ?, base_audio_path = ?, tts_voice = ?, tts_rate = ?, tts_volume = ?, tts_read_username = ?", 
-                 (settings.tiktok_username, settings.base_audio_path, settings.tts_voice, settings.tts_rate, settings.tts_volume, settings.tts_read_username))
+    conn.execute("UPDATE settings SET tiktok_username = ?, base_audio_path = ?, tts_voice = ?, tts_rate = ?, tts_volume = ?, tts_read_username = ?, tts_delay = ?", 
+                 (settings.tiktok_username, settings.base_audio_path, settings.tts_voice, settings.tts_rate, settings.tts_volume, settings.tts_read_username, settings.tts_delay))
     conn.commit()
     conn.close()
     return {"status": "ok"}
@@ -307,8 +308,8 @@ async def connect_tiktok(req: TikTokConnectRequest):
                 clean_message=clean_msg
             ))
             
-            # Evitar enviar a Edge TTS si es un comando "Eco Voice"
-            if event.comment.lower().strip().startswith("eco voice "):
+            # Evitar enviar a Edge TTS si es un comando "eco"
+            if event.comment.lower().strip().startswith("eco "):
                 print(f"[Comando] {event.user.nickname} solicitó Eco Voice. Delegando a Frontend/Firebase.")
                 return
 
@@ -317,14 +318,16 @@ async def connect_tiktok(req: TikTokConnectRequest):
                 clean_msg = is_valid_and_clean_message(event.comment)
                 if clean_msg:
                     conn = database.get_db_connection()
-                    db_settings = conn.execute("SELECT tts_read_username FROM settings LIMIT 1").fetchone()
+                    db_settings = conn.execute("SELECT tts_read_username, tts_delay FROM settings LIMIT 1").fetchone()
                     conn.close()
                     read_user = db_settings["tts_read_username"] if db_settings else 1
+                    delay = db_settings["tts_delay"] if db_settings and "tts_delay" in db_settings.keys() else 0
                     
                     if read_user == 1:
                         text_to_speak = f"{clean_uname} dice: {clean_msg}"
                     else:
                         text_to_speak = clean_msg
+
                     if tts_required_gift == "All":
                         await tts_queue.put(text_to_speak)
                     else:

@@ -26,6 +26,29 @@ export default function Dashboard() {
       <div className="panel" style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', flexDirection: 'column', width: '100%' }}>
         
           <div className="donador-view">
+            <div style={{ marginBottom: '20px', textAlign: 'center' }}>
+              <div 
+                style={{ 
+                  display: 'inline-block',
+                  padding: '10px 20px',
+                  background: userData?.eco_voice_id ? 'rgba(0,255,204,0.1)' : 'rgba(255,0,60,0.1)', 
+                  border: `1px solid ${userData?.eco_voice_id ? 'var(--neon-green)' : '#ff003c'}`, 
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s',
+                }}
+                onClick={() => navigate('/account')} 
+                title="Ir a Cuenta Talking Cro.ow para configurar tu voz"
+                onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <span style={{ fontSize: '1.5rem', marginRight: '10px', verticalAlign: 'middle' }}>🎙️</span>
+                <span className={userData?.eco_voice_id ? "neon-text-green" : ""} style={{ fontWeight: 'bold', fontSize: '1.1rem', color: userData?.eco_voice_id ? '' : '#ff003c', verticalAlign: 'middle' }}>
+                  {userData?.eco_voice_id ? 'Tu voz está lista para usarse' : 'Necesitas subir tu audio (Ve a Cuenta Talking Cro.ow)'}
+                </span>
+              </div>
+            </div>
+
             <div style={{ display: 'flex', gap: '20px', marginBottom: '30px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '250px', padding: '20px', border: '1px solid var(--neon-green)', borderRadius: '8px', background: 'rgba(0,255,204,0.1)', textAlign: 'center' }}>
                 <h3 style={{ margin: 0, color: 'var(--text-secondary)' }}>Saldo Actual</h3>
