@@ -414,7 +414,7 @@ async def disconnect_tiktok():
 # Integración de TTS y Moderación
 # ---------------------------------------------------------
 
-tts_global_enabled = True
+tts_global_enabled = False
 tts_required_gift = "All"
 tts_allowed_users = set()
 
