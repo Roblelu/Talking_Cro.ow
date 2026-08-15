@@ -170,7 +170,7 @@ class Settings(BaseModel):
     tts_rate: str = "+0%"
     tts_volume: str = "+0%"
     tts_read_username: int = 1
-    tts_delay: int = 0
+    tts_delay: int = 1
 
 @app.get("/api/settings")
 def get_settings():
@@ -179,7 +179,7 @@ def get_settings():
     conn.close()
     if settings:
         return dict(settings)
-    return {"tiktok_username": "@SoyVridel", "base_audio_path": "", "tts_voice": "es-MX-DaliaNeural", "tts_rate": "+0%", "tts_volume": "+0%", "tts_read_username": 1, "tts_delay": 0}
+    return {"tiktok_username": "@SoyVridel", "base_audio_path": "", "tts_voice": "es-MX-DaliaNeural", "tts_rate": "+0%", "tts_volume": "+0%", "tts_read_username": 1, "tts_delay": 1}
 
 @app.post("/api/settings", dependencies=[Depends(verify_token)])
 def update_settings(settings: Settings):
@@ -321,7 +321,7 @@ async def connect_tiktok(req: TikTokConnectRequest):
                     db_settings = conn.execute("SELECT tts_read_username, tts_delay FROM settings LIMIT 1").fetchone()
                     conn.close()
                     read_user = db_settings["tts_read_username"] if db_settings else 1
-                    delay = db_settings["tts_delay"] if db_settings and "tts_delay" in db_settings.keys() else 0
+                    delay = db_settings["tts_delay"] if db_settings and "tts_delay" in db_settings.keys() else 1
                     
                     if read_user == 1:
                         text_to_speak = f"{clean_uname} dice: {clean_msg}"
@@ -414,7 +414,7 @@ async def disconnect_tiktok():
 # Integración de TTS y Moderación
 # ---------------------------------------------------------
 
-tts_global_enabled = False
+tts_global_enabled = True
 tts_required_gift = "All"
 tts_allowed_users = set()
 

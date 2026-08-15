@@ -181,7 +181,7 @@ function App() {
   const [ttsRate, setTtsRate] = useState('+0%');
   const [ttsVolume, setTtsVolume] = useState('+0%');
   const [ttsReadUsername, setTtsReadUsername] = useState(true);
-  const [ttsDelay, setTtsDelay] = useState(0);
+  const [ttsDelay, setTtsDelay] = useState(1);
   const [isTtsSettingsOpen, setIsTtsSettingsOpen] = useState(false);
   const [soundsVolume, setSoundsVolume] = useState('100');
   const [stickersVolume, setStickersVolume] = useState('100');
