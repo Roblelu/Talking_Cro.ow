@@ -44,12 +44,6 @@ const CheckoutForm = ({ streamerName, packageId, packDetails }) => {
       return;
     }
 
-    const SUPER_USERS = ['cnkrxdu@gmail.com', 'roblecro.ow@gmail.com'];
-    if (!SUPER_USERS.includes(currentUser.email)) {
-      setError("Actualmente las compras están deshabilitadas por mantenimiento.");
-      return;
-    }
-
     if (!isCardComplete) {
       setError("Por favor, completa todos los números de tu tarjeta antes de pagar.");
       return;

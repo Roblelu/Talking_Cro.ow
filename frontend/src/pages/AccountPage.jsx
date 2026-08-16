@@ -5,6 +5,19 @@ import { doc, setDoc } from 'firebase/firestore';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import VoiceRecorderModal from '../components/VoiceRecorderModal';
 
+const EyeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--neon-green)' }}>
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+    <circle cx="12" cy="12" r="3"></circle>
+  </svg>
+);
+const EyeOffIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)' }}>
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+    <line x1="1" y1="1" x2="23" y2="23"></line>
+  </svg>
+);
+
 const PasswordInput = ({ label, value, onChange, show, toggleShow }) => (
   <div style={{ marginBottom: '15px' }}>
     <label style={{ display: 'block', marginBottom: '5px', color: 'var(--text-secondary)' }}>{label}</label>
@@ -25,14 +38,16 @@ const PasswordInput = ({ label, value, onChange, show, toggleShow }) => (
           transform: 'translateY(-50%)', 
           background: 'transparent', 
           border: 'none', 
-          color: 'var(--neon-purple)', 
           cursor: 'pointer',
-          fontSize: '1.2rem',
-          outline: 'none'
+          outline: 'none',
+          padding: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
         }}
         title={show ? "Ocultar" : "Mostrar"}
       >
-        {show ? '🙈' : '👁️'}
+        {show ? <EyeIcon /> : <EyeOffIcon />}
       </button>
     </div>
   </div>
@@ -325,16 +340,7 @@ const AccountPage = ({ onBack, profileImage, setProfileImage }) => {
               )}
             </div>
 
-            <div style={{ marginTop: '30px', padding: '15px', background: 'rgba(157, 0, 255, 0.1)', border: '1px dashed var(--neon-purple)', borderRadius: '8px', textAlign: 'left' }}>
-              <h4 style={{ margin: '0 0 10px 0', color: 'var(--neon-purple)' }}>📢 Instrucciones para tu Audiencia</h4>
-              <p style={{ fontSize: '0.85rem', color: '#ddd', margin: '0 0 10px 0' }}>
-                Dile a tu chat de TikTok que usen el comando <strong>Eco</strong> para activar tu voz clonada.
-              </p>
-              <div style={{ background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '1.2rem' }}>💬</span>
-                <code style={{ color: 'var(--neon-green)', fontSize: '0.9rem' }}>Eco hola chat de qué va el directo?</code>
-              </div>
-            </div>
+
           </div>
         </div>
 
@@ -349,6 +355,17 @@ const AccountPage = ({ onBack, profileImage, setProfileImage }) => {
 
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px', marginBottom: '30px' }}>
               <button className="btn-neon" onClick={handleSaveProfile}>Guardar Cambios de Perfil</button>
+            </div>
+
+            <div style={{ marginBottom: '30px', padding: '15px', background: 'rgba(157, 0, 255, 0.1)', border: '1px dashed var(--neon-purple)', borderRadius: '8px', textAlign: 'left' }}>
+              <h4 style={{ margin: '0 0 10px 0', color: 'var(--neon-purple)' }}>📢 Instrucciones para tu Audiencia</h4>
+              <p style={{ fontSize: '0.85rem', color: '#ddd', margin: '0 0 10px 0' }}>
+                Dile a tu chat de TikTok que usen el comando <strong>Eco</strong> para activar tu voz clonada.
+              </p>
+              <div style={{ background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '1.2rem' }}>💬</span>
+                <code style={{ color: 'var(--neon-green)', fontSize: '0.9rem' }}>Eco hola chat de qué va el directo?</code>
+              </div>
             </div>
 
             {/* Acordeón de Contraseña */}

@@ -9,11 +9,6 @@ const SubscriptionPage = ({ onBack }) => {
 
   const handleSubscribe = async () => {
     if (!currentUser) return;
-    const SUPER_USERS = ['cnkrxdu@gmail.com', 'roblecro.ow@gmail.com'];
-    if (!SUPER_USERS.includes(currentUser.email)) {
-      alert("Actualmente las suscripciones están deshabilitadas por mantenimiento.");
-      return;
-    }
     
     setLoading(true);
     try {
@@ -64,13 +59,6 @@ const SubscriptionPage = ({ onBack }) => {
               {loading ? "Cargando..." : "Mejorar a Pro"}
             </button>
           </div>
-        </div>
-
-        {/* Métodos de Pago */}
-        <h3 className="neon-text-purple" style={{ marginBottom: '15px' }}>Métodos de Pago</h3>
-        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '20px', borderRadius: '8px', border: '1px solid rgba(157, 0, 255, 0.2)', marginBottom: '40px' }}>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>No tienes métodos de pago guardados.</p>
-          <button className="btn-neon">Agregar Tarjeta</button>
         </div>
 
         {/* Historial de Pagos */}

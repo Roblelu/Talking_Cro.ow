@@ -8,10 +8,26 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [timer, setTimer] = useState(0);
   const [audioBlob, setAudioBlob] = useState(null);
+  const [inputDevices, setInputDevices] = useState([]);
+  const [selectedInputDevice, setSelectedInputDevice] = useState('default');
   
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerIntervalRef = useRef(null);
+
+  useEffect(() => {
+    const fetchDevices = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputs = devices.filter(device => device.kind === 'audioinput');
+        setInputDevices(audioInputs);
+      } catch (err) {
+        console.error("Error enumerating input devices:", err);
+      }
+    };
+    fetchDevices();
+    navigator.mediaDevices.ondevicechange = fetchDevices;
+  }, []);
 
   useEffect(() => {
     if (isRecording) {
@@ -26,7 +42,10 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioConstraint = selectedInputDevice !== 'default' 
+          ? { deviceId: { exact: selectedInputDevice } } 
+          : true;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraint });
       mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       
       mediaRecorderRef.current.ondataavailable = (event) => {
@@ -131,7 +150,23 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
           borderLeft: '4px solid var(--neon-green)', margin: '20px 0',
           fontStyle: 'italic', color: '#ddd'
         }}>
-          "En un agujero en el suelo, vivía un hobbit. No un agujero húmedo, sucio, repugnante, con restos de gusanos y olor a fango, ni tampoco un agujero seco, desnudo y arenoso, sin nada en que sentarse o que comer: era un agujero-hobbit, y eso significa comodidad."
+          "Hoy estaremos grabando este mensaje de audio para probar cómo suena mi voz. Me gusta mucho escuchar música, tomar café por las mañanas y salir a caminar cuando hace buen clima. A veces hablo un poco rápido, pero trataré de hacerlo despacio para que el sistema funcione de manera perfecta. Espero que el resultado final sea increíble y que todos pasemos un gran rato juntos."
+        </div>
+
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '5px', fontSize: '0.85rem' }}>Micrófono de entrada</label>
+          <select 
+            className="input-neon" 
+            value={selectedInputDevice} 
+            onChange={e => setSelectedInputDevice(e.target.value)}
+            disabled={isRecording}
+            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+          >
+            <option value="default">Por Defecto del Sistema</option>
+            {inputDevices.map(device => (
+              <option key={device.deviceId} value={device.deviceId}>{device.label || `Micrófono ${device.deviceId}`}</option>
+            ))}
+          </select>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0' }}>

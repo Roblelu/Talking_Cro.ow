@@ -52,6 +52,7 @@ exports.createPaymentIntent = onCall(async (request) => {
         const intent = await stripe.paymentIntents.create({
             amount: amountInCents,
             currency: "mxn",
+            payment_method_types: ['card'],
             metadata: { 
                 donador_uid: uid,
                 croins: pack.croins,

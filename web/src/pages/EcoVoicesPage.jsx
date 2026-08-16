@@ -174,8 +174,6 @@ const EcoVoicesPage = () => {
             <button className="btn-neon btn-neon-orange" style={{ width: '100%' }} onClick={() => handleBuyClick('pack_8')}>Comprar</button>
           </div>
         </div>
-
-        </div>
       </div>
     </div>
   );

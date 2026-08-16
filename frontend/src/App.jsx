@@ -153,7 +153,7 @@ function App() {
   const { currentUser, userData } = useAuth();
   const [gifts, setGifts] = useState([]);
   
-  const isMissingFields = currentUser && (!userData?.email || !userData?.phone || !userData?.tiktok);
+  const isMissingFields = currentUser && (!userData?.username || !userData?.email || !userData?.tiktok);
   
   // TC: Asignar créditos gratuitos de manera segura (Backend)
   useEffect(() => {
@@ -428,13 +428,13 @@ function App() {
   const [donators, setDonators] = useState([]);
   
   const [sounds, setSounds] = useState([
-    { icon: '💥', name: 'Bombo', url: '/sounds/boom.wav' }, 
+    { icon: '🐦‍⬛', name: 'Cuervo', url: '/sounds/cuervo.wav' }, 
     { icon: '👏', name: 'Aplausos', url: '/sounds/aplausos.wav' }, 
-    { icon: '😙', name: 'Silbato', url: '/sounds/tambores.wav' },
-    { icon: '💿', name: 'Platillo', url: '/sounds/grillos.wav' }, 
-    { icon: '😂', name: 'Risas', url: '/sounds/trompeta.wav' }, 
-    { icon: '🥁', name: 'Tarola', url: '/sounds/grito.wav' },
-    { icon: '🪄', name: 'Magia', url: '/sounds/magia.wav' }
+    { icon: '😂', name: 'Risas', url: '/sounds/trompeta.wav' },
+    { icon: '🦗', name: 'Grillos', url: '/sounds/grillos.wav' }, 
+    { icon: '😲', name: 'Wow!', url: '/sounds/wow.wav' }, 
+    { icon: '🎺', name: 'Womp Womp', url: '/sounds/womp.wav' },
+    { icon: '🎉', name: 'Ta-Da!', url: '/sounds/tada.wav' }
   ]);
   const [stickers, setStickers] = useState([
     { icon: '❤️', name: 'Corazón', url: '/stickers/corazon.jpg' }, 
@@ -487,18 +487,24 @@ function App() {
   };
 
   const handleTriggerSticker = (item) => {
-    // Optionally play sticker sound locally if we had one, but we just trigger the visual for now
-    // And broadcast to other tabs (e.g. #main in OBS)
+    if (item.audioUrl) {
+       const snd = new Audio(item.audioUrl);
+       snd.volume = Math.max(0, Math.min(1, parseFloat(soundsVolume) / 100));
+       if (snd.setSinkId && selectedAudioDeviceSounds !== 'default') {
+           snd.setSinkId(selectedAudioDeviceSounds).catch(err => console.error("setSinkId error (stickers):", err));
+       }
+       snd.play().catch(e => console.error("Error al reproducir audio de sticker:", e));
+    }
     if (item.url && broadcastRef.current) {
         broadcastRef.current.postMessage({ type: 'SHOW_STICKER', url: item.url, name: item.name, id: Date.now() });
     }
   };
 
-
   const [activeModal, setActiveModal] = useState(null);
   const [itemsToDelete, setItemsToDelete] = useState([]);
   const [newItemName, setNewItemName] = useState('');
   const [newItemFile, setNewItemFile] = useState(null);
+  const [newStickerAudioFile, setNewStickerAudioFile] = useState(null);
   const [dmUrl, setDmUrl] = useState('');
   const [toastMessage, setToastMessage] = useState(null);
 
@@ -1000,16 +1006,6 @@ function App() {
 
       {activeView === 'main' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '30px', alignItems: 'stretch', flex: 1, minHeight: 0, paddingBottom: '10px' }}>
-          {activeSticker && hashRoute !== '#sounds' && hashRoute !== '#stickers' && (
-            <div key={activeSticker.id} style={{
-               position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-               zIndex: 9999, animation: 'popIn 0.5s ease-out, fadeOut 0.5s ease-in 2.5s forwards',
-               pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center'
-            }}>
-               <img src={activeSticker.url} alt={activeSticker.name} style={{ width: '200px', height: '200px', objectFit: 'contain', filter: 'drop-shadow(0 0 20px var(--neon-purple))' }} />
-               <h2 className="neon-text-purple" style={{ textShadow: '0 0 10px #000, 0 0 20px var(--neon-purple)' }}>{activeSticker.name}</h2>
-            </div>
-          )}
         
         {/* Columna 1: Configuración de Regalos */}
         <section className="panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', minHeight: 0 }}>
@@ -1716,6 +1712,9 @@ function App() {
             <h2 className="neon-text-purple" style={{ textAlign: 'center', margin: '0 0 10px 0' }}>
                Efectos de Sonido
             </h2>
+            <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '15px' }}>
+              💡 <b>En OBS:</b> Asegúrate de capturar el dispositivo de salida que elijas aquí (ej. Audio de Escritorio o Cable Virtual).
+            </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '15px' }}>
                <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Volumen Maestro</label>
                <div className="obs-fader-container">
@@ -1763,6 +1762,11 @@ function App() {
             <h2 className="neon-text-purple" style={{ textAlign: 'center', margin: '0 0 10px 0' }}>
                Stickers
             </h2>
+            <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '15px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '5px' }}>
+              💡 <b>En OBS:</b> Agrega una <i>Fuente de Navegador</i> apuntando a:<br/>
+              <code style={{ color: 'var(--neon-cyan)', userSelect: 'all' }}>http://localhost:5173/#stickers</code><br/>
+              Asegúrate de marcar <b>"Permitir transparencia"</b>.
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '15px' }}>
                <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Volumen Maestro</label>
                <div className="obs-fader-container">
@@ -1890,7 +1894,7 @@ function App() {
                   <label style={{ color: 'var(--text-secondary)' }}>Archivo ({activeModal === 'sound' ? 'Audio .mp3, .wav' : 'Imagen .png, .gif'})</label>
                   <input 
                     type="file" 
-                    accept={activeModal === 'sound' ? 'audio/*' : 'image/png, image/gif'}
+                    accept={activeModal === 'sound' ? 'audio/*' : 'image/*'}
                     onChange={e => setNewItemFile(e.target.files[0])}
                     style={{
                       background: 'var(--panel-bg)',
@@ -1902,6 +1906,24 @@ function App() {
                     }}
                   />
                 </div>
+                {activeModal === 'sticker' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '10px' }}>
+                    <label style={{ color: 'var(--text-secondary)' }}>Audio de Acompañamiento (Opcional .mp3, .wav)</label>
+                    <input 
+                      type="file" 
+                      accept="audio/*"
+                      onChange={e => setNewStickerAudioFile(e.target.files[0])}
+                      style={{
+                        background: 'var(--panel-bg)',
+                        color: 'white',
+                        padding: '10px',
+                        border: '1px solid rgba(157, 0, 255, 0.3)',
+                        borderRadius: '6px',
+                        cursor: 'pointer'
+                      }}
+                    />
+                  </div>
+                )}
               </>
             )}
 
@@ -1934,16 +1956,19 @@ function App() {
                  <button 
                    className="btn-neon btn-neon-orange"
                    onClick={() => {
-                     if (newItemName.trim()) {
+                     if (newItemName.trim() && newItemFile) {
+                       const objectUrl = URL.createObjectURL(newItemFile);
                        if (activeModal === 'sound') {
-                         setSounds([...sounds, { icon: '🎵', name: newItemName }]);
+                         setSounds([...sounds, { icon: '🎵', name: newItemName, url: objectUrl }]);
                        } else if (activeModal === 'sticker') {
-                         setStickers([...stickers, { icon: '🖼️', name: newItemName }]);
+                         const stickerAudioUrl = newStickerAudioFile ? URL.createObjectURL(newStickerAudioFile) : null;
+                         setStickers([...stickers, { icon: '🖼️', name: newItemName, url: objectUrl, audioUrl: stickerAudioUrl }]);
                        }
                      }
                      setActiveModal(null);
                      setNewItemName('');
                      setNewItemFile(null);
+                     setNewStickerAudioFile(null);
                    }}
                  >
                    Guardar
