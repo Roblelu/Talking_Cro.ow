@@ -61,9 +61,9 @@ const exampleScripts = [
   }
 ];
 
-const AudioPlayItem = ({ audio, isFirst, handlePlayAudio, handleRejectAudio, delaySeconds = 1 }) => {
+const AudioPlayItem = ({ audio, isFirst, inQueue, handlePlayAudio, handleRejectAudio, delaySeconds = 1 }) => {
   const [progress, setProgress] = useState(0);
-  const [hasActed, setHasActed] = useState(false);
+  const [actionTaken, setActionTaken] = useState('none'); // 'none', 'play', 'reject'
 
   const audioQueueRef = useRef([]);
 
@@ -83,10 +83,10 @@ const AudioPlayItem = ({ audio, isFirst, handlePlayAudio, handleRejectAudio, del
     const DURATION = delaySeconds * 1000;
 
     const animate = () => {
-      if (hasActed) return;
+      if (actionTaken !== 'none') return;
       if (DURATION === 0) {
         setProgress(100);
-        setHasActed(true);
+        setActionTaken('play');
         handlePlayRef.current(audio.id, audio.audio_url);
         return;
       }
@@ -94,7 +94,7 @@ const AudioPlayItem = ({ audio, isFirst, handlePlayAudio, handleRejectAudio, del
       const elapsed = now - startTime;
       if (elapsed >= DURATION) {
         setProgress(100);
-        setHasActed(true);
+        setActionTaken('play');
         handlePlayRef.current(audio.id, audio.audio_url);
       } else {
         setProgress((elapsed / DURATION) * 100);
@@ -103,7 +103,9 @@ const AudioPlayItem = ({ audio, isFirst, handlePlayAudio, handleRejectAudio, del
     };
     animationFrame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrame);
-  }, [audio.id, audio.audio_url, isFirst, hasActed]);
+  }, [audio.id, audio.audio_url, isFirst, actionTaken]);
+
+  const hasActed = actionTaken !== 'none';
 
   return (
     <div style={{ marginBottom: '15px', padding: '12px', borderLeft: `4px solid ${themeColor}`, background: themeBg, borderRadius: '0 8px 8px 0', animation: 'fadeIn 0.3s ease-out' }}>
@@ -129,17 +131,17 @@ const AudioPlayItem = ({ audio, isFirst, handlePlayAudio, handleRejectAudio, del
              opacity: hasActed ? 0.7 : 1,
              cursor: hasActed ? 'default' : 'pointer'
            }} 
-           onClick={() => { setHasActed(true); handlePlayRef.current(audio.id, audio.audio_url); }}
+           onClick={() => { setActionTaken('play'); handlePlayRef.current(audio.id, audio.audio_url); }}
          >
-           {hasActed ? '🔊 Reproduciendo...' : '▶ Reproducir'}
+           {actionTaken === 'play' ? (inQueue ? '🔊 Reproduciendo...' : '✅ Reproducido') : '▶ Reproducir'}
          </button>
          <button 
            className="btn-neon btn-neon-red" 
            disabled={hasActed}
            style={{ flex: 1, padding: '5px', fontSize: '0.85rem', opacity: hasActed ? 0.5 : 1, cursor: hasActed ? 'default' : 'pointer' }} 
-           onClick={() => { setHasActed(true); handleRejectAudio(audio.id); }}
+           onClick={() => { setActionTaken('reject'); handleRejectAudio(audio.id); }}
          >
-           ✖ Rechazar
+           {actionTaken === 'reject' ? '✖ Rechazado' : '✖ Rechazar'}
          </button>
       </div>
     </div>
@@ -844,13 +846,11 @@ function App() {
   };
 
   const handleRejectAudio = (id) => {
-    showConfirm("Aviso", "¿Seguro que quieres descartar este audio prioritario?", () => {
-       const audioData = audioQueue.find(a => a.id === id);
-       if (audioData && audioData.audio_id) {
-          fetch(`http://127.0.0.1:8763/api/audio/${audioData.audio_id}`, { method: 'DELETE' }).catch(e=>console.log(e));
-       }
-       setAudioQueue(prev => prev.filter(a => a.id !== id));
-    });
+    const audioData = audioQueue.find(a => a.id === id);
+    if (audioData && audioData.audio_id) {
+      fetch(`http://127.0.0.1:8763/api/audio/${audioData.audio_id}`, { method: 'DELETE' }).catch(e=>console.log(e));
+    }
+    setAudioQueue(prev => prev.filter(a => a.id !== id));
   };
 
   const handleGenerateLink = async (username) => {
@@ -949,45 +949,49 @@ function App() {
             <button className="btn-neon" style={{ padding: '8px 15px' }} onClick={() => setActiveView('login')}>Iniciar Sesión</button>
           )}
 
-          <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-            <img src={profileImage} alt="Menú de Usuario" className="avatar-placeholder" title="Menú de Usuario" style={{ objectFit: 'cover' }} />
-            <button className="settings-gear-btn" title="Ajustes" style={{ pointerEvents: 'none' }}>
-              ⚙️
-              {isMissingFields && <span style={{ position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
-            </button>
-          </div>
-          
-          {isDropdownOpen && (
-            <div className="user-dropdown-menu">
-               <ul>
-                 <li 
-                   onClick={() => { setActiveView('account'); setIsDropdownOpen(false); }}
-                   style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(157, 0, 255, 0.3)', paddingBottom: '12px', marginBottom: '8px', color: '#00f0ff', fontWeight: 'bold' }}
-                 >
-                   <img src={profileImage} alt="Perfil" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--neon-purple)' }} />
-                   <div style={{ display: 'flex', justifyContent: 'space-between', flex: 1, alignItems: 'center' }}>
-                     <span>Cuenta Talking Cro.ow</span>
-                     {isMissingFields && <span style={{ width: '8px', height: '8px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
-                   </div>
-                 </li>
-                 <li onClick={() => { setActiveView('subscription'); setIsDropdownOpen(false); }}>Suscripción y Pagos</li>
-                 <li onClick={() => { setActiveView('support'); setIsDropdownOpen(false); }}>Contacto y soporte</li>
-                 <li onClick={() => { setActiveView('port'); setIsDropdownOpen(false); }}>Configuración de Puerto</li>
-                 <li onClick={() => { setActiveView('terms'); setIsDropdownOpen(false); }}>Términos y Condiciones</li>
-                 <li 
-                   style={{ color: '#ff6600', textAlign: 'center', borderTop: '1px solid rgba(255,102,0,0.3)', paddingTop: '12px', marginTop: '8px', fontWeight: 'bold' }} 
-                   onClick={async () => { await signOut(auth); setIsDropdownOpen(false); setActiveView('main'); }}
-                 >
-                   Cerrar Sesión
-                 </li>
-                 <li 
-                   style={{ color: '#ff003c', textAlign: 'center', borderTop: '1px solid rgba(255,0,60,0.3)', paddingTop: '12px', marginTop: '8px', fontWeight: 'bold', textShadow: '0 0 5px rgba(255,0,60,0.5)' }} 
-                   onClick={handleShutdown}
-                 >
-                   Apagar Sistema
-                 </li>
-               </ul>
-            </div>
+          {currentUser && (
+            <>
+              <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
+                <img src={profileImage} alt="Menú de Usuario" className="avatar-placeholder" title="Menú de Usuario" style={{ objectFit: 'cover' }} />
+                <button className="settings-gear-btn" title="Ajustes" style={{ pointerEvents: 'none' }}>
+                  ⚙️
+                  {isMissingFields && <span style={{ position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
+                </button>
+              </div>
+              
+              {isDropdownOpen && (
+                <div className="user-dropdown-menu">
+                   <ul>
+                     <li 
+                       onClick={() => { setActiveView('account'); setIsDropdownOpen(false); }}
+                       style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(157, 0, 255, 0.3)', paddingBottom: '12px', marginBottom: '8px', color: '#00f0ff', fontWeight: 'bold' }}
+                     >
+                       <img src={profileImage} alt="Perfil" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--neon-purple)' }} />
+                       <div style={{ display: 'flex', justifyContent: 'space-between', flex: 1, alignItems: 'center' }}>
+                         <span>Cuenta Talking Cro.ow</span>
+                         {isMissingFields && <span style={{ width: '8px', height: '8px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
+                       </div>
+                     </li>
+                     <li onClick={() => { setActiveView('subscription'); setIsDropdownOpen(false); }}>Suscripción y Pagos</li>
+                     <li onClick={() => { setActiveView('support'); setIsDropdownOpen(false); }}>Contacto y soporte</li>
+                     <li onClick={() => { setActiveView('port'); setIsDropdownOpen(false); }}>Configuración de Puerto</li>
+                     <li onClick={() => { setActiveView('terms'); setIsDropdownOpen(false); }}>Términos y Condiciones</li>
+                     <li 
+                       style={{ color: '#ff6600', textAlign: 'center', borderTop: '1px solid rgba(255,102,0,0.3)', paddingTop: '12px', marginTop: '8px', fontWeight: 'bold' }} 
+                       onClick={async () => { await signOut(auth); setIsDropdownOpen(false); setActiveView('main'); }}
+                     >
+                       Cerrar Sesión
+                     </li>
+                     <li 
+                       style={{ color: '#ff003c', textAlign: 'center', borderTop: '1px solid rgba(255,0,60,0.3)', paddingTop: '12px', marginTop: '8px', fontWeight: 'bold', textShadow: '0 0 5px rgba(255,0,60,0.5)' }} 
+                       onClick={handleShutdown}
+                     >
+                       Apagar Sistema
+                     </li>
+                   </ul>
+                </div>
+              )}
+            </>
           )}
         </div>
       </header>
@@ -1205,6 +1209,7 @@ function App() {
                     key={evt.id || idx} 
                     audio={evt} 
                     isFirst={audioQueue.length > 0 && audioQueue[0].id === evt.id} 
+                    inQueue={audioQueue.some(a => a.id === evt.id)}
                     handlePlayAudio={handlePlayAudio} 
                     handleRejectAudio={handleRejectAudio} 
                     delaySeconds={ttsDelay}
