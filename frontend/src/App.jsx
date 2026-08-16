@@ -16,6 +16,7 @@ import { useAuth } from './context/AuthContext';
 import { auth, db, functions } from './firebase';
 import { signOut } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
+import NeonSelect from './components/NeonSelect';
 
 // Modal Component
 const Modal = ({ isOpen, title, message, type, onConfirm, onCancel, confirmText = 'Aceptar' }) => {
@@ -1670,22 +1671,18 @@ function App() {
                    </div>
                    <div style={{ marginTop: '10px' }}>
                      <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Salida de Audio TTS</label>
-                     <select
-                       className="input-neon"
+                     <NeonSelect
+                       options={[
+                         { value: 'default', label: 'Por Defecto del Sistema' },
+                         ...audioDevices.map(device => ({ value: device.deviceId, label: device.label || `Device ${device.deviceId}` }))
+                       ]}
                        value={selectedAudioDeviceTTS}
-                       onChange={(e) => {
-                         setSelectedAudioDeviceTTS(e.target.value);
-                         localStorage.setItem('selectedAudioDeviceTTS', e.target.value);
+                       onChange={(val) => {
+                         setSelectedAudioDeviceTTS(val);
+                         localStorage.setItem('selectedAudioDeviceTTS', val);
                        }}
-                       style={{ padding: '8px', fontSize: '0.85rem', width: '100%', height: '35px', boxSizing: 'border-box' }}
-                     >
-                       <option value="default">Por Defecto del Sistema</option>
-                       {audioDevices.map(device => (
-                         <option key={device.deviceId} value={device.deviceId}>
-                           {device.label || `Device ${device.deviceId}`}
-                         </option>
-                       ))}
-                     </select>
+                       color="purple"
+                     />
                    </div>
                 </div>
              </section>
@@ -1725,22 +1722,18 @@ function App() {
                </div>
                <div style={{ marginTop: '15px' }}>
                  <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Salida de Audio Efectos de Sonido</label>
-                 <select
-                   className="input-neon"
+                 <NeonSelect
+                   options={[
+                     { value: 'default', label: 'Por Defecto del Sistema' },
+                     ...audioDevices.map(device => ({ value: device.deviceId, label: device.label || `Device ${device.deviceId}` }))
+                   ]}
                    value={selectedAudioDeviceSounds}
-                   onChange={(e) => {
-                     setSelectedAudioDeviceSounds(e.target.value);
-                     localStorage.setItem('selectedAudioDeviceSounds', e.target.value);
+                   onChange={(val) => {
+                     setSelectedAudioDeviceSounds(val);
+                     localStorage.setItem('selectedAudioDeviceSounds', val);
                    }}
-                   style={{ padding: '8px', fontSize: '0.85rem', width: '100%', height: '35px', boxSizing: 'border-box' }}
-                 >
-                   <option value="default">Por Defecto del Sistema</option>
-                   {audioDevices.map(device => (
-                     <option key={device.deviceId} value={device.deviceId}>
-                       {device.label || `Device ${device.deviceId}`}
-                     </option>
-                   ))}
-                 </select>
+                   color="purple"
+                 />
                </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gridAutoRows: '35px', gap: '10px', paddingBottom: '5px' }}>
@@ -1777,22 +1770,18 @@ function App() {
                </div>
                <div style={{ marginTop: '15px' }}>
                  <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Salida de Audio Stickers</label>
-                 <select
-                   className="input-neon"
+                 <NeonSelect
+                   options={[
+                     { value: 'default', label: 'Por Defecto del Sistema' },
+                     ...audioDevices.map(device => ({ value: device.deviceId, label: device.label || `Device ${device.deviceId}` }))
+                   ]}
                    value={selectedAudioDeviceStickers}
-                   onChange={(e) => {
-                     setSelectedAudioDeviceStickers(e.target.value);
-                     localStorage.setItem('selectedAudioDeviceStickers', e.target.value);
+                   onChange={(val) => {
+                     setSelectedAudioDeviceStickers(val);
+                     localStorage.setItem('selectedAudioDeviceStickers', val);
                    }}
-                   style={{ padding: '8px', fontSize: '0.85rem', width: '100%', height: '35px', boxSizing: 'border-box' }}
-                 >
-                   <option value="default">Por Defecto del Sistema</option>
-                   {audioDevices.map(device => (
-                     <option key={device.deviceId} value={device.deviceId}>
-                       {device.label || `Device ${device.deviceId}`}
-                     </option>
-                   ))}
-                 </select>
+                   color="purple"
+                 />
                </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gridAutoRows: '35px', gap: '10px', paddingBottom: '5px' }}>

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../firebase';
+import NeonSelect from './NeonSelect';
 
 const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
   const [isRecording, setIsRecording] = useState(false);
@@ -155,18 +156,16 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
 
         <div style={{ marginBottom: '15px' }}>
           <label style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '5px', fontSize: '0.85rem' }}>Micrófono de entrada</label>
-          <select 
-            className="input-neon" 
+          <NeonSelect 
+            options={[
+              { value: 'default', label: 'Por Defecto del Sistema' },
+              ...inputDevices.map(device => ({ value: device.deviceId, label: device.label || `Micrófono ${device.deviceId}` }))
+            ]}
             value={selectedInputDevice} 
-            onChange={e => setSelectedInputDevice(e.target.value)}
+            onChange={(val) => setSelectedInputDevice(val)}
             disabled={isRecording}
-            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-          >
-            <option value="default">Por Defecto del Sistema</option>
-            {inputDevices.map(device => (
-              <option key={device.deviceId} value={device.deviceId}>{device.label || `Micrófono ${device.deviceId}`}</option>
-            ))}
-          </select>
+            color="purple"
+          />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0' }}>

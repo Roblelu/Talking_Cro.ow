@@ -137,6 +137,18 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
 }
 
+.btn-neon-purple {
+  background: rgba(157, 0, 255, 0.03);
+  color: var(--neon-purple);
+  border-color: rgba(157, 0, 255, 0.4);
+}
+
+.btn-neon-purple:hover {
+  background: rgba(157, 0, 255, 0.1);
+  border-color: var(--neon-purple);
+  box-shadow: 0 0 12px rgba(157, 0, 255, 0.3);
+}
+
 /* Inputs y Selects */
 input[type=number]::-webkit-inner-spin-button, 
 input[type=number]::-webkit-outer-spin-button { 
@@ -268,6 +280,7 @@ input[type="file"]::file-selector-button:hover {
 .accordion-content.open {
   max-height: 1000px;
   opacity: 1;
+  overflow: visible !important;
   /* Al abrir: Se expande la altura (0.4s), y casi al terminar (delay 0.3s), hace fade in (0.3s) */
   transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease 0.3s;
 }
