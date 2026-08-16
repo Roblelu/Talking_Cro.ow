@@ -18,7 +18,7 @@ from TikTokLive import TikTokLiveClient
 from TikTokLive.events import ConnectEvent, CommentEvent, GiftEvent, DisconnectEvent
 from TikTokLive.client.web.web_settings import WebDefaults
 
-# WebDefaults setting for Euler Stream API (Se inicializa dinámicamente)
+# WebDefaults setting para API (Se inicializa dinámicamente)
 WebDefaults.sign_api_key = ""
 
 import database
@@ -108,7 +108,7 @@ async def tts_worker_loop():
             if tts_queue is None:
                 await asyncio.sleep(1)
                 continue
-            text_to_speak = await tts_queue.get()
+            username, text_to_speak = await tts_queue.get()
             # Extraer configuración actual de voz
             conn = database.get_db_connection()
             db_settings = conn.execute("SELECT tts_voice, tts_rate, tts_volume FROM settings LIMIT 1").fetchone()
@@ -121,7 +121,7 @@ async def tts_worker_loop():
             filename = await tts_engine.tts_engine.generate_file(text_to_speak, voice=voice, rate=rate, volume=volume)
             await broadcast_event(LiveEvent(
                 type="priority_audio",
-                username="XTTS Local",
+                username=username,
                 message=text_to_speak,
                 audio_url=f"http://127.0.0.1:8763/api/audio/{filename}",
                 audio_id=filename
@@ -308,7 +308,7 @@ async def connect_tiktok(req: TikTokConnectRequest):
                 clean_message=clean_msg
             ))
             
-            # Evitar enviar a Edge TTS si es un comando "eco"
+            # Evitar enviar a TTS Base si es un comando "eco"
             if event.comment.lower().strip().startswith("eco "):
                 print(f"[Comando] {event.user.nickname} solicitó Eco Voice. Delegando a Frontend/Firebase.")
                 return
@@ -329,10 +329,10 @@ async def connect_tiktok(req: TikTokConnectRequest):
                         text_to_speak = clean_msg
 
                     if tts_required_gift == "All":
-                        await tts_queue.put(text_to_speak)
+                        await tts_queue.put((event.user.nickname, text_to_speak))
                     else:
                         if event.user.nickname in tts_allowed_users:
-                            await tts_queue.put(text_to_speak)
+                            await tts_queue.put((event.user.nickname, text_to_speak))
                             tts_allowed_users.discard(event.user.nickname)
                 else:
                     print(f"[Filtro] Mensaje silenciado (Basura/Profanidad): {event.comment}")
@@ -515,7 +515,7 @@ async def approve_text(token: str):
         text_to_speak = f"{donation['username']} dice: {donation['comment']}"
         global tts_queue
         if tts_queue is not None:
-            asyncio.create_task(tts_queue.put(text_to_speak))
+            asyncio.create_task(tts_queue.put((donation['username'], text_to_speak)))
         
         return {"status": "ok", "message": "Enviado a síntesis"}
     return {"status": "error", "message": "No encontrado"}

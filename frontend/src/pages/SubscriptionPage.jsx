@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
 import { functions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
+import { useAuth } from '../context/AuthContext';
 
 const SubscriptionPage = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
+  const { currentUser } = useAuth();
 
   const handleSubscribe = async () => {
+    if (!currentUser) return;
+    const SUPER_USERS = ['cnkrxdu@gmail.com', 'roblecro.ow@gmail.com'];
+    if (!SUPER_USERS.includes(currentUser.email)) {
+      alert("Actualmente las suscripciones están deshabilitadas por mantenimiento.");
+      return;
+    }
+    
     setLoading(true);
     try {
       const createCheckout = httpsCallable(functions, 'createSubscriptionCheckout');
@@ -43,13 +52,13 @@ const SubscriptionPage = ({ onBack }) => {
         <div style={{ display: 'flex', gap: '20px', marginBottom: '40px' }}>
           <div className="panel" style={{ flex: 1, border: '1px solid var(--text-secondary)' }}>
             <h4 style={{ color: 'var(--text-primary)', marginBottom: '10px' }}>Plan Gratuito</h4>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>35 créditos iniciales de prueba (sin recarga mensual). Acceso básico a regalos y reacciones.</p>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>35 créditos iniciales de prueba. Acceso básico a regalos y reacciones.</p>
             <h2 style={{ marginBottom: '15px' }}>$0 <span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>/ mes</span></h2>
             <button className="btn-neon" style={{ width: '100%', borderColor: 'var(--text-secondary)', color: 'var(--text-secondary)' }} disabled>Plan Actual</button>
           </div>
           <div className="panel" style={{ flex: 1, border: '1px solid var(--neon-orange)', boxShadow: '0 0 15px rgba(255,117,24,0.1)' }}>
             <h4 className="neon-text-orange" style={{ marginBottom: '10px' }}>Plan Pro</h4>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>Incluye 1000 créditos mensuales para respuestas de IA personalizadas.</p>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>Incluye 1000 créditos mensuales para convertir los comentarios de texto a voz.</p>
             <h2 className="neon-text-orange" style={{ marginBottom: '15px' }}>$150 <span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>MXN / mes</span></h2>
             <button className="btn-neon btn-neon-orange" style={{ width: '100%' }} onClick={handleSubscribe} disabled={loading}>
               {loading ? "Cargando..." : "Mejorar a Pro"}

@@ -107,10 +107,10 @@ const AudioPlayItem = ({ audio, isFirst, handlePlayAudio, handleRejectAudio, del
   return (
     <div style={{ marginBottom: '15px', padding: '12px', borderLeft: `4px solid ${themeColor}`, background: themeBg, borderRadius: '0 8px 8px 0', animation: 'fadeIn 0.3s ease-out' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-         <strong style={{ color: themeColor, textShadow: `0 0 5px ${themeColor}` }}>{audio.username} {audio.isEcoVoice ? '(Eco Voice)' : '(TTS)'}</strong>
+         <strong style={{ color: themeColor, textShadow: `0 0 5px ${themeColor}` }}>{audio.username} {audio.isEcoVoice ? 'Eco Voice' : 'Texto a Voz Local'}</strong>
          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{audio.timestamp.toLocaleTimeString()}</div>
       </div>
-      <div style={{ margin: '8px 0', color: 'var(--text-primary)', fontStyle: 'italic' }}>"{audio.message}"</div>
+      <div style={{ margin: '8px 0', color: 'var(--text-primary)', fontStyle: 'italic' }}>"{audio.message.replace(/\[.*?\]/g, '')}"</div>
       
       <div style={{ display: 'flex', gap: '10px' }}>
          <button 
@@ -414,20 +414,36 @@ function App() {
   const [isTtsLiveEnabled, setIsTtsLiveEnabled] = useState(false);
   const [ttsRequiredGift, setTtsRequiredGift] = useState('All');
   const [isTtsGiftDropdownOpen, setIsTtsGiftDropdownOpen] = useState(false);
+  const [isTtsDelayDropdownOpen, setIsTtsDelayDropdownOpen] = useState(false);
   const [audioQueue, setAudioQueue] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isAutoScroll, setIsAutoScroll] = useState(true);
+  const chatContainerRef = useRef(null);
+
+  const [audioDevices, setAudioDevices] = useState([]);
+  const [selectedAudioDeviceSounds, setSelectedAudioDeviceSounds] = useState(localStorage.getItem('selectedAudioDeviceSounds') || 'default');
+  const [selectedAudioDeviceStickers, setSelectedAudioDeviceStickers] = useState(localStorage.getItem('selectedAudioDeviceStickers') || 'default');
+  const [selectedAudioDeviceTTS, setSelectedAudioDeviceTTS] = useState(localStorage.getItem('selectedAudioDeviceTTS') || 'default');
 
   const [donators, setDonators] = useState([]);
   
   const [sounds, setSounds] = useState([
-    { icon: '💥', name: 'Boom' }, { icon: '👏', name: 'Aplausos' }, { icon: '🥁', name: 'Redoble' },
-    { icon: '🦗', name: 'Grillos' }, { icon: '🎺', name: 'Trompeta' }, { icon: '👻', name: 'Grito' },
-    { icon: '🪄', name: 'Magia' }
+    { icon: '💥', name: 'Bombo', url: '/sounds/boom.wav' }, 
+    { icon: '👏', name: 'Aplausos', url: '/sounds/aplausos.wav' }, 
+    { icon: '😙', name: 'Silbato', url: '/sounds/tambores.wav' },
+    { icon: '💿', name: 'Platillo', url: '/sounds/grillos.wav' }, 
+    { icon: '😂', name: 'Risas', url: '/sounds/trompeta.wav' }, 
+    { icon: '🥁', name: 'Tarola', url: '/sounds/grito.wav' },
+    { icon: '🪄', name: 'Magia', url: '/sounds/magia.wav' }
   ]);
   const [stickers, setStickers] = useState([
-    { icon: '✨', name: 'Brillo' }, { icon: '🤡', name: 'Payaso' }, { icon: '💀', name: 'Calavera' },
-    { icon: '🔥', name: 'Fuego' }, { icon: '💯', name: 'Cien' }, { icon: '💖', name: 'Corazón' },
-    { icon: '🥶', name: 'Frío' }
+    { icon: '❤️', name: 'Corazón', url: '/stickers/corazon.jpg' }, 
+    { icon: '⭐', name: 'Estrella', url: '/stickers/estrella.jpg' }, 
+    { icon: '🔥', name: 'Fuego', url: '/stickers/fuego.jpg' },
+    { icon: '🐱', name: 'Gato', url: '/stickers/gato.jpg' }, 
+    { icon: '🗡️', name: 'Espada', url: '/stickers/espada.jpg' }, 
+    { icon: '👑', name: 'Corona', url: '/stickers/corona.jpg' },
+    { icon: '👻', name: 'Fantasma', url: '/stickers/fantasma.jpg' }
   ]);
 
   const handleDeleteSound = (index, e) => {
@@ -443,6 +459,41 @@ function App() {
       setStickers(prev => prev.filter((_, i) => i !== index));
     }
   };
+
+  const [activeSticker, setActiveSticker] = useState(null);
+  const broadcastRef = useRef(null);
+
+  useEffect(() => {
+    broadcastRef.current = new BroadcastChannel('talking_crow_events');
+    broadcastRef.current.onmessage = (event) => {
+      if (event.data.type === 'SHOW_STICKER') {
+        setActiveSticker({ url: event.data.url, name: event.data.name, id: Date.now() });
+        // Auto hide after 3 seconds
+        setTimeout(() => setActiveSticker(prev => (prev && prev.id === event.data.id ? null : prev)), 3000);
+      }
+    };
+    return () => broadcastRef.current.close();
+  }, []);
+
+  const handlePlayLocalSound = (item) => {
+    if (item.url) {
+       const snd = new Audio(item.url);
+       snd.volume = Math.max(0, Math.min(1, parseFloat(soundsVolume) / 100));
+       if (snd.setSinkId && selectedAudioDeviceSounds !== 'default') {
+           snd.setSinkId(selectedAudioDeviceSounds).catch(err => console.error("setSinkId error (sounds):", err));
+       }
+       snd.play().catch(e => console.error("Error al reproducir sonido local:", e));
+    }
+  };
+
+  const handleTriggerSticker = (item) => {
+    // Optionally play sticker sound locally if we had one, but we just trigger the visual for now
+    // And broadcast to other tabs (e.g. #main in OBS)
+    if (item.url && broadcastRef.current) {
+        broadcastRef.current.postMessage({ type: 'SHOW_STICKER', url: item.url, name: item.name, id: Date.now() });
+    }
+  };
+
 
   const [activeModal, setActiveModal] = useState(null);
   const [itemsToDelete, setItemsToDelete] = useState([]);
@@ -572,6 +623,26 @@ function App() {
       document.removeEventListener("mousedown", handleClickOutside);
       sse.close();
     };
+  }, []);
+
+  useEffect(() => {
+    if (isAutoScroll && chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [liveEvents, isAutoScroll]);
+
+  useEffect(() => {
+    const fetchDevices = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const outputDevices = devices.filter(device => device.kind === 'audiooutput');
+        setAudioDevices(outputDevices);
+      } catch (err) {
+        console.error("Error enumerating devices:", err);
+      }
+    };
+    fetchDevices();
+    navigator.mediaDevices.ondevicechange = fetchDevices;
   }, []);
 
   const topTikTokGifts = [
@@ -744,6 +815,9 @@ function App() {
        }
 
        const snd = new Audio(finalUrl);
+       if (snd.setSinkId && selectedAudioDeviceTTS !== 'default') {
+         snd.setSinkId(selectedAudioDeviceTTS).catch(err => console.error("setSinkId error:", err));
+       }
        snd.play().catch(e => {
            console.error("Error al reproducir el audio HTML5:", e);
            setAudioQueue(prev => prev.filter(a => a.id !== id));
@@ -926,6 +1000,16 @@ function App() {
 
       {activeView === 'main' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '30px', alignItems: 'stretch', flex: 1, minHeight: 0, paddingBottom: '10px' }}>
+          {activeSticker && hashRoute !== '#sounds' && hashRoute !== '#stickers' && (
+            <div key={activeSticker.id} style={{
+               position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+               zIndex: 9999, animation: 'popIn 0.5s ease-out, fadeOut 0.5s ease-in 2.5s forwards',
+               pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center'
+            }}>
+               <img src={activeSticker.url} alt={activeSticker.name} style={{ width: '200px', height: '200px', objectFit: 'contain', filter: 'drop-shadow(0 0 20px var(--neon-purple))' }} />
+               <h2 className="neon-text-purple" style={{ textShadow: '0 0 10px #000, 0 0 20px var(--neon-purple)' }}>{activeSticker.name}</h2>
+            </div>
+          )}
         
         {/* Columna 1: Configuración de Regalos */}
         <section className="panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', minHeight: 0 }}>
@@ -1104,8 +1188,15 @@ function App() {
           </div>
           
 
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.4)', padding: '20px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '0', minHeight: 0 }}
-               ref={(el) => { if(el) el.scrollTop = el.scrollHeight; }} >
+          <div 
+            style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.4)', padding: '20px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '0', minHeight: 0, position: 'relative' }}
+            ref={chatContainerRef}
+            onScroll={(e) => {
+              const { scrollTop, scrollHeight, clientHeight } = e.target;
+              const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+              setIsAutoScroll(isAtBottom);
+            }}
+          >
             {liveEvents.length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginTop: '50px', fontStyle: 'italic', opacity: 0.7 }}>
                 Esperando conexion del más allá...
@@ -1120,6 +1211,7 @@ function App() {
                     handlePlayAudio={handlePlayAudio} 
                     handleRejectAudio={handleRejectAudio} 
                     delaySeconds={ttsDelay}
+                    selectedAudioDeviceTTS={selectedAudioDeviceTTS}
                   />
                 ) : (
                 <div key={idx} style={{ marginBottom: '15px', padding: '12px', borderLeft: '3px solid var(--neon-purple)', background: 'rgba(157, 0, 255, 0.05)', borderRadius: '0 4px 4px 0', animation: 'fadeIn 0.3s ease-out' }}>
@@ -1136,7 +1228,7 @@ function App() {
                       )}
                     </span></span>
                   )}
-                  {evt.type === 'chat' && <span> dice: <span className="neon-text-orange" style={{ fontWeight: 'bold', fontStyle: 'italic' }}>"{evt.message}"</span></span>}
+                  {evt.type === 'chat' && <span> dice: <span className="neon-text-orange" style={{ fontWeight: 'bold', fontStyle: 'italic' }}>"{evt.message.replace(/\[.*?\]/g, '')}"</span></span>}
                   {evt.type === 'connection' && <span> <span className="neon-text-purple" style={{ fontWeight: 'bold' }}>{evt.message}</span></span>}
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '6px' }}>{evt.timestamp.toLocaleTimeString()}</div>
                 </div>
@@ -1144,6 +1236,39 @@ function App() {
               ))
             )}
           </div>
+          {!isAutoScroll && (
+            <button
+              onClick={() => {
+                setIsAutoScroll(true);
+                if (chatContainerRef.current) {
+                  chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+                }
+              }}
+              style={{
+                position: 'absolute',
+                bottom: '30px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                background: 'rgba(0,255,204,0.8)',
+                color: '#000',
+                border: 'none',
+                borderRadius: '50%',
+                width: '40px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 0 10px rgba(0,255,204,0.5)',
+                zIndex: 10,
+                fontSize: '1.2rem',
+                fontWeight: 'bold'
+              }}
+              title="Volver abajo"
+            >
+              V
+            </button>
+          )}
         </section>
 
         {/* Columna 3: Configuración Base */}
@@ -1279,7 +1404,7 @@ function App() {
                 </div>
 
                 {/* Contenido del Acordeón (Voces y Velocidad) */}
-                <div className={`accordion-content ${isTtsSettingsOpen ? 'open' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '15px', flexShrink: 0, overflow: isTtsGiftDropdownOpen ? 'visible' : '' }}>
+                <div className={`accordion-content ${isTtsSettingsOpen ? 'open' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '15px', flexShrink: 0, overflow: (isTtsGiftDropdownOpen || isTtsDelayDropdownOpen) ? 'visible' : '' }}>
                    
                    {/* Nueva sección de Filtro y Retraso */}
                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '10px 15px', borderRadius: '8px', border: '1px solid rgba(255,117,24,0.3)' }}>
@@ -1364,33 +1489,76 @@ function App() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                         <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Segundos antes de reproducción</label>
                         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                          <span style={{ position: 'absolute', left: '10px', fontSize: '0.7rem', color: 'var(--neon-orange)', pointerEvents: 'none' }}>▼</span>
-                          <select 
-                            className="btn-neon btn-neon-orange" 
-                            style={{ 
-                              width: '100%', 
-                              minWidth: '120px', 
-                              padding: '5px 10px 5px 25px', 
-                              margin: 0, 
-                              background: '#111',
-                              height: '32px',
+                          <button 
+                            className="btn-neon btn-neon-orange"
+                            onClick={() => setIsTtsDelayDropdownOpen(!isTtsDelayDropdownOpen)}
+                            style={{
+                              padding: '5px 10px',
+                              fontSize: '0.9rem',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              fontSize: '0.9rem',
-                              outline: 'none',
-                              cursor: 'pointer',
-                              appearance: 'none', // Quita la flecha nativa en algunos navegadores
-                              textAlign: 'center'
+                              minWidth: '120px',
+                              height: '32px',
+                              margin: 0,
+                              gap: '8px',
+                              background: '#111'
                             }}
-                            value={ttsDelay}
-                            onChange={handleDelayChange}
                           >
-                            <option value={0}>0s (Inmediato)</option>
-                            <option value={1}>1 SEGUNDO</option>
-                            <option value={2}>2 SEGUNDOS</option>
-                            <option value={3}>3 SEGUNDOS</option>
-                          </select>
+                            <span className={`accordion-arrow ${isTtsDelayDropdownOpen ? 'open' : ''}`} style={{ fontSize: '0.7rem' }}>▶</span>
+                            {ttsDelay === 0 ? '0s (Inmediato)' : `${ttsDelay} SEGUNDO${ttsDelay > 1 ? 'S' : ''}`}
+                          </button>
+
+                          {isTtsDelayDropdownOpen && (
+                            <>
+                              <div 
+                                style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998 }}
+                                onClick={() => setIsTtsDelayDropdownOpen(false)}
+                              />
+                              <div style={{ 
+                                position: 'absolute', 
+                                top: '100%', 
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                marginTop: '5px',
+                                background: '#111', 
+                                border: '1px solid var(--neon-orange)', 
+                                borderRadius: '5px',
+                                zIndex: 9999,
+                                maxHeight: '200px',
+                                overflowY: 'auto',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '5px',
+                                padding: '5px',
+                                boxShadow: '0 0 15px rgba(255,140,0,0.6)',
+                                width: '100%'
+                              }}>
+                                {[0, 1, 2, 3].map(val => (
+                                  <div 
+                                    key={val}
+                                    className="gift-item"
+                                    onClick={() => {
+                                      handleDelayChange({ target: { value: val } });
+                                      setIsTtsDelayDropdownOpen(false);
+                                    }}
+                                    style={{ 
+                                      padding: '8px', 
+                                      cursor: 'pointer', 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      justifyContent: 'center',
+                                      borderRadius: '3px',
+                                      background: ttsDelay === val ? 'rgba(255,140,0,0.2)' : 'transparent',
+                                      fontSize: '0.85rem'
+                                    }}
+                                  >
+                                    {val === 0 ? '0s (Inmediato)' : `${val} SEGUNDO${val > 1 ? 'S' : ''}`}
+                                  </div>
+                                ))}
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                    </div>
@@ -1430,6 +1598,9 @@ function App() {
                                   const data = await res.json();
                                   if (data.audio_url) {
                                     const audio = new Audio(API_BASE + data.audio_url);
+                                    if (audio.setSinkId && selectedAudioDeviceTTS !== 'default') {
+                                      audio.setSinkId(selectedAudioDeviceTTS).catch(err => console.error("setSinkId error:", err));
+                                    }
                                     audio.play().catch(e => console.error('Audio autoplay error:', e));
                                   }
                                 } catch (e) { console.error('Error probando voz:', e); }
@@ -1501,6 +1672,25 @@ function App() {
                         {getDbFromPercentage(ttsVolume) > 0 ? '+' : ''}{getDbFromPercentage(ttsVolume)} dB
                       </span>
                    </div>
+                   <div style={{ marginTop: '10px' }}>
+                     <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Salida de Audio TTS</label>
+                     <select
+                       className="input-neon"
+                       value={selectedAudioDeviceTTS}
+                       onChange={(e) => {
+                         setSelectedAudioDeviceTTS(e.target.value);
+                         localStorage.setItem('selectedAudioDeviceTTS', e.target.value);
+                       }}
+                       style={{ padding: '8px', fontSize: '0.85rem', width: '100%', height: '35px', boxSizing: 'border-box' }}
+                     >
+                       <option value="default">Por Defecto del Sistema</option>
+                       {audioDevices.map(device => (
+                         <option key={device.deviceId} value={device.deviceId}>
+                           {device.label || `Device ${device.deviceId}`}
+                         </option>
+                       ))}
+                     </select>
+                   </div>
                 </div>
              </section>
 
@@ -1534,10 +1724,29 @@ function App() {
                  </div>
                  <span className="obs-fader-value">{soundsVolume}%</span>
                </div>
+               <div style={{ marginTop: '15px' }}>
+                 <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Salida de Audio Efectos de Sonido</label>
+                 <select
+                   className="input-neon"
+                   value={selectedAudioDeviceSounds}
+                   onChange={(e) => {
+                     setSelectedAudioDeviceSounds(e.target.value);
+                     localStorage.setItem('selectedAudioDeviceSounds', e.target.value);
+                   }}
+                   style={{ padding: '8px', fontSize: '0.85rem', width: '100%', height: '35px', boxSizing: 'border-box' }}
+                 >
+                   <option value="default">Por Defecto del Sistema</option>
+                   {audioDevices.map(device => (
+                     <option key={device.deviceId} value={device.deviceId}>
+                       {device.label || `Device ${device.deviceId}`}
+                     </option>
+                   ))}
+                 </select>
+               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gridAutoRows: '35px', gap: '10px', paddingBottom: '5px' }}>
                {sounds.map((item, i) => (
-                  <button key={i} title="Clic derecho para eliminar" onContextMenu={(e) => handleDeleteSound(i, e)} className="btn-neon btn-neon-orange" style={{ height: '100%', padding: '8px 2px', fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                  <button key={i} title="Clic derecho para eliminar" onClick={(e) => { handlePlayLocalSound(item); e.currentTarget.blur(); }} onContextMenu={(e) => handleDeleteSound(i, e)} className="btn-neon btn-neon-orange" style={{ height: '100%', padding: '8px 2px', fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
                      <span style={{ fontSize: '1rem' }}>{item.icon}</span> {item.name}
                   </button>
                ))}
@@ -1562,10 +1771,29 @@ function App() {
                  </div>
                  <span className="obs-fader-value">{stickersVolume}%</span>
                </div>
+               <div style={{ marginTop: '15px' }}>
+                 <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Salida de Audio Stickers</label>
+                 <select
+                   className="input-neon"
+                   value={selectedAudioDeviceStickers}
+                   onChange={(e) => {
+                     setSelectedAudioDeviceStickers(e.target.value);
+                     localStorage.setItem('selectedAudioDeviceStickers', e.target.value);
+                   }}
+                   style={{ padding: '8px', fontSize: '0.85rem', width: '100%', height: '35px', boxSizing: 'border-box' }}
+                 >
+                   <option value="default">Por Defecto del Sistema</option>
+                   {audioDevices.map(device => (
+                     <option key={device.deviceId} value={device.deviceId}>
+                       {device.label || `Device ${device.deviceId}`}
+                     </option>
+                   ))}
+                 </select>
+               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gridAutoRows: '35px', gap: '10px', paddingBottom: '5px' }}>
                {stickers.map((item, i) => (
-                  <button key={i} title="Clic derecho para eliminar" onContextMenu={(e) => handleDeleteSticker(i, e)} className="btn-neon btn-neon-orange" style={{ height: '100%', padding: '8px 2px', fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                  <button key={i} title="Clic derecho para eliminar" onClick={(e) => { handleTriggerSticker(item); e.currentTarget.blur(); }} onContextMenu={(e) => handleDeleteSticker(i, e)} className="btn-neon btn-neon-orange" style={{ height: '100%', padding: '8px 2px', fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
                      <span style={{ fontSize: '1rem' }}>{item.icon}</span> {item.name}
                   </button>
                ))}

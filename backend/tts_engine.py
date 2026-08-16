@@ -9,12 +9,12 @@ class TTSEngine:
         # Voz natural en español por defecto de Edge-TTS
         # Otras opciones: es-MX-JorgeNeural, es-ES-AlvaroNeural, es-ES-ElviraNeural
         self.voice = "es-MX-DaliaNeural" 
-        print(f"[Edge TTS Engine] Inicializando motor de voz en la nube (Edge)... Voz: {self.voice}")
+        print(f"[Motor de Voz] Inicializando motor de voz en la nube... Voz: {self.voice}")
 
     def load(self):
         # Edge TTS no requiere carga de modelos pesados en RAM
         if not self.is_loaded:
-            print("[Edge TTS Engine] Motor cargado y listo (Instantáneo).")
+            print("[Motor de Voz] Motor cargado y listo (Instantáneo).")
             self.is_loaded = True
 
     async def generate_file(self, text, reference_audio_path=None, voice="es-MX-DaliaNeural", rate="+0%", volume="+0%"):
@@ -29,13 +29,13 @@ class TTSEngine:
         out_path = os.path.join(audio_dir, f"{token}.mp3")
         
         try:
-            print(f"[Edge TTS Engine] Sintetizando voz: {text[:30]}... ({voice}, {rate}, {volume})")
+            print(f"[Motor de Voz] Sintetizando voz: {text[:30]}... ({voice}, {rate}, {volume})")
             communicate = edge_tts.Communicate(text, voice, rate=rate, volume=volume)
             await communicate.save(out_path)
-            print(f"[Edge TTS Engine] Síntesis completada instantánea: {out_path}")
+            print(f"[Motor de Voz] Síntesis completada instantánea: {out_path}")
             return f"{token}.mp3"
         except Exception as e:
-            print(f"[Edge TTS Engine ERROR] Fallo generando voz: {e}")
+            print(f"[Motor de Voz ERROR] Fallo generando voz: {e}")
             raise e
 
 tts_engine = TTSEngine()
