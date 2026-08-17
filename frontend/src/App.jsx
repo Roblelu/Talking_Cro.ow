@@ -983,12 +983,12 @@ function App() {
             <div style={{ position: 'relative' }} ref={walletRef}>
               <button 
                 className="btn-neon" 
-                style={{ padding: '8px 15px', display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent' }}
+                style={{ padding: '8px 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'transparent', height: '40px' }}
                 onClick={() => setIsWalletOpen(!isWalletOpen)}
                 title="Mi Billetera"
               >
-                <span style={{ fontSize: '1.2rem' }}>💳</span>
-                <span className="neon-text-green" style={{ fontWeight: 'bold' }}>Wallet</span>
+                <span style={{ fontSize: '1.2rem', lineHeight: '1', display: 'flex', alignItems: 'center' }}>💳</span>
+                <span className="neon-text-green" style={{ fontWeight: 'bold', lineHeight: '1', display: 'flex', alignItems: 'center' }}>WALLET</span>
               </button>
               
               {isWalletOpen && (
