@@ -15,8 +15,8 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [2/2] Desplegando en Firebase Hosting...
-call npx firebase-tools deploy --only hosting
+echo [2/2] Desplegando en Firebase (Hosting, Functions, Rules)...
+call npx firebase-tools deploy --only hosting,functions,firestore:rules
 if %errorlevel% neq 0 (
     echo Error al desplegar en Firebase.
     pause

@@ -190,6 +190,21 @@ def update_settings(settings: Settings):
     conn.close()
     return {"status": "ok"}
 
+class PortConfig(BaseModel):
+    port: int
+
+@app.post("/api/config/port", dependencies=[Depends(verify_token)])
+def update_port(config: PortConfig):
+    try:
+        # Actualizamos local_config_data (que se lee al inicio)
+        # o creamos un campo en config.json/local_config.json
+        local_config_data["port"] = config.port
+        with open(local_config_path, "w") as f:
+            json.dump(local_config_data, f, indent=4)
+        return {"status": "ok", "message": "Puerto actualizado. Reinicia la aplicación para aplicar los cambios."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 class TikTokConnectRequest(BaseModel):
     username: str
 
@@ -246,17 +261,31 @@ async def connect_tiktok(req: TikTokConnectRequest):
         async def on_connect(event: ConnectEvent):
             await broadcast_event(LiveEvent(type="connection", username="Sistema", message=f"Conectado a la sala de @{event.unique_id}"))
             try:
-                avatar = await get_tiktok_avatar(event.unique_id)
+                avatar = None
+                # Intentar extraer el avatar directamente del room_info (TikTokLive v6 / Euler)
+                if hasattr(client, 'room_info') and isinstance(client.room_info, dict):
+                    url_list = client.room_info.get('owner', {}).get('avatar_thumb', {}).get('url_list', [])
+                    if url_list and len(url_list) > 0:
+                        avatar = url_list[0]
+                        print(f"[Sistema] Avatar obtenido de room_info: {avatar}")
+
+                if not avatar:
+                    avatar = await get_tiktok_avatar(event.unique_id)
+                    
                 if not avatar and hasattr(client, 'get_avatar_url'):
                     avatar = await client.get_avatar_url(client.unique_id)
                     
                 if avatar:
                     await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=avatar))
                 else:
-                    await broadcast_event(LiveEvent(type="room_info", username="Sistema", message="/avatar_m.jpg"))
+                    clean_username = req.username.strip('@')
+                    fallback_avatar = f"https://ui-avatars.com/api/?name={clean_username}&background=random&color=fff&size=128&bold=true"
+                    await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=fallback_avatar))
             except Exception as e:
-                print("Error sacando avatar", e)
-                await broadcast_event(LiveEvent(type="room_info", username="Sistema", message="/avatar_m.jpg"))
+                print(f"[Sistema WARNING] Error al obtener avatar: {e}")
+                clean_username = req.username.strip('@')
+                fallback_avatar = f"https://ui-avatars.com/api/?name={clean_username}&background=random&color=fff&size=128&bold=true"
+                await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=fallback_avatar))
 
         import re
         import unicodedata
@@ -379,7 +408,9 @@ async def connect_tiktok(req: TikTokConnectRequest):
                     await asyncio.sleep(15)
                     if active_tiktok_client and not active_tiktok_client.connected:
                         print(f"[TikTok] Timeout conectando a {req.username}")
-                        await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=None))
+                        clean_username = req.username.strip('@')
+                        fallback_avatar = f"https://ui-avatars.com/api/?name={clean_username}&background=random&color=fff&size=128&bold=true"
+                        await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=fallback_avatar))
                         await broadcast_event(LiveEvent(type="connection", username="Sistema", message="TikTok ha bloqueado la conexión a esta sala. Podría tener restricción +18."))
                         await active_tiktok_client.disconnect()
                 asyncio.create_task(connection_monitor())

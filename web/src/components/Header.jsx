@@ -97,19 +97,17 @@ const Header = () => {
               </div>
             )}
 
-            {(userData?.has_received_app_credits || userData?.creator_credits > 0 || userData?.isPro) && (
-              <div 
-                className="header-indicator"
-                style={{ background: 'rgba(157, 0, 255, 0.1)', border: '1px solid var(--neon-purple)' }}
-                onClick={() => navigate('/withdraw')}
-                title="Ganancias Retirables"
-              >
-                <span style={{ fontSize: '1.2rem' }}>💰</span>
-                <span className="neon-text-purple" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
-                  {userData?.croin_cash || 0} Croin Cash
-                </span>
-              </div>
-            )}
+            <div 
+              className="header-indicator"
+              style={{ background: 'rgba(157, 0, 255, 0.1)', border: '1px solid var(--neon-purple)' }}
+              onClick={() => navigate('/withdraw')}
+              title="Retirar Ganancias (Croin Cash)"
+            >
+              <span style={{ fontSize: '1.2rem' }}>💰</span>
+              <span className="neon-text-purple" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
+                {Math.floor((userData?.creator_earnings || 0) * (28 / 12))} Croin Cash
+              </span>
+            </div>
           </div>
             
             <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
@@ -134,6 +132,9 @@ const Header = () => {
                      </div>
                    </li>
                    <li onClick={() => { navigate('/subscription'); setIsDropdownOpen(false); }}>Suscripción y Pagos</li>
+                   <li onClick={() => { navigate('/withdraw'); setIsDropdownOpen(false); }}>
+                     Retiro de Ganancias
+                   </li>
                    <li onClick={() => { navigate('/support'); setIsDropdownOpen(false); }}>Contacto y soporte</li>
                    <li onClick={() => { navigate('/terms'); setIsDropdownOpen(false); }}>Términos y Condiciones</li>
                    <li 

@@ -1,8 +1,30 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { db } from '../firebase';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 
 const SubscriptionPage = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const [transactions, setTransactions] = useState([]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    const q = query(
+      collection(db, 'users', currentUser.uid, 'transactions'),
+      orderBy('date', 'desc')
+    );
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const txs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setTransactions(txs);
+    });
+    
+    return () => unsubscribe();
+  }, [currentUser]);
+
   return (
     <div className="panel-layout-wrapper" style={{ '--panel-width': '1000px' }}>
       <button 
@@ -73,13 +95,6 @@ const SubscriptionPage = () => {
           </div>
         </div>
 
-        {/* Métodos de Pago */}
-        <h3 className="neon-text-purple" style={{ marginBottom: '15px' }}>Métodos de Pago</h3>
-        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '20px', borderRadius: '8px', border: '1px solid rgba(157, 0, 255, 0.2)', marginBottom: '40px' }}>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>No tienes métodos de pago guardados.</p>
-          <button className="btn-neon">Agregar Tarjeta</button>
-        </div>
-
         {/* Historial de Pagos */}
         <h3 className="neon-text-purple" style={{ marginBottom: '15px' }}>Historial de Pagos</h3>
         <div style={{ background: 'rgba(0,0,0,0.4)', padding: '20px', borderRadius: '8px', border: '1px solid rgba(157, 0, 255, 0.2)', overflowX: 'auto' }}>
@@ -93,9 +108,30 @@ const SubscriptionPage = () => {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td colSpan="4" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>No hay pagos recientes.</td>
-              </tr>
+              {transactions.length === 0 ? (
+                <tr>
+                  <td colSpan="4" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>No hay pagos recientes.</td>
+                </tr>
+              ) : (
+                transactions.map(tx => (
+                  <tr key={tx.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <td style={{ padding: '10px' }}>{tx.date?.toDate().toLocaleDateString() || '...'}</td>
+                    <td style={{ padding: '10px' }}>{tx.description}</td>
+                    <td style={{ padding: '10px', color: 'var(--neon-green)' }}>${tx.amount?.toFixed(2)} {tx.currency?.toUpperCase()}</td>
+                    <td style={{ padding: '10px' }}>
+                      <span style={{ 
+                        padding: '3px 8px', 
+                        borderRadius: '12px', 
+                        fontSize: '0.85rem',
+                        background: tx.status === 'succeeded' ? 'rgba(0,255,204,0.1)' : 'rgba(255,117,24,0.1)',
+                        color: tx.status === 'succeeded' ? 'var(--neon-green)' : 'var(--neon-orange)'
+                      }}>
+                        {tx.status === 'succeeded' ? 'Aprobado' : tx.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

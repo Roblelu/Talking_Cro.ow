@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { functions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
@@ -6,6 +6,20 @@ import { httpsCallable } from 'firebase/functions';
 const WithdrawPage = () => {
   const { userData, currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (userData?.stripe_account_id && !userData?.stripe_charges_enabled) {
+      const checkStatus = async () => {
+        try {
+          const checkStripeAccountStatus = httpsCallable(functions, 'checkStripeAccountStatus');
+          await checkStripeAccountStatus();
+        } catch(e) {
+          console.error("Error checking stripe status", e);
+        }
+      }
+      checkStatus();
+    }
+  }, [userData?.stripe_account_id, userData?.stripe_charges_enabled]);
 
   const handleStripeOnboarding = async () => {
     setLoading(true);
@@ -45,25 +59,49 @@ const WithdrawPage = () => {
     }
   };
 
-  const hasEarnings = (userData?.creator_earnings || 0) > 0;
+  const earnings = userData?.creator_earnings || 0;
   const isStripeConfigured = userData?.stripe_account_id && userData?.stripe_charges_enabled;
 
+  let payoutDisabled = false;
+  let payoutMessage = `Retirar ${earnings.toFixed(2)} MXN`;
+
+  if (earnings < 300) {
+      payoutDisabled = true;
+      payoutMessage = "Mínimo $300 MXN requerido";
+  }
+
+  if (userData?.last_payout_date) {
+      const lastDate = userData.last_payout_date.toDate ? userData.last_payout_date.toDate() : new Date(userData.last_payout_date);
+      const now = new Date();
+      if (lastDate.getMonth() === now.getMonth() && lastDate.getFullYear() === now.getFullYear()) {
+          payoutDisabled = true;
+          payoutMessage = "Vuelve el próximo mes (1 retiro/mes)";
+      }
+  }
+
+  const croinsEquivalent = Math.floor(earnings * (28 / 12));
+
   return (
-    <div className="panel-layout-wrapper" style={{ '--panel-width': '800px', display: 'flex', justifyContent: 'center', marginTop: '50px' }}>
-      <div className="panel" style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <h2 className="neon-text-purple" style={{ margin: 0 }}>💰 Retiro de Ganancias (Croin Cash)</h2>
-          <p style={{ color: 'var(--text-secondary)', marginTop: '10px' }}>Administra tus ingresos generados por mensajes de TTS y regalos.</p>
+    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '30px', padding: '20px' }}>
+      <div className="panel" style={{ width: '100%', maxWidth: '600px', display: 'flex', flexDirection: 'column', padding: '2rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+          <h2 className="neon-text-purple" style={{ margin: 0, fontSize: '1.5rem' }}>💰 Retiro de Ganancias (Croin Cash)</h2>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '5px', fontSize: '0.9rem' }}>Administra tus ingresos generados por mensajes de TTS y regalos.</p>
         </div>
 
-        <div style={{ padding: '20px', background: 'rgba(157, 0, 255, 0.05)', borderRadius: '15px', border: '1px solid rgba(157, 0, 255, 0.2)', textAlign: 'center', marginBottom: '30px' }}>
-          <h3 style={{ color: 'var(--text-secondary)', marginBottom: '10px' }}>Balance Disponible</h3>
-          <h1 className="neon-text-green" style={{ fontSize: '3rem', margin: '0' }}>${(userData?.creator_earnings || 0).toFixed(2)} MXN</h1>
+        <div style={{ padding: '15px', background: 'rgba(157, 0, 255, 0.05)', borderRadius: '10px', border: '1px solid rgba(157, 0, 255, 0.2)', textAlign: 'center', marginBottom: '20px' }}>
+          <h3 style={{ color: 'var(--text-secondary)', marginBottom: '5px', fontSize: '1rem' }}>Balance Disponible</h3>
+          <h1 className="neon-text-green" style={{ fontSize: '2.5rem', margin: '0' }}>
+            {croinsEquivalent} Croin Cash
+          </h1>
+          <p className="neon-text-orange" style={{ margin: '5px 0 0 0', fontWeight: 'bold' }}>
+            (Equivalente a ${earnings.toFixed(2)} MXN)
+          </p>
         </div>
 
         {!isStripeConfigured ? (
           <div className="panel" style={{ border: '1px solid var(--neon-orange)', textAlign: 'center' }}>
-            <h3 className="neon-text-orange" style={{ marginBottom: '15px' }}>⚠️ Requiere Configuración Bancaria</h3>
+            <h3 className="neon-text-orange" style={{ marginBottom: '15px' }}>Requiere Configuración Bancaria</h3>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
               Para poder retirar tus ganancias, necesitas configurar tu cuenta CLABE o cuenta bancaria. 
               Utilizamos <strong>Stripe Connect</strong> para garantizar que tus transferencias sean 100% seguras e instantáneas.
@@ -74,7 +112,7 @@ const WithdrawPage = () => {
               disabled={loading}
               style={{ padding: '15px 30px', fontSize: '1.1rem' }}
             >
-              {loading ? 'Redirigiendo...' : 'Configurar Cuenta Bancaria (Stripe)'}
+              {loading ? 'Cargando...' : 'Configurar Cuenta Bancaria (Stripe)'}
             </button>
           </div>
         ) : (
@@ -86,10 +124,10 @@ const WithdrawPage = () => {
             <button 
               className="btn-neon" 
               onClick={handlePayout} 
-              disabled={loading || !hasEarnings}
-              style={{ padding: '15px 30px', fontSize: '1.1rem', opacity: (!hasEarnings) ? 0.5 : 1 }}
+              disabled={loading || payoutDisabled}
+              style={{ padding: '15px 30px', fontSize: '1.1rem', opacity: (payoutDisabled) ? 0.5 : 1 }}
             >
-              {loading ? 'Procesando...' : `Retirar ${(userData?.creator_earnings || 0).toFixed(2)} MXN`}
+              {loading ? 'Procesando...' : payoutMessage}
             </button>
           </div>
         )}

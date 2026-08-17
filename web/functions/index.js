@@ -481,17 +481,126 @@ exports.createConnectAccount = onCall(async (request) => {
     }
 });
 
-exports.requestPayout = onCall(async (request) => {
-    if (!request.auth) {
-        throw new HttpsError('unauthenticated', 'Debes estar autenticado.');
+exports.checkStripeAccountStatus = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Debes estar autenticado.');
+    const uid = request.auth.uid;
+    const userRef = db.collection('users').doc(uid);
+    const userDoc = await userRef.get();
+    
+    if (!userDoc.exists) return { success: false };
+    const userData = userDoc.data();
+    if (!userData.stripe_account_id) return { success: false, status: 'no_account' };
+
+    try {
+        const account = await stripe.accounts.retrieve(userData.stripe_account_id);
+        const chargesEnabled = account.charges_enabled;
+        const detailsSubmitted = account.details_submitted;
+
+        if (userData.stripe_charges_enabled !== chargesEnabled || userData.stripe_details_submitted !== detailsSubmitted) {
+            await userRef.update({ 
+                stripe_charges_enabled: chargesEnabled,
+                stripe_details_submitted: detailsSubmitted 
+            });
+        }
+        return { success: true, chargesEnabled, detailsSubmitted };
+    } catch (error) {
+        logger.error(`Error verificando cuenta de stripe para ${uid}:`, error);
+        throw new HttpsError('internal', 'Error verificando estado de Stripe.');
     }
-    // Mitigación segura: una transferencia externa nunca debe ejecutarse dentro
-    // de una transacción reintentable de Firestore. Se mantiene cerrada hasta
-    // implementar un ledger/idempotency key y reconciliación por webhook.
-    throw new HttpsError(
-        'failed-precondition',
-        'Los retiros están temporalmente deshabilitados mientras se actualiza su seguridad.'
-    );
+});
+
+exports.requestPayout = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Debes estar autenticado.');
+    const uid = request.auth.uid;
+    const userRef = db.collection('users').doc(uid);
+    const payoutId = db.collection('users').doc(uid).collection('transactions').doc().id;
+
+    let accountId = null;
+    let earnings = 0;
+
+    try {
+        await db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) throw new HttpsError('not-found', 'Usuario no encontrado.');
+
+            const userData = userDoc.data();
+            earnings = userData.creator_earnings || 0;
+            accountId = userData.stripe_account_id;
+            const chargesEnabled = userData.stripe_charges_enabled;
+
+            if (earnings < 300) {
+                throw new HttpsError('failed-precondition', 'El retiro mínimo es de $300 MXN.');
+            }
+
+            if (userData.last_payout_date) {
+                const lastDate = userData.last_payout_date.toDate();
+                const now = new Date();
+                if (lastDate.getMonth() === now.getMonth() && lastDate.getFullYear() === now.getFullYear()) {
+                    throw new HttpsError('failed-precondition', 'Ya realizaste un retiro este mes. Vuelve el próximo mes.');
+                }
+            }
+
+            if (!accountId || !chargesEnabled) {
+                throw new HttpsError('failed-precondition', 'Cuenta bancaria no vinculada o no verificada por Stripe.');
+            }
+
+            // Deducir saldo y actualizar fecha de retiro
+            transaction.update(userRef, {
+                creator_earnings: 0,
+                last_payout_date: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            // Crear registro pendiente
+            const txRef = userRef.collection('transactions').doc(payoutId);
+            transaction.set(txRef, {
+                type: 'payout',
+                amount: earnings,
+                currency: 'mxn',
+                description: `Retiro de ganancias a cuenta bancaria`,
+                date: admin.firestore.FieldValue.serverTimestamp(),
+                status: 'pending'
+            });
+        });
+    } catch (e) {
+        throw new HttpsError(e.code || 'internal', e.message || 'Error en la transacción local.');
+    }
+
+    // Ejecutar Transferencia Stripe
+    try {
+        const transfer = await stripe.transfers.create({
+            amount: Math.floor(earnings * 100), // MXN en centavos
+            currency: 'mxn',
+            destination: accountId,
+            description: 'Retiro de ganancias Talking Crow'
+        });
+
+        // Marcar como exitoso
+        await userRef.collection('transactions').doc(payoutId).update({
+            status: 'succeeded',
+            stripe_transfer_id: transfer.id
+        });
+
+        return { success: true, amount: earnings };
+
+    } catch (stripeError) {
+        logger.error(`Error en transferencia de Stripe para ${uid}:`, stripeError);
+        
+        // Revertir el saldo si Stripe falló
+        await db.runTransaction(async (transaction) => {
+            transaction.update(userRef, {
+                creator_earnings: admin.firestore.FieldValue.increment(earnings),
+                // Para simplificar, borramos el last_payout_date para que puedan intentar de nuevo
+                last_payout_date: admin.firestore.FieldValue.delete()
+            });
+            const txRef = userRef.collection('transactions').doc(payoutId);
+            transaction.update(txRef, {
+                status: 'failed',
+                error_details: stripeError.message
+            });
+        });
+
+        throw new HttpsError('internal', 'Falló la transferencia bancaria. Los fondos fueron devueltos a tu cuenta.');
+    }
 });
 
 exports.stripeWebhook = onRequest((req, res) => {
@@ -543,6 +652,29 @@ exports.stripeWebhook = onRequest((req, res) => {
                             purchased_croins: admin.firestore.FieldValue.increment(croinsToAdd),
                             last_purchase: admin.firestore.FieldValue.serverTimestamp()
                         }, { merge: true });
+                        
+                        // Guardar en el historial de transacciones
+                        const txRef = db.collection('users').doc(uid).collection('transactions').doc(eventId);
+                        transaction.set(txRef, {
+                            type: 'croins_purchase',
+                            amount: expectedAmount / 100,
+                            currency: 'mxn',
+                            description: `Compra de ${croinsToAdd} Croins`,
+                            date: admin.firestore.FieldValue.serverTimestamp(),
+                            status: 'succeeded'
+                        });
+
+                        // Actualizar contabilidad de la plataforma
+                        const statsRef = db.collection('admin').doc('stats');
+                        const amountInMXN = expectedAmount / 100;
+                        const netEstimate = amountInMXN - (3 + (amountInMXN * 0.036)); // Estimación Stripe
+                        
+                        transaction.set(statsRef, {
+                            platform_profit: {
+                                total_gross_mxn: admin.firestore.FieldValue.increment(amountInMXN),
+                                total_estimated_net_mxn: admin.firestore.FieldValue.increment(netEstimate > 0 ? netEstimate : 0)
+                            }
+                        }, { merge: true });
                     });
                     
                     logger.info(`✅ Webhook: Se añadieron ${croinsToAdd} Croins comprados al UID: ${uid}`);
@@ -580,16 +712,61 @@ exports.stripeWebhook = onRequest((req, res) => {
 
                             transaction.set(eventRef, { processedAt: admin.firestore.FieldValue.serverTimestamp() });
                             
+                            const expiresAt = new Date();
+                            expiresAt.setDate(expiresAt.getDate() + 30); // 30 días de duración
+                            
                             transaction.set(userRef, {
                                 creator_credits: admin.firestore.FieldValue.increment(1000),
                                 isPro: true,
+                                pro_expires_at: expiresAt,
                                 last_subscription_payment: admin.firestore.FieldValue.serverTimestamp()
+                            }, { merge: true });
+                            
+                            // Guardar en el historial de transacciones
+                            const txRef = db.collection('users').doc(uid).collection('transactions').doc(eventId);
+                            transaction.set(txRef, {
+                                type: 'pro_subscription',
+                                amount: invoice.amount_paid / 100,
+                                currency: 'mxn',
+                                description: 'Suscripción Plan Pro - 1000 Créditos',
+                                date: admin.firestore.FieldValue.serverTimestamp(),
+                                status: 'succeeded'
+                            });
+
+                            // Actualizar contabilidad de la plataforma
+                            const statsRef = db.collection('admin').doc('stats');
+                            const amountInMXN = invoice.amount_paid / 100;
+                            const netEstimate = amountInMXN - (3 + (amountInMXN * 0.036)); // Estimación Stripe
+                            
+                            transaction.set(statsRef, {
+                                platform_profit: {
+                                    total_gross_mxn: admin.firestore.FieldValue.increment(amountInMXN),
+                                    total_estimated_net_mxn: admin.firestore.FieldValue.increment(netEstimate > 0 ? netEstimate : 0)
+                                }
                             }, { merge: true });
                         });
                         logger.info(`✅ Webhook: Se recargaron 1000 Créditos IA al UID: ${uid}`);
                     } catch (dbErr) {
                         logger.error(`❌ Webhook Error DB: ${dbErr.message}`);
                         return res.status(500).send('Database Error');
+                    }
+                }
+            }
+        } else if (event.type === 'customer.subscription.deleted' || event.type === 'invoice.payment_failed') {
+            const object = event.data.object;
+            const subscriptionId = event.type === 'customer.subscription.deleted' ? object.id : object.subscription;
+            if (subscriptionId) {
+                const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+                const uid = subscription.metadata.uid;
+                if (uid) {
+                    try {
+                        await db.collection("users").doc(uid).set({
+                            isPro: false,
+                            pro_expires_at: admin.firestore.FieldValue.delete()
+                        }, { merge: true });
+                        logger.info(`Webhook: Suscripción terminada/fallida para el UID: ${uid}. isPro revocado.`);
+                    } catch (dbErr) {
+                        logger.error(`Error revocando isPro: ${dbErr.message}`);
                     }
                 }
             }

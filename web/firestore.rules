@@ -7,7 +7,16 @@ service cloud.firestore {
       allow read, write: if false;
     }
     
-    // 2. Colección global de nombres de usuario para verificación única (Anti-Enumeración estricta)
+    // 2. Reglas para tickets de soporte (solo escritura)
+    match /support_tickets/{ticketId} {
+      allow read, update, delete: if false; // Solo accesible desde el Backend/Admin
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll(['uid', 'email', 'username', 'subject', 'message', 'createdAt', 'status'])
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.status == 'unread';
+    }
+
+    // 3. Colección global de nombres de usuario para verificación única (Anti-Enumeración estricta)
     match /usernames/{username} {
       allow get: if true; // Permite verificar si un username existe
       allow list: if false; // Bloquea obtener la lista de todos los usuarios

@@ -157,6 +157,7 @@ function App() {
   const [gifts, setGifts] = useState([]);
   
   const isMissingFields = currentUser && (!userData?.username || !userData?.email || !userData?.tiktok);
+  const hasEverBeenPro = userData?.isPro || userData?.last_subscription_payment || userData?.stripe_account_id || (userData?.creator_earnings || 0) > 0;
   
   // TC: Asignar créditos gratuitos de manera segura (Backend)
   useEffect(() => {
@@ -832,9 +833,11 @@ function App() {
            setAudioQueue(prev => prev.filter(a => a.id !== id));
        });
        snd.onended = () => {
-          // Limpiar el audio del servidor una vez escuchado
+          // Limpiar el audio del servidor 5 segundos después de ser escuchado
           if (id) {
-             fetch(`http://127.0.0.1:8763/api/audio/${id}`, { method: 'DELETE' }).catch(e=>console.log(e));
+             setTimeout(() => {
+                 fetch(`http://127.0.0.1:8763/api/audio/${id}`, { method: 'DELETE' }).catch(e=>console.log(e));
+             }, 5000);
           }
           // Y finalmente lo quitamos de la cola visual, permitiendo que avance el siguiente
           setAudioQueue(prev => prev.filter(a => a.id !== id));
@@ -944,6 +947,23 @@ function App() {
                 <span style={{ fontSize: '1.2rem' }}>✨</span>
                 <span className="neon-text-orange" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{userData?.creator_credits || 0} Créditos</span>
               </div>
+              <div 
+                className="header-indicator"
+                style={{ background: 'rgba(157, 0, 255, 0.1)', border: '1px solid var(--neon-purple)' }}
+                onClick={() => {
+                  if (window.backend && window.backend.open_url) {
+                    window.backend.open_url('https://talkingcroow.com/withdraw');
+                  } else {
+                    window.open('https://talkingcroow.com/withdraw', '_blank');
+                  }
+                }}
+                title="Retirar Ganancias (Croin Cash)"
+              >
+                <span style={{ fontSize: '1.2rem' }}>💰</span>
+                <span className="neon-text-purple" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
+                  {Math.floor((userData?.creator_earnings || 0) * (28 / 12))} Croin Cash
+                </span>
+              </div>
             </div>
           ) : (
             <button className="btn-neon" style={{ padding: '8px 15px' }} onClick={() => setActiveView('login')}>Iniciar Sesión</button>
@@ -973,6 +993,7 @@ function App() {
                        </div>
                      </li>
                      <li onClick={() => { setActiveView('subscription'); setIsDropdownOpen(false); }}>Suscripción y Pagos</li>
+
                      <li onClick={() => { setActiveView('support'); setIsDropdownOpen(false); }}>Contacto y soporte</li>
                      <li onClick={() => { setActiveView('port'); setIsDropdownOpen(false); }}>Configuración de Puerto</li>
                      <li onClick={() => { setActiveView('terms'); setIsDropdownOpen(false); }}>Términos y Condiciones</li>
@@ -1285,7 +1306,7 @@ function App() {
             <div style={{ flexShrink: 0 }}>
                {isTiktokConnected ? (
                   hostAvatar ? (
-                    <img src={hostAvatar} alt="Host Avatar" style={{ width: '60px', height: '60px', borderRadius: '50%', border: '2px solid var(--neon-green)', boxShadow: '0 0 15px var(--neon-green)', objectFit: 'cover' }} onError={(e) => { e.target.onerror = null; e.target.src = avatarFallback; }} />
+                    <img src={hostAvatar} alt="Host Avatar" style={{ width: '60px', height: '60px', borderRadius: '50%', border: '2px solid var(--neon-green)', boxShadow: '0 0 15px var(--neon-green)', objectFit: 'cover' }} referrerPolicy="no-referrer" onError={(e) => { e.target.onerror = null; e.target.src = avatarFallback; }} />
                   ) : (
                     <div className="spinner-border" style={{ width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--neon-orange)', boxShadow: '0 0 15px rgba(255, 117, 24, 0.5)' }}>
                       <span style={{ fontSize: '1.5rem', animation: 'spin 2s linear infinite reverse' }}>⏳</span>

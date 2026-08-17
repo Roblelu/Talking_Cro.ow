@@ -80,32 +80,32 @@ const EcoVoicesPage = () => {
           <div className="eco-step-card">
             <div className="eco-step-icon">👤</div>
             <div className="eco-step-content">
-              <h3><span className="step-gray">Paso 1:</span> Regístrate en Talking Cro.ow</h3>
-              <p>Durante el proceso vincula tu cuenta TikTok: @Nombre_de_Usuario.</p>
-            </div>
-          </div>
-
-          <div className="eco-step-card">
-            <div className="eco-step-icon">🎙️</div>
-            <div className="eco-step-content">
-              <h3><span className="step-gray">Paso 2:</span> Clona tu voz</h3>
-              <p>Se necesita un audio de 30 segundos, te daremos un texto a leer, es facil y seguro, puedes leer nuestras politicas de privacidad.</p>
+              <h3><span className="step-gray">Paso 1:</span> Regístrate y Clona tu voz</h3>
+              <p>Crea tu cuenta vinculando tu usuario de TikTok (@Nombre_de_Usuario). Después, graba un audio rápido de 30 segundos leyendo un texto que te daremos para clonar tu voz de forma fácil y segura <em>(puedes revisar nuestras políticas de privacidad)</em>.</p>
             </div>
           </div>
 
           <div className="eco-step-card">
             <div className="eco-step-icon">🪙</div>
             <div className="eco-step-content">
-              <h3><span className="step-gray">Paso 3:</span> Recarga tus Croins</h3>
-              <p>Adquiere un paquete para enviar audios, lanzar animaciones especiales e interactuar con tu voz clonada en directo con tu streamer, el programa te detectará automaticamente.</p>
+              <h3><span className="step-gray">Paso 2:</span> Recarga tus Croins</h3>
+              <p>Adquiere un paquete para enviar audios, lanzar animaciones especiales e interactuar con tu voz clonada en directo. El programa te detectará automáticamente.</p>
             </div>
           </div>
 
           <div className="eco-step-card">
             <div className="eco-step-icon">🎮</div>
             <div className="eco-step-content">
-              <h3><span className="step-gray">Paso 4:</span> ¡Habla en el Directo!</h3>
-              <p>Ve a la sección "Creadores Online", elige a quién quieres apoyar, entra a su directo en TikTok, manda tu comentario empezando con la palabra <strong>Eco</strong>... ¡y tu mensaje se reproducirá con tu voz clonada en su transmisión!</p>
+              <h3><span className="step-gray">Paso 3:</span> Ve al Directo</h3>
+              <p>Dirígete a la sección "Creadores Online", elige a qué streamer afiliado quieres apoyar y entra a su directo en TikTok.</p>
+            </div>
+          </div>
+
+          <div className="eco-step-card">
+            <div className="eco-step-icon">💬</div>
+            <div className="eco-step-content">
+              <h3><span className="step-gray">Paso 4:</span> ¡Habla en la Transmisión!</h3>
+              <p>Manda tu comentario en el chat empezando con la palabra <strong>Eco</strong>... ¡y tu mensaje se reproducirá con tu propia voz clonada para que el streamer y todos te escuchen!</p>
               <div style={{ marginTop: '10px', background: 'rgba(0,0,0,0.3)', padding: '8px', borderRadius: '5px', display: 'inline-block', fontSize: '0.9rem' }}>
                 <span style={{ color: 'var(--neon-green)' }}>💬 Ejemplo:</span> Eco hola de qué trata el directo?
               </div>
