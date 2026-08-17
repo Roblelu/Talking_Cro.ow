@@ -151,7 +151,7 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
           borderLeft: '4px solid var(--neon-green)', margin: '20px 0',
           fontStyle: 'italic', color: '#ddd'
         }}>
-          "El cuervo, con su plumaje negro y brillante, es una de las aves más inteligentes que existen. Se dice que pueden recordar rostros, usar herramientas y hasta imitar sonidos humanos. Observarlos volar nos recuerda que la naturaleza esconde secretos fascinantes. Al igual que el cuervo imita los sonidos de su entorno, con esta grabación mi propia voz formará parte de la bandada."
+          "El cuervo, con su plumaje negro y brillante, es una de las aves más inteligentes que existen. Se dice que pueden recordar rostros, usar herramientas y hasta imitar sonidos humanos. Observarlos volar nos recuerda que la naturaleza esconde secretos fascinantes. Al igual que el cuervo imita los sonidos de su entorno, con esta grabación mi propia voz formará parte de la parvada."
         </div>
 
         <div style={{ marginBottom: '15px' }}>
