@@ -340,7 +340,16 @@ exports.processTTSMessage = onCall(async (request) => {
             });
 
             const audioBase64 = Buffer.from(response.data, 'binary').toString('base64');
-            return { success: true, audioBase64 };
+            
+            // Fase 5: Almacenar en la cola de TTS del Streamer en Firestore
+            await db.collection('tts_queue').doc(streamer_uid).collection('requests').add({
+                tiktok_username: cleanUsername,
+                message: message,
+                audioBase64: audioBase64,
+                timestamp: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            return { success: true };
 
         } catch (apiError) {
             logger.error(`Error con API de EcoVoices: ${apiError.message}`);

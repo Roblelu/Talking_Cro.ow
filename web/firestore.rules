@@ -59,5 +59,19 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == uid;
       }
     }
+
+    // 5. Colección para registrar streams activos (Bot Maestro)
+    match /active_streams/{uid} {
+      allow read: if false; // Solo el Bot Central (Admin) lee todos los streams
+      // El streamer puede escribir su estado activo o eliminarlo
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // 6. Cola TTS para comunicación Bot -> Local App
+    match /tts_queue/{uid}/requests/{requestId} {
+      // Solo el streamer dueño puede leer (para reproducir) y eliminar (tras reproducir)
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if false; // Solo el backend Cloud Functions crea los requests
+    }
   }
 }

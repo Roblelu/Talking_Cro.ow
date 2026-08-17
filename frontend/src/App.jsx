@@ -16,6 +16,7 @@ import Register from './pages/Register';
 import { useAuth } from './context/AuthContext';
 import { auth, db, functions } from './firebase';
 import { signOut } from 'firebase/auth';
+import { doc, setDoc, deleteDoc, collection, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import NeonSelect from './components/NeonSelect';
 
@@ -590,21 +591,6 @@ function App() {
                         message: cleanMessage
                     }).then(result => {
                         console.log("[TTS] Respuesta de Firebase processTTS:", result.data);
-                        if (result.data.success) {
-                            console.log(`[EcoVoices] 12 Croins descontados a ${cleanUsername} para TTS premium.`);
-                            const audioSource = `data:audio/mp3;base64,${result.data.audioBase64}`;
-                            const newAudio = { 
-                                type: 'priority_audio', 
-                                username: cleanUsername, 
-                                message: cleanMessage,
-                                audio_url: audioSource,
-                                isEcoVoice: true,
-                                timestamp: new Date(), 
-                                id: Date.now().toString() 
-                            };
-                            setAudioQueue(prev => [...prev, newAudio]);
-                            setLiveEvents(prev => [...prev.slice(-49), newAudio]);
-                        }
                     }).catch(err => {
                         console.error("[TTS] Error llamando a processTTSMessage:", err);
                         // Si falla (ej. no está en DB o no tiene saldo), ignoramos silenciosamente
@@ -636,6 +622,37 @@ function App() {
       sse.close();
     };
   }, []);
+
+  // Fase 5: Listener de la Cola Centralizada de TTS
+  useEffect(() => {
+    if (!currentUser || !isTiktokConnected) return;
+
+    const ttsRef = collection(db, 'tts_queue', currentUser.uid, 'requests');
+    const unsubscribe = onSnapshot(ttsRef, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          const audioSource = `data:audio/mp3;base64,${data.audioBase64}`;
+          const newAudio = { 
+              type: 'priority_audio', 
+              username: data.tiktok_username, 
+              message: data.message,
+              audio_url: audioSource,
+              isEcoVoice: true,
+              timestamp: new Date(), 
+              id: change.doc.id 
+          };
+          setAudioQueue(prev => [...prev, newAudio]);
+          setLiveEvents(prev => [...prev.slice(-49), newAudio]);
+          
+          // Eliminar el documento de Firestore para no saturar la BD
+          deleteDoc(doc(db, 'tts_queue', currentUser.uid, 'requests', change.doc.id)).catch(e => console.error(e));
+        }
+      });
+    });
+
+    return () => unsubscribe();
+  }, [currentUser, isTiktokConnected]);
 
   useEffect(() => {
     if (isAutoScroll && chatContainerRef.current) {
@@ -768,6 +785,16 @@ function App() {
       body: JSON.stringify({ tiktok_username: cleanUsername, base_audio_path: '', tts_voice: ttsVoice, tts_rate: ttsRate, tts_volume: ttsVolume, tts_read_username: ttsReadUsername ? 1 : 0, tts_delay: ttsDelay })
     }).catch(e => console.log(e));
     
+    // Fase 5: Registrar el stream activo en Firestore para que el Servidor Central inicie la escucha
+    try {
+        await setDoc(doc(db, "active_streams", currentUser.uid), {
+            tiktok_username: cleanUsername,
+            timestamp: new Date()
+        });
+    } catch (e) {
+        console.error("Error al registrar active_stream:", e);
+    }
+
     try {
       const res = await fetch(API_BASE + '/api/tiktok/connect', {
           method: 'POST',
@@ -798,6 +825,11 @@ function App() {
         setHostAvatar(null);
         setLiveEvents([]);
         setDonators([]);
+        
+        // Fase 5: Eliminar el registro en Firestore para que el Servidor Central deje de escuchar
+        if (currentUser) {
+            deleteDoc(doc(db, "active_streams", currentUser.uid)).catch(e => console.error(e));
+        }
       }
     );
   };
