@@ -3,6 +3,8 @@ import sys
 import asyncio
 import httpx
 import json
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from TikTokLive import TikTokLiveClient
 from TikTokLive.events import ConnectEvent, DisconnectEvent, CommentEvent
 from TikTokLive.client.errors import UserOfflineError
@@ -162,16 +164,29 @@ async def firestore_listener_loop():
     watch = col_ref.on_snapshot(on_active_streams_snapshot)
     
     print("[Sistema] Bot Central Iniciado. Escuchando 'active_streams' en Firestore...")
-    
-    try:
-        while True:
-            await asyncio.sleep(3600) # Mantener vivo el event loop principal
-    except asyncio.CancelledError:
-        watch.unsubscribe()
-        print("[Sistema] Apagando Bot Central...")
+    # Evitar salir
+    while True:
+        await asyncio.sleep(3600)
+
+class DummyHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b"Bot is running.")
+
+def run_dummy_server():
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(('0.0.0.0', port), DummyHandler)
+    print(f"[HTTP] Dummy server listening on port {port}")
+    server.serve_forever()
 
 if __name__ == "__main__":
+    print("[Central Bot] Iniciando sistema...")
+    # Iniciar el servidor dummy en un hilo separado para cumplir con los requisitos de Cloud Run
+    threading.Thread(target=run_dummy_server, daemon=True).start()
+    
     try:
         asyncio.run(firestore_listener_loop())
     except KeyboardInterrupt:
-        print("Bot interrumpido por el usuario.")
+        print("[Central Bot] Apagado manual.")
