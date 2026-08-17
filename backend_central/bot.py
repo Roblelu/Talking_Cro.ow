@@ -31,7 +31,7 @@ active_streams = {}
 
 # Variables de Entorno
 # En producción, esto debe estar en las variables de entorno de GCP
-CLOUD_FUNCTION_URL = os.environ.get("CLOUD_FUNCTION_URL", "https://us-central1-talking-crow.cloudfunctions.net/processTTSMessage")
+CLOUD_FUNCTION_URL = os.environ.get("CLOUD_FUNCTION_URL", "https://processttsmessage-kaptqyraha-uc.a.run.app")
 CENTRAL_SERVER_SECRET = os.environ.get("CENTRAL_SERVER_SECRET", "dev_secret_12345")
 
 # --- Lógica del Bot ---
