@@ -11,7 +11,7 @@ service cloud.firestore {
     match /support_tickets/{ticketId} {
       allow read, update, delete: if false; // Solo accesible desde el Backend/Admin
       allow create: if request.auth != null
-                    && request.resource.data.keys().hasAll(['uid', 'email', 'username', 'subject', 'message', 'createdAt', 'status'])
+                    && request.resource.data.keys().hasOnly(['uid', 'email', 'username', 'subject', 'message', 'createdAt', 'status'])
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.status == 'unread';
     }

@@ -22,7 +22,11 @@ class TTSEngine:
             self.load()
             
         token = str(uuid.uuid4())
-        base_dir = os.path.dirname(os.path.abspath(__file__))
+        import sys
+        if getattr(sys, 'frozen', False):
+            base_dir = os.path.join(os.environ.get('APPDATA', ''), 'TalkingCrow')
+        else:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
         audio_dir = os.path.join(base_dir, "audio_queue")
         os.makedirs(audio_dir, exist_ok=True)
         

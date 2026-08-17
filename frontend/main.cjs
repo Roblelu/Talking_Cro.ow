@@ -1,12 +1,26 @@
 const { app, BrowserWindow, ipcMain, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { spawn } = require('child_process');
 const isDev = require('electron-is-dev');
+const { autoUpdater } = require('electron-updater');
 
-const localConfigPath = path.join(__dirname, '..', 'backend', 'local_config.json');
+function getBackendDir() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'backend');
+  }
+  return path.join(__dirname, '..', 'backend');
+}
 
 function getLocalApiKey() {
   try {
+    let localConfigPath;
+    if (app.isPackaged) {
+      localConfigPath = path.join(process.env.APPDATA || (process.platform === 'darwin' ? process.env.HOME + '/Library/Application Support' : process.env.HOME + '/.config'), 'TalkingCrow', 'local_config.json');
+    } else {
+      localConfigPath = path.join(__dirname, '..', 'backend', 'local_config.json');
+    }
+    
     if (!fs.existsSync(localConfigPath)) return "";
     const configData = JSON.parse(fs.readFileSync(localConfigPath, 'utf8'));
     return configData.api_key || "";
@@ -15,6 +29,26 @@ function getLocalApiKey() {
     return "";
   }
 }
+
+let backendProcess = null;
+
+function spawnBackend() {
+  if (app.isPackaged) {
+    const exePath = path.join(getBackendDir(), 'app.exe');
+    if (fs.existsSync(exePath)) {
+      backendProcess = spawn(exePath, [], {
+        cwd: getBackendDir(),
+        detached: false, // We want it to be a child process
+        windowsHide: true,
+      });
+      backendProcess.stdout.on('data', (data) => console.log(`[Backend]: ${data}`));
+      backendProcess.stderr.on('data', (data) => console.error(`[Backend ERR]: ${data}`));
+    } else {
+      console.error("No se encontró el ejecutable del backend en:", exePath);
+    }
+  }
+}
+
 
 let authHookRegistered = false;
 let cleanupStarted = false;
@@ -81,6 +115,7 @@ function createWindow() {
         overrideBrowserWindowOptions: {
           width: 500,
           height: 700,
+          userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
           webPreferences: {
             nodeIntegration: false,
             contextIsolation: true
@@ -92,10 +127,16 @@ function createWindow() {
   });
 }
 
-// Engañar a Google para que piense que somos un navegador normal (Chrome) y no Electron
-app.userAgentFallback = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+// Engañar a Google para que piense que somos un navegador Edge normal y no Electron
+app.userAgentFallback = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0";
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  spawnBackend();
+  createWindow();
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdatesAndNotify();
+  }
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -116,6 +157,14 @@ async function cleanupAndQuit() {
       });
     } catch (_) {
       // El backend puede estar apagado; Electron debe poder cerrarse igualmente.
+    }
+  }
+  
+  if (backendProcess) {
+    try {
+      backendProcess.kill();
+    } catch (e) {
+      console.error("Error matando backendProcess:", e);
     }
   }
   app.exit(0);

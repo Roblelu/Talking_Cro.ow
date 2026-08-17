@@ -743,6 +743,10 @@ function App() {
   };
   
   const handleConnect = async () => {
+    if (!currentUser) {
+       showConfirm("Acceso Denegado", "Debes iniciar sesión con tu cuenta de Talking Cro.ow antes de poder vincular tu canal de TikTok.", () => {});
+       return;
+    }
     if (!tiktokUsername.trim()) return;
     if (!tiktokUsername.trim().startsWith('@')) {
        showAlert("Aviso", "Es obligatorio incluir el símbolo @ al inicio del nombre de usuario de TikTok (ej. @UsuarioTikTok).");
@@ -798,7 +802,7 @@ function App() {
 
   const handlePlayAudio = (id, url) => {
     if ((userData?.creator_credits || 0) <= 0) {
-       showModal("Sin Créditos de Streamer", "Ya no tienes créditos para reproducir TTS. Adquiere más en la sección de Suscripciones.", "error");
+       showConfirm("Sin Créditos de Streamer", "Ya no tienes créditos para reproducir TTS. Adquiere más en la sección de Suscripciones.", () => {});
        setAudioQueue(prev => prev.filter(a => a.id !== id));
        if (id) {
            fetch(`http://127.0.0.1:8763/api/audio/${id}`, { method: 'DELETE' }).catch(e=>console.log(e));

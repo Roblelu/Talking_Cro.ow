@@ -2,7 +2,7 @@ import os
 import json
 import sqlite3
 import asyncio
-from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -25,8 +25,37 @@ import database
 import tts_engine
 import secrets
 
-config_path = os.path.join(os.path.dirname(__file__), "config.json")
-local_config_path = os.path.join(os.path.dirname(__file__), "local_config.json")
+def get_base_dir():
+    # El directorio base para herramientas (ffmpeg, cloudflared)
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+def get_data_dir():
+    # El directorio para datos que requieren permisos de escritura (config, audios)
+    if getattr(sys, 'frozen', False):
+        app_data = os.path.join(os.environ.get('APPDATA', ''), 'TalkingCrow')
+        os.makedirs(app_data, exist_ok=True)
+        return app_data
+    return os.path.dirname(os.path.abspath(__file__))
+
+# Añadir base_dir al PATH para que herramientas como ffmpeg sean encontradas
+os.environ["PATH"] += os.pathsep + get_base_dir()
+
+# Configuración y base de datos local
+config_path = os.path.join(get_data_dir(), "config.json")
+local_config_path = os.path.join(get_data_dir(), "local_config.json")
+
+def init_config():
+    if not os.path.exists(config_path):
+        with open(config_path, "w") as f:
+            json.dump({"test": True}, f)
+    
+    if not os.path.exists(local_config_path):
+        with open(local_config_path, "w") as f:
+            json.dump({"api_key": str(uuid.uuid4()), "web_link": "https://talking-crow.web.app"}, f, indent=4)
+
+init_config()
 
 config_data = {"port": 8763}
 if os.path.exists(config_path):
@@ -65,8 +94,26 @@ async def verify_token(api_key: str = Depends(api_key_header)):
         raise HTTPException(status_code=403, detail="Token inválido")
     return token
 import tts_engine
+from contextlib import asynccontextmanager
+import threading
+import asyncio
 
-app = FastAPI(title="Talking Cro.ow API")
+@asynccontextmanager
+async def lifespan_context(app: FastAPI):
+    # Startup
+    database.init_db()
+    threading.Thread(target=tts_engine.tts_engine.load, daemon=True).start()
+    
+    global tts_queue
+    tts_queue = asyncio.Queue(maxsize=100)
+    worker_task = asyncio.create_task(tts_worker_loop())
+    
+    yield
+    
+    # Shutdown
+    worker_task.cancel()
+
+app = FastAPI(title="Talking Cro.ow API", lifespan=lifespan_context)
 
 app.add_middleware(
     CORSMiddleware,
@@ -93,12 +140,6 @@ class Gift(BaseModel):
 class Settings(BaseModel):
     tiktok_username: str
     base_audio_path: str
-
-@app.on_event("startup")
-def startup_event():
-    database.init_db()
-    # Iniciar carga de F5-TTS en background para no bloquear
-    threading.Thread(target=tts_engine.tts_engine.load, daemon=True).start()
 
 tts_queue = None
 
@@ -130,12 +171,6 @@ async def tts_worker_loop():
         except Exception as e:
             print(f"Error en TTS Worker: {e}")
             await asyncio.sleep(1)
-
-@app.on_event("startup")
-async def startup_event_async():
-    global tts_queue
-    tts_queue = asyncio.Queue()
-    asyncio.create_task(tts_worker_loop())
 
 @app.get("/api/gifts", dependencies=[Depends(verify_token)])
 def get_gifts():
@@ -488,18 +523,16 @@ async def test_tts(req: TTSTestRequest):
 from fastapi.responses import FileResponse
 
 @app.get("/api/audio/{filename}")
-def get_audio(filename: str):
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    audio_path = os.path.join(base_dir, "audio_queue", filename)
+async def get_audio(filename: str):
+    audio_path = os.path.join(get_data_dir(), "audio_queue", filename)
     if os.path.exists(audio_path):
         media = "audio/mpeg" if filename.endswith(".mp3") else "audio/wav"
         return FileResponse(audio_path, media_type=media)
     return {"status": "error", "message": "File not found"}
 
 @app.delete("/api/audio/{filename}")
-def delete_audio(filename: str):
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    audio_path = os.path.join(base_dir, "audio_queue", filename)
+async def delete_audio(filename: str):
+    audio_path = os.path.join(get_data_dir(), "audio_queue", filename)
     if os.path.exists(audio_path):
         try:
             os.remove(audio_path)
@@ -508,7 +541,7 @@ def delete_audio(filename: str):
             return {"status": "error"}
     return {"status": "ok"}
 
-frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
+frontend_dist = os.path.join(os.path.dirname(get_base_dir()), "frontend", "dist")
 
 
 
@@ -559,16 +592,28 @@ def reject_text(token: str):
 
 
 
-@app.post("/api/shutdown", dependencies=[Depends(verify_token)])
-def shutdown_server():
-    import os
-    import subprocess
-    print("Recibida señal de apagado. Deteniendo Talking Cro.ow...")
+@app.post("/api/shutdown")
+async def shutdown(request: Request):
+    """
+    Ruta para apagar el backend desde Electron.
+    """
+    auth_header = request.headers.get("Authorization")
+    local_key = local_config_data.get("api_key")
+    if not local_key or auth_header != f"Bearer {local_key}":
+        raise HTTPException(status_code=403, detail="No autorizado para apagar")
+
+    print("[Backend] Recibida señal de apagado. Terminando procesos...")
     
-    # Ejecutar kill_all.bat de forma independiente
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    kill_script = os.path.join(base_dir, "kill_all.bat")
-    
+    # 1) Cerrar cliente de TikTok si está activo
+    global active_tiktok_client
+    if active_tiktok_client:
+        try:
+            asyncio.create_task(active_tiktok_client.disconnect())
+        except:
+            pass
+
+    # 2) Forzar cierre de túnel Cloudflare si está corriendo
+    kill_script = os.path.join(os.path.dirname(get_base_dir()), "kill_all.bat")
     if os.path.exists(kill_script):
         subprocess.Popen(["cmd.exe", "/c", kill_script], creationflags=subprocess.CREATE_NEW_CONSOLE | 0x08000000)
     
@@ -664,7 +709,7 @@ async def serve_frontend(full_path: str):
 if __name__ == "__main__":
     import uvicorn
     # Leer config
-    config_path = os.path.join(os.path.dirname(__file__), "config.json")
+    config_path = os.path.join(get_data_dir(), "config.json")
     port = 8763
     if os.path.exists(config_path):
         try:
