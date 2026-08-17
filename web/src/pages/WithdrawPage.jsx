@@ -86,7 +86,9 @@ const WithdrawPage = () => {
       <div className="panel" style={{ width: '100%', maxWidth: '600px', display: 'flex', flexDirection: 'column', padding: '2rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '15px' }}>
           <h2 className="neon-text-purple" style={{ margin: 0, fontSize: '1.5rem' }}>💰 Retiro de Ganancias (Croin Cash)</h2>
-          <p style={{ color: 'var(--text-secondary)', marginTop: '5px', fontSize: '0.9rem' }}>Administra tus ingresos generados por mensajes de TTS y regalos.</p>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '5px', fontSize: '0.9rem' }}>
+            Reglamento de retiros: El monto mínimo a retirar es de <strong>$300.00 MXN</strong>. Solo se permite <strong>1 retiro cada 15 días</strong>.
+          </p>
         </div>
 
         <div style={{ padding: '15px', background: 'rgba(157, 0, 255, 0.05)', borderRadius: '10px', border: '1px solid rgba(157, 0, 255, 0.2)', textAlign: 'center', marginBottom: '20px' }}>

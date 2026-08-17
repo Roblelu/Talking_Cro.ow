@@ -98,6 +98,17 @@ from contextlib import asynccontextmanager
 import threading
 import asyncio
 
+async def audio_cleanup_loop():
+    """Tarea periódica que limpia archivos de audio viejos cada 30 minutos."""
+    while True:
+        try:
+            await asyncio.sleep(1800)  # 30 minutos
+            tts_engine.tts_engine.cleanup_old_files(max_age_seconds=7200, max_total_mb=500)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            print(f"[Limpieza TTS] Error en limpieza automática: {e}")
+
 @asynccontextmanager
 async def lifespan_context(app: FastAPI):
     # Startup
@@ -106,12 +117,16 @@ async def lifespan_context(app: FastAPI):
     
     global tts_queue
     tts_queue = asyncio.Queue(maxsize=100)
+    # Limpieza inicial de archivos huérfanos al arrancar
+    tts_engine.tts_engine.cleanup_old_files(max_age_seconds=7200, max_total_mb=500)
     worker_task = asyncio.create_task(tts_worker_loop())
+    cleanup_task = asyncio.create_task(audio_cleanup_loop())
     
     yield
     
     # Shutdown
     worker_task.cancel()
+    cleanup_task.cancel()
 
 app = FastAPI(title="Talking Cro.ow API", lifespan=lifespan_context)
 

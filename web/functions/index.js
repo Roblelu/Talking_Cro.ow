@@ -25,6 +25,14 @@ const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 // un streamer eligiera qué cuenta registrada paga el mensaje.
 const PREMIUM_TTS_BILLING_ENABLED = true;
 
+// Reglas de la Economía (Fase 4)
+const ECONOMY = {
+    CROIN_TO_MXN_RATE: 0.42,
+    CREATOR_COMMISSION_PERCENTAGE: 0.05,
+    TTS_CROIN_COST: 12,
+    MIN_PAYOUT_MXN: 300,
+    PAYOUT_COOLDOWN_DAYS: 15
+};
 // ---------------------------------------------------------
 // Pasarela de Pagos Segura (Stripe)
 // ---------------------------------------------------------
@@ -39,7 +47,7 @@ const PACKAGES = {
     'pack_8': { price_mxn: 399, croins: 2700 }
 };
 
-exports.createPaymentIntent = onCall(async (request) => {
+exports.createPaymentIntent = onCall({ enforceAppCheck: true }, async (request) => {
     // TC-07: Verificación estricta de autenticación
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Debe iniciar sesión para realizar compras.');
@@ -75,7 +83,7 @@ exports.createPaymentIntent = onCall(async (request) => {
     }
 });
 
-exports.createSubscriptionCheckout = onCall(async (request) => {
+exports.createSubscriptionCheckout = onCall({ enforceAppCheck: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Debe iniciar sesión para realizar compras.');
     }
@@ -111,7 +119,7 @@ exports.createSubscriptionCheckout = onCall(async (request) => {
     }
 });
 
-exports.claimWelcomeCredits = onCall(async (request) => {
+exports.claimWelcomeCredits = onCall({ enforceAppCheck: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Debe iniciar sesión.');
     }
@@ -209,7 +217,7 @@ exports.processTTSMessage = onCall(async (request) => {
     }
 
     // El precio forma parte de la economía del servidor; nunca se acepta desde el cliente.
-    const costInt = 12;
+    const costInt = ECONOMY.TTS_CROIN_COST;
     const streamerRef = db.collection('users').doc(streamer_uid);
     const cleanUsername = tiktok_username.startsWith('@') ? tiktok_username : `@${tiktok_username}`;
     let ecoVoiceId = 'EXAVITQu4vr4xnSDxMaL'; // Voz por defecto
@@ -217,6 +225,8 @@ exports.processTTSMessage = onCall(async (request) => {
     let deductedPromo = 0;
     let deductedPurchased = 0;
     let earningsAdded = 0;
+    let fanUid = null;
+    let eventId = db.collection('admin').doc().id; // Ledger ID
     
     try {
         await db.runTransaction(async (transaction) => {
@@ -232,6 +242,7 @@ exports.processTTSMessage = onCall(async (request) => {
             const userDoc = usersQuery.docs[0];
             const userRef = userDoc.ref;
             const userData = userDoc.data();
+            fanUid = userDoc.id;
 
             if (userData.eco_voice_id) {
                 ecoVoiceId = userData.eco_voice_id;
@@ -267,17 +278,38 @@ exports.processTTSMessage = onCall(async (request) => {
                 purchased_croins: admin.firestore.FieldValue.increment(-deductPurchased)
             });
 
+            // Escribir en Ledger del Fan (Gasto)
+            const fanTxRef = userRef.collection('transactions').doc(eventId);
+            transaction.set(fanTxRef, {
+                type: 'tts_message_sent',
+                amount_promotional: -deductPromo,
+                amount_purchased: -deductPurchased,
+                currency: 'croins',
+                description: `Mensaje de voz premium enviado a streamer`,
+                date: admin.firestore.FieldValue.serverTimestamp(),
+                status: 'succeeded'
+            });
+
             // 5. Calcular ganancias para el creador (Revenue Split)
             let earningsToAdd = 0;
             if (deductPurchased > 0) {
-                const percentage = 0.05; 
-                const baseValue = (deductPurchased / 12) * 5.00;
-                earningsToAdd = baseValue * percentage; 
+                earningsToAdd = deductPurchased * ECONOMY.CREATOR_COMMISSION_PERCENTAGE; 
             }
 
             if (earningsToAdd > 0) {
                 transaction.update(streamerRef, {
                     creator_earnings: admin.firestore.FieldValue.increment(earningsToAdd)
+                });
+
+                // Escribir en Ledger del Streamer (Ingreso)
+                const streamerTxRef = streamerRef.collection('transactions').doc(eventId);
+                transaction.set(streamerTxRef, {
+                    type: 'tts_message_received',
+                    amount: earningsToAdd,
+                    currency: 'croin_cash',
+                    description: `Comisión por mensaje recibido de ${cleanUsername}`,
+                    date: admin.firestore.FieldValue.serverTimestamp(),
+                    status: 'succeeded'
                 });
             }
 
@@ -526,6 +558,7 @@ exports.requestPayout = onCall(async (request) => {
     let accountId = null;
     let earnings = 0;
 
+    let earningsMxn = 0;
     try {
         await db.runTransaction(async (transaction) => {
             const userDoc = await transaction.get(userRef);
@@ -536,15 +569,20 @@ exports.requestPayout = onCall(async (request) => {
             accountId = userData.stripe_account_id;
             const chargesEnabled = userData.stripe_charges_enabled;
 
-            if (earnings < 300) {
-                throw new HttpsError('failed-precondition', 'El retiro mínimo es de $300 MXN.');
+            // Fase 4: Conversión de Croins a MXN
+            const croinsFloor = Math.floor(earnings);
+            earningsMxn = croinsFloor * ECONOMY.CROIN_TO_MXN_RATE;
+
+            if (earningsMxn < ECONOMY.MIN_PAYOUT_MXN) {
+                throw new HttpsError('failed-precondition', `El retiro mínimo es de $${ECONOMY.MIN_PAYOUT_MXN} MXN.`);
             }
 
             if (userData.last_payout_date) {
                 const lastDate = userData.last_payout_date.toDate();
                 const now = new Date();
-                if (lastDate.getMonth() === now.getMonth() && lastDate.getFullYear() === now.getFullYear()) {
-                    throw new HttpsError('failed-precondition', 'Ya realizaste un retiro este mes. Vuelve el próximo mes.');
+                const diffDays = (now - lastDate) / (1000 * 60 * 60 * 24);
+                if (diffDays < ECONOMY.PAYOUT_COOLDOWN_DAYS) {
+                    throw new HttpsError('failed-precondition', `Solo se permite 1 retiro cada ${ECONOMY.PAYOUT_COOLDOWN_DAYS} días.`);
                 }
             }
 
@@ -553,8 +591,9 @@ exports.requestPayout = onCall(async (request) => {
             }
 
             // Deducir saldo y actualizar fecha de retiro
+            // Se resta solo lo que se convirtió, dejando el saldo fraccionario (si lo hay)
             transaction.update(userRef, {
-                creator_earnings: 0,
+                creator_earnings: admin.firestore.FieldValue.increment(-croinsFloor),
                 last_payout_date: admin.firestore.FieldValue.serverTimestamp()
             });
 
@@ -562,7 +601,7 @@ exports.requestPayout = onCall(async (request) => {
             const txRef = userRef.collection('transactions').doc(payoutId);
             transaction.set(txRef, {
                 type: 'payout',
-                amount: earnings,
+                amount: earningsMxn,
                 currency: 'mxn',
                 description: `Retiro de ganancias a cuenta bancaria`,
                 date: admin.firestore.FieldValue.serverTimestamp(),
@@ -573,13 +612,15 @@ exports.requestPayout = onCall(async (request) => {
         throw new HttpsError(e.code || 'internal', e.message || 'Error en la transacción local.');
     }
 
-    // Ejecutar Transferencia Stripe
+    // Ejecutar Transferencia Stripe con Idempotency Key (Fase 4)
     try {
         const transfer = await stripe.transfers.create({
-            amount: Math.floor(earnings * 100), // MXN en centavos
+            amount: Math.floor(earningsMxn * 100), // MXN en centavos
             currency: 'mxn',
             destination: accountId,
             description: 'Retiro de ganancias Talking Crow'
+        }, {
+            idempotencyKey: payoutId
         });
 
         // Marcar como exitoso
@@ -588,7 +629,7 @@ exports.requestPayout = onCall(async (request) => {
             stripe_transfer_id: transfer.id
         });
 
-        return { success: true, amount: earnings };
+        return { success: true, amount: earningsMxn };
 
     } catch (stripeError) {
         logger.error(`Error en transferencia de Stripe para ${uid}:`, stripeError);
@@ -763,18 +804,41 @@ exports.stripeWebhook = onRequest((req, res) => {
         } else if (event.type === 'customer.subscription.deleted' || event.type === 'invoice.payment_failed') {
             const object = event.data.object;
             const subscriptionId = event.type === 'customer.subscription.deleted' ? object.id : object.subscription;
+            const eventId = event.id;
             if (subscriptionId) {
                 const subscription = await stripe.subscriptions.retrieve(subscriptionId);
                 const uid = subscription.metadata.uid;
                 if (uid) {
                     try {
-                        await db.collection("users").doc(uid).set({
-                            isPro: false,
-                            pro_expires_at: admin.firestore.FieldValue.delete()
-                        }, { merge: true });
-                        logger.info(`Webhook: Suscripción terminada/fallida para el UID: ${uid}. isPro revocado.`);
+                        const eventRef = db.collection("processed_events").doc(eventId);
+                        const userRef = db.collection("users").doc(uid);
+
+                        await db.runTransaction(async (transaction) => {
+                            const eventDoc = await transaction.get(eventRef);
+                            if (eventDoc.exists) { return; }
+
+                            transaction.set(eventRef, { processedAt: admin.firestore.FieldValue.serverTimestamp() });
+                            
+                            transaction.set(userRef, {
+                                isPro: false,
+                                pro_expires_at: admin.firestore.FieldValue.delete()
+                            }, { merge: true });
+                            
+                            // Guardar en el historial de transacciones
+                            const txRef = userRef.collection('transactions').doc(eventId);
+                            transaction.set(txRef, {
+                                type: 'pro_subscription_revoked',
+                                amount: 0,
+                                currency: 'none',
+                                description: `Suscripción Pro cancelada o fallo de pago`,
+                                date: admin.firestore.FieldValue.serverTimestamp(),
+                                status: 'succeeded'
+                            });
+                        });
+                        logger.info(`Webhook: Suscripción terminada/fallida para el UID: ${uid}. isPro revocado de forma segura.`);
                     } catch (dbErr) {
-                        logger.error(`Error revocando isPro: ${dbErr.message}`);
+                        logger.error(`Error revocando isPro de forma segura: ${dbErr.message}`);
+                        return res.status(500).send('Database Error');
                     }
                 }
             }
@@ -787,7 +851,7 @@ exports.stripeWebhook = onRequest((req, res) => {
 // ---------------------------------------------------------
 // Consumo de Features (Economía unificada)
 // ---------------------------------------------------------
-exports.consumeFeature = onCall(async (request) => {
+exports.consumeFeature = onCall({ enforceAppCheck: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'User must be authenticated.');
     }
@@ -806,6 +870,7 @@ exports.consumeFeature = onCall(async (request) => {
 // Clonación de Voz (EcoVoices) con ElevenLabs
 // ---------------------------------------------------------
 exports.createEcoVoice = onCall({
+    enforceAppCheck: true,
     maxInstances: 10,
     cors: true,
     timeoutSeconds: 120 // ElevenLabs puede tardar un poco clonando
@@ -985,4 +1050,33 @@ exports.getDesktopTokenHandler = functionsV1.https.onRequest(async (req, res) =>
             res.status(500).json({ error: 'Failed to generate token' });
         }
     });
+});
+
+// ---------------------------------------------------------
+// Verificación segura de disponibilidad de username (TC-49)
+// ---------------------------------------------------------
+exports.checkUsernameAvailability = onCall({ enforceAppCheck: true }, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
+    }
+
+    const username = request.data?.username;
+    if (typeof username !== 'string' || username.trim().length < 3 || username.trim().length > 24) {
+        throw new HttpsError('invalid-argument', 'El nombre de usuario debe tener entre 3 y 24 caracteres.');
+    }
+
+    const clean = username.trim().toLowerCase();
+    // Validar formato: solo alfanuméricos, guiones bajos y puntos
+    if (!/^[a-z0-9_.]+$/.test(clean)) {
+        throw new HttpsError('invalid-argument', 'Solo se permiten letras, números, puntos y guiones bajos.');
+    }
+
+    try {
+        const docRef = db.collection('usernames').doc(clean);
+        const docSnap = await docRef.get();
+        return { available: !docSnap.exists };
+    } catch (error) {
+        logger.error('Error verificando username:', error);
+        throw new HttpsError('internal', 'Error al verificar disponibilidad.');
+    }
 });
