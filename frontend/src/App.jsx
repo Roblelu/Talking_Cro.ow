@@ -156,7 +156,7 @@ function App() {
   const { currentUser, userData } = useAuth();
   const [gifts, setGifts] = useState([]);
   
-  const isMissingFields = currentUser && (!userData?.username || !userData?.email || !userData?.tiktok);
+  const isMissingFields = currentUser && (!userData?.username || !(userData?.email || currentUser?.email) || !(userData?.tiktok || userData?.tiktok_username));
   const hasEverBeenPro = userData?.isPro || userData?.last_subscription_payment || userData?.stripe_account_id || (userData?.creator_earnings || 0) > 0;
   
   // TC: Asignar créditos gratuitos de manera segura (Backend)
@@ -745,7 +745,7 @@ function App() {
   const handleConnect = async () => {
     if (!tiktokUsername.trim()) return;
     if (!tiktokUsername.trim().startsWith('@')) {
-       showAlert("Aviso", "Es obligatorio incluir el símbolo @ al inicio del nombre de usuario de TikTok (ej. @facuuparejas).");
+       showAlert("Aviso", "Es obligatorio incluir el símbolo @ al inicio del nombre de usuario de TikTok (ej. @UsuarioTikTok).");
        return;
     }
     

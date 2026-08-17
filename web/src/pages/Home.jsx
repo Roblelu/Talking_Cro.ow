@@ -44,7 +44,7 @@ const Home = () => {
           <div className="feature-card">
             <div className="feature-icon">🤖</div>
             <h3>Texto a Voz Clonada</h3>
-            <p>Llevamos la personalización al extremo. Los usuarios podrán utilizar nuestra inteligencia artificial para clonar sus propias voces y hablar con ella en el directo del streamer.</p>
+            <p>Llevamos la personalización al extremo. Los usuarios podrán utilizar nuestro sistema para clonar sus propias voces y hablar con ella en el directo del streamer.</p>
           </div>
           <div className="feature-card">
             <div className="feature-icon">🎨</div>
@@ -59,7 +59,7 @@ const Home = () => {
           <div className="feature-card">
             <div className="feature-icon">🛡️</div>
             <h3>Seguridad y Moderación</h3>
-            <p>Estamos comprometidos con el uso ético y responsable. Incluimos filtros de palabras, censura automática, tiempos de retraso, y un control riguroso de identidad para asegurar que la clonación de voz IA se utilice siempre para construir un ambiente sano y divertido.</p>
+            <p>Estamos comprometidos con el uso ético y responsable. Incluimos filtros de palabras, censura automática, tiempos de retraso, y un control riguroso de identidad para asegurar que la clonación de voz se utilice siempre para construir un ambiente sano y divertido.</p>
           </div>
         </div>
       </section>

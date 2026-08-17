@@ -12,7 +12,7 @@ def main():
     print("Iniciando Migración de Cuentas Legacy")
     print("========================================")
     
-    cred_path = "serviceAccountKey.json"
+    cred_path = "../firebase-service-account.json"
     if not os.path.exists(cred_path):
         print(f"[ERROR] No se encontró el archivo de credenciales en: {cred_path}")
         print("Debes descargar la clave privada desde Firebase Console -> Project Settings -> Service Accounts.")

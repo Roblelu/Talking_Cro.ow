@@ -117,6 +117,12 @@ const AccountPage = ({ onBack, profileImage, setProfileImage }) => {
 
   const handleSaveProfile = async () => {
     if (!currentUser) return;
+    
+    if (tiktok && !tiktok.startsWith('@')) {
+      alert("Es obligatorio incluir el símbolo @ al inicio del nombre de usuario de TikTok (ej. @UsuarioTikTok).");
+      return;
+    }
+    
     try {
       const privateDocRef = doc(db, "users", currentUser.uid, "private", "contact");
       await setDoc(privateDocRef, { email, phone, tiktok }, { merge: true });
@@ -360,7 +366,7 @@ const AccountPage = ({ onBack, profileImage, setProfileImage }) => {
             <div style={{ marginBottom: '30px', padding: '15px', background: 'rgba(157, 0, 255, 0.1)', border: '1px dashed var(--neon-purple)', borderRadius: '8px', textAlign: 'left' }}>
               <h4 style={{ margin: '0 0 10px 0', color: 'var(--neon-purple)' }}>📢 Instrucciones para tu Audiencia</h4>
               <p style={{ fontSize: '0.85rem', color: '#ddd', margin: '0 0 10px 0' }}>
-                Dile a tu chat de TikTok que usen el comando <strong>Eco</strong> para activar tu voz clonada.
+                Dile a tu chat que usen el comando <strong>Eco</strong> para activar tu voz clonada.
               </p>
               <div style={{ background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ fontSize: '1.2rem' }}>💬</span>

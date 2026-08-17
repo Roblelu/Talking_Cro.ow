@@ -151,7 +151,7 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
           borderLeft: '4px solid var(--neon-green)', margin: '20px 0',
           fontStyle: 'italic', color: '#ddd'
         }}>
-          "Hoy estaremos grabando este mensaje de audio para probar cómo suena mi voz. Me gusta mucho escuchar música, tomar café por las mañanas y salir a caminar cuando hace buen clima. A veces hablo un poco rápido, pero trataré de hacerlo despacio para que el sistema funcione de manera perfecta. Espero que el resultado final sea increíble y que todos pasemos un gran rato juntos."
+          "El cuervo, con su plumaje negro y brillante, es una de las aves más inteligentes que existen. Se dice que pueden recordar rostros, usar herramientas y hasta imitar sonidos humanos. Observarlos volar nos recuerda que la naturaleza esconde secretos fascinantes. Al igual que el cuervo imita los sonidos de su entorno, con esta grabación mi propia voz formará parte de la bandada."
         </div>
 
         <div style={{ marginBottom: '15px' }}>

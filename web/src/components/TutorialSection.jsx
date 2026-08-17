@@ -6,7 +6,7 @@ const TutorialSection = () => {
   const [activeHotspot, setActiveHotspot] = useState(null);
 
   const hotspots = [
-    { id: 1, top: '25%', left: '15%', title: 'Configuración de Regalos', desc: 'Asigna qué sonido o animación se reproduce cuando recibes un regalo específico de TikTok Live.' },
+    { id: 1, top: '25%', left: '15%', title: 'Configuración de Regalos', desc: 'Asigna qué sonido o animación se reproduce cuando recibes un regalo específico de TikTok.' },
     { id: 2, top: '55%', left: '50%', title: 'Monitor en Vivo', desc: 'Visualiza la cola de mensajes en tiempo real y el estatus de la síntesis de voz.' },
     { id: 3, top: '22%', left: '85%', title: 'Conexión Base', desc: 'Vincula tu cuenta de TikTok con un solo clic de forma segura para iniciar la lectura.' },
     { id: 4, top: '70%', left: '85%', title: 'Configuración TTS y Efectos', desc: 'Ajusta el volumen global, activa o desactiva la censura, y gestiona los stickers dinámicos.' },

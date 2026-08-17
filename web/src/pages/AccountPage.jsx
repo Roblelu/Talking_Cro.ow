@@ -105,6 +105,12 @@ const AccountPage = ({ profileImage, setProfileImage }) => {
 
   const handleSaveProfile = async () => {
     if (!currentUser) return;
+    
+    if (tiktok && !tiktok.startsWith('@')) {
+      alert("Es obligatorio incluir el símbolo @ al inicio del nombre de usuario de TikTok (ej. @UsuarioTikTok).");
+      return;
+    }
+    
     try {
       const privateDocRef = doc(db, "users", currentUser.uid, "private", "contact");
       await setDoc(privateDocRef, { email, phone, tiktok }, { merge: true });

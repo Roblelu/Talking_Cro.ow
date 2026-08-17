@@ -6,7 +6,7 @@ import '../App.css'; // Mantenemos el estilo global
  * Este componente actúa como el "Muro de Donadores".
  * Se encarga de consultar constantemente al servidor local de Python
  * para obtener los mensajes VIP pendientes y permitir al streamer 
- * aprobarlos (enviarlos a la IA de voz) o rechazarlos.
+ * aprobarlos (enviarlos al sistema de voz) o rechazarlos.
  */
 function ModerationPanel() {
   // Estado para almacenar la lista de mensajes pendientes.
@@ -96,7 +96,7 @@ function ModerationPanel() {
           Muro de Donadores
         </h1>
         <p className="card-description" style={{ textAlign: 'center', marginBottom: '30px' }}>
-          Aprueba los mensajes pagados para que la IA los hable en el Stream.
+          Aprueba los mensajes pagados para que se escuchen en vivo en el Stream.
         </p>
 
         {/* Estado de carga */}

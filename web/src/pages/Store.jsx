@@ -88,8 +88,10 @@ const CheckoutForm = ({ streamerName, packageId, packDetails }) => {
     return (
       <div style={{ textAlign: 'center', marginTop: '20px' }}>
         <h3 className="neon-text-green">¡Pago Exitoso!</h3>
-        <p className="card-description">El pago fue autorizado. Stripe acreditará {packDetails.croins} Croins cuando el webhook confirme la operación.</p>
-        <p className="card-description" style={{ marginTop: '15px' }}>¡Ve al stream de {streamerName} y escribe algo en el chat!</p>
+        <p className="card-description">El pago fue autorizado. Se acreditaron {packDetails.croins} Croins a tu saldo.</p>
+        <p className="card-description" style={{ marginTop: '15px' }}>
+          ¡Ve con cualquiera de nuestros <a href="/creadores-online" style={{ color: 'var(--neon-green)', textDecoration: 'underline' }}>streamers afiliados</a> y escribe algo en el chat! Recuerda que para usar tu voz clonada debes poner en el chat el comando Eco seguido del mensaje que quieras decir
+        </p>
         <button className="btn-neon" style={{ marginTop: '20px' }} onClick={() => window.location.href = '/dashboard'}>Volver al Dashboard</button>
       </div>
     );
@@ -162,7 +164,7 @@ export default function Store() {
         <div className="panel streamer-card" style={{ maxWidth: '450px', margin: '0 auto', borderColor: 'var(--neon-green)' }}>
           <div className="avatar-placeholder" style={{ margin: '0 auto 20px auto' }}></div>
           <h2 className="neon-text-green" style={{ textAlign: 'center' }}>{displayName}</h2>
-          <p className="card-description" style={{ textAlign: 'center', marginBottom: '10px' }}>Recarga saldo para que la IA lea tus mensajes en mi stream.</p>
+          <p className="card-description" style={{ textAlign: 'center', marginBottom: '10px' }}>Recarga saldo para que tu voz clonada se lea en vivo con los streamers afiliados.</p>
           
           <Elements stripe={stripePromise} options={{ appearance: { theme: 'night', variables: { colorPrimary: '#9d00ff', colorBackground: '#222222' } } }}>
             <CheckoutForm streamerName={displayName} packageId={packageId} packDetails={packDetails} />

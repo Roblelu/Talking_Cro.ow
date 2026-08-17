@@ -41,8 +41,8 @@ const SubscriptionPage = () => {
       
       <div style={{ padding: '20px' }}>
         {/* Paquetes */}
-        <h3 className="neon-text-purple" style={{ marginBottom: '15px' }}>Comprar Croins</h3>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>Adquiere Croins para donar con IA en los directos de tus creadores favoritos.</p>
+        <h1 className="neon-text-green" style={{ fontSize: '2.5rem', marginBottom: '10px', marginTop: '0' }}>Tienda y Suscripciones</h1>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>Adquiere Croins para usar tu voz clonada y se lea en vivo con los streamers afiliados.</p>
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '40px' }}>
           

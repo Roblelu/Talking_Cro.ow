@@ -255,7 +255,7 @@ async def connect_tiktok(req: TikTokConnectRequest):
         @client.on(DisconnectEvent)
         async def on_disconnect(event: DisconnectEvent):
             print("[TikTok] Conexión cerrada.")
-            await broadcast_event(LiveEvent(type="connection", username="Sistema", message="Desconectado (Conexión cerrada por TikTok)"))
+            await broadcast_event(LiveEvent(type="connection", username="Sistema", message="Desconectado del directo"))
 
         @client.on(ConnectEvent)
         async def on_connect(event: ConnectEvent):
@@ -411,7 +411,7 @@ async def connect_tiktok(req: TikTokConnectRequest):
                         clean_username = req.username.strip('@')
                         fallback_avatar = f"https://ui-avatars.com/api/?name={clean_username}&background=random&color=fff&size=128&bold=true"
                         await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=fallback_avatar))
-                        await broadcast_event(LiveEvent(type="connection", username="Sistema", message="TikTok ha bloqueado la conexión a esta sala. Podría tener restricción +18."))
+                        await broadcast_event(LiveEvent(type="connection", username="Sistema", message="La plataforma ha bloqueado la conexión a esta sala. Podría tener restricción +18."))
                         await active_tiktok_client.disconnect()
                 asyncio.create_task(connection_monitor())
                 
@@ -438,7 +438,7 @@ async def disconnect_tiktok():
         except:
             pass
         active_tiktok_client = None
-        await broadcast_event(LiveEvent(type="connection", username="Sistema", message="Desconectado de TikTok Live"))
+        await broadcast_event(LiveEvent(type="connection", username="Sistema", message="Desconectado del directo"))
     return {"status": "desconectado"}
 
 # ---------------------------------------------------------

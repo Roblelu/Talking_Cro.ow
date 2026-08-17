@@ -25,7 +25,7 @@ const Header = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const isMissingFields = currentUser && (!userData?.email || !userData?.phone || !userData?.tiktok);
+  const isMissingFields = currentUser && (!userData?.username || !(userData?.email || currentUser?.email) || !(userData?.tiktok || userData?.tiktok_username));
 
   return (
     <header className="main-navbar">

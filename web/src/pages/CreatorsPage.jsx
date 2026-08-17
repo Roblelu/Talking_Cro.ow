@@ -41,7 +41,7 @@ const CreatorsPage = () => {
         <div className="s-feature-card">
           <div className="s-feature-icon">💎</div>
           <h3>Multiplica tus Ingresos</h3>
-          <p>Aumenta tus donaciones personalizando los regalos nativos de TikTok y recibe comisiones por el uso de voces clonadas de tu comunidad.</p>
+          <p>Aumenta tus donaciones personalizando regalos en audios o stikers y recibe comisiones por el uso de voces clonadas de tu comunidad.</p>
         </div>
         <div className="s-feature-card">
           <div className="s-feature-icon">🔌</div>
