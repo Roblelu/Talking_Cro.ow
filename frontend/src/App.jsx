@@ -527,8 +527,9 @@ function App() {
     document.addEventListener("mousedown", handleClickOutside);
     
     const API_BASE = 'http://127.0.0.1:8763';
-    // Conexión SSE
-    const sse = new EventSource(API_BASE + '/api/live_events');
+    // Conexión SSE con token de seguridad
+    const token = window.API_KEY || sessionStorage.getItem('local_api_key') || '';
+    const sse = new EventSource(`${API_BASE}/api/live_events?token=${token}`);
     sse.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
@@ -806,7 +807,10 @@ function App() {
        showConfirm("Sin Créditos de Streamer", "Ya no tienes créditos para reproducir TTS. Adquiere más en la sección de Suscripciones.", () => {});
        setAudioQueue(prev => prev.filter(a => a.id !== id));
        if (id) {
-           fetch(`http://127.0.0.1:8763/api/audio/${id}`, { method: 'DELETE' }).catch(e=>console.log(e));
+           fetch(`http://127.0.0.1:8763/api/audio/${id}`, { 
+             method: 'DELETE',
+             headers: { 'Authorization': `Bearer ${window.API_KEY || sessionStorage.getItem('local_api_key') || ''}` }
+           }).catch(e=>console.log(e));
        }
        return;
     }
@@ -841,7 +845,10 @@ function App() {
           // Limpiar el audio del servidor 5 segundos después de ser escuchado
           if (id) {
              setTimeout(() => {
-                 fetch(`http://127.0.0.1:8763/api/audio/${id}`, { method: 'DELETE' }).catch(e=>console.log(e));
+                 fetch(`http://127.0.0.1:8763/api/audio/${id}`, { 
+                   method: 'DELETE',
+                   headers: { 'Authorization': `Bearer ${window.API_KEY || sessionStorage.getItem('local_api_key') || ''}` }
+                 }).catch(e=>console.log(e));
              }, 5000);
           }
           // Y finalmente lo quitamos de la cola visual, permitiendo que avance el siguiente
@@ -856,7 +863,10 @@ function App() {
   const handleRejectAudio = (id) => {
     const audioData = audioQueue.find(a => a.id === id);
     if (audioData && audioData.audio_id) {
-      fetch(`http://127.0.0.1:8763/api/audio/${audioData.audio_id}`, { method: 'DELETE' }).catch(e=>console.log(e));
+      fetch(`http://127.0.0.1:8763/api/audio/${audioData.audio_id}`, { 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${window.API_KEY || sessionStorage.getItem('local_api_key') || ''}` }
+      }).catch(e=>console.log(e));
     }
     setAudioQueue(prev => prev.filter(a => a.id !== id));
   };
@@ -1620,12 +1630,16 @@ function App() {
                                   const API_BASE = 'http://127.0.0.1:8763';
                                   const res = await fetch(API_BASE + '/api/tts/test', {
                                     method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
+                                    headers: { 
+                                      'Content-Type': 'application/json',
+                                      'Authorization': `Bearer ${window.API_KEY || sessionStorage.getItem('local_api_key') || ''}`
+                                    },
                                     body: JSON.stringify({ text: `Hola ${username}`, voice: voice.id })
                                   });
                                   const data = await res.json();
                                   if (data.audio_url) {
-                                    const audio = new Audio(API_BASE + data.audio_url);
+                                    const token = window.API_KEY || sessionStorage.getItem('local_api_key') || '';
+                                    const audio = new Audio(`${API_BASE}${data.audio_url}?token=${token}`);
                                     if (audio.setSinkId && selectedAudioDeviceTTS !== 'default') {
                                       audio.setSinkId(selectedAudioDeviceTTS).catch(err => console.error("setSinkId error:", err));
                                     }

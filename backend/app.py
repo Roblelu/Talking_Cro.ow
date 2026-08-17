@@ -93,6 +93,11 @@ async def verify_token(api_key: str = Depends(api_key_header)):
     if token != LOCAL_API_KEY:
         raise HTTPException(status_code=403, detail="Token inválido")
     return token
+
+async def verify_token_query(token: str):
+    if not token or token != LOCAL_API_KEY:
+        raise HTTPException(status_code=403, detail="Token inválido o ausente en la URL")
+    return token
 import tts_engine
 from contextlib import asynccontextmanager
 import threading
@@ -518,7 +523,7 @@ class TTSTestRequest(BaseModel):
     text: str
     voice: str
 
-@app.post("/api/tts/test")
+@app.post("/api/tts/test", dependencies=[Depends(verify_token)])
 async def test_tts(req: TTSTestRequest):
     conn = database.get_db_connection()
     db_settings = conn.execute("SELECT tts_rate, tts_volume FROM settings LIMIT 1").fetchone()
@@ -538,16 +543,18 @@ async def test_tts(req: TTSTestRequest):
 from fastapi.responses import FileResponse
 
 @app.get("/api/audio/{filename}")
-async def get_audio(filename: str):
-    audio_path = os.path.join(get_data_dir(), "audio_queue", filename)
+async def get_audio(filename: str, token: str = Depends(verify_token_query)):
+    safe_filename = os.path.basename(filename)
+    audio_path = os.path.join(get_data_dir(), "audio_queue", safe_filename)
     if os.path.exists(audio_path):
-        media = "audio/mpeg" if filename.endswith(".mp3") else "audio/wav"
+        media = "audio/mpeg" if safe_filename.endswith(".mp3") else "audio/wav"
         return FileResponse(audio_path, media_type=media)
     return {"status": "error", "message": "File not found"}
 
-@app.delete("/api/audio/{filename}")
+@app.delete("/api/audio/{filename}", dependencies=[Depends(verify_token)])
 async def delete_audio(filename: str):
-    audio_path = os.path.join(get_data_dir(), "audio_queue", filename)
+    safe_filename = os.path.basename(filename)
+    audio_path = os.path.join(get_data_dir(), "audio_queue", safe_filename)
     if os.path.exists(audio_path):
         try:
             os.remove(audio_path)
@@ -648,7 +655,7 @@ from fastapi.responses import StreamingResponse
 sse_clients = []
 
 @app.get("/api/live_events")
-async def sse_live_events():
+async def sse_live_events(token: str = Depends(verify_token_query)):
     queue = asyncio.Queue()
     sse_clients.append(queue)
     

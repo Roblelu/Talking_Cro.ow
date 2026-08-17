@@ -188,9 +188,12 @@ exports.consumeTTSCredit = onCall(async (request) => {
 });
 
 exports.processTTSMessage = onCall(async (request) => {
-    // TC-34: Validación estricta de identidad para evitar robo de saldo (Opción A)
-    if (!request.auth) {
-        throw new HttpsError('unauthenticated', 'Acceso denegado: Se requiere autenticación.');
+    // Seguridad Fase 5: Solo el Servidor Central puede ejecutar esta función para descontar Croins.
+    const { tiktok_username, streamer_uid, message, server_secret } = request.data || {};
+    
+    // Verificamos que el secreto coincida (solo el bot maestro en GCP lo conoce)
+    if (server_secret !== (process.env.CENTRAL_SERVER_SECRET || 'dev_secret_12345')) {
+        throw new HttpsError('permission-denied', 'Acceso denegado: Firma de servidor central inválida.');
     }
 
     if (!PREMIUM_TTS_BILLING_ENABLED) {
@@ -200,20 +203,12 @@ exports.processTTSMessage = onCall(async (request) => {
         );
     }
 
-    // Esta función es llamada desde el cliente cuando un fan envía un mensaje de chat
-    const { tiktok_username, streamer_uid, message } = request.data || {};
-    
     if (typeof tiktok_username !== 'string' || typeof streamer_uid !== 'string' || typeof message !== 'string' ||
         !tiktok_username.trim() || !streamer_uid.trim() || !message.trim()) {
         throw new HttpsError('invalid-argument', 'Faltan parámetros requeridos (tiktok_username, streamer_uid, message).');
     }
     if (tiktok_username.length > 80 || message.length > 300) {
         throw new HttpsError('invalid-argument', 'El usuario o mensaje supera el tamaño permitido.');
-    }
-
-    // Verificamos que el streamer solo pueda cobrar donaciones dirigidas a sí mismo
-    if (request.auth.uid !== streamer_uid) {
-        throw new HttpsError('permission-denied', 'No tienes permiso para acreditar Croins a otro streamer.');
     }
 
     // El precio forma parte de la economía del servidor; nunca se acepta desde el cliente.
