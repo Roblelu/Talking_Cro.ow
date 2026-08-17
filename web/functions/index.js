@@ -1,13 +1,21 @@
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
+const functionsV1 = require("firebase-functions");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
+const { getFirestore, FieldValue, Timestamp } = require("firebase-admin/firestore");
+const { getAuth } = require("firebase-admin/auth");
 const axios = require("axios");
 const FormData = require("form-data");
 const cors = require("cors")({ origin: true });
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY || "sk_test_dummy");
 
 admin.initializeApp();
-const db = admin.firestore();
+admin.firestore = () => getFirestore();
+admin.firestore.FieldValue = FieldValue;
+admin.firestore.Timestamp = Timestamp;
+admin.auth = () => getAuth();
+
+const db = getFirestore();
 
 // Configuración de las APIs protegidas
 // Extraemos las variables de entorno que subiremos a Firebase
@@ -956,4 +964,25 @@ exports.adminAddCredits = onCall(async (request) => {
         if (error instanceof HttpsError) throw error;
         throw new HttpsError('internal', 'No se pudieron acreditar las monedas de superusuario.');
     }
+});
+
+// --- AUTENTICACIÓN DESKTOP (Proxy) ---
+exports.getDesktopTokenHandler = functionsV1.https.onRequest(async (req, res) => {
+    cors(req, res, async () => {
+        try {
+            const authHeader = req.headers.authorization || '';
+            if (!authHeader.startsWith('Bearer ')) {
+                return res.status(401).json({ error: 'No token provided' });
+            }
+            const idToken = authHeader.split('Bearer ')[1];
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+            
+            const customToken = await admin.auth().createCustomToken(uid);
+            res.json({ token: customToken });
+        } catch (error) {
+            logger.error(`Error en getDesktopTokenHandler: ${error.message}`);
+            res.status(500).json({ error: 'Failed to generate token' });
+        }
+    });
 });

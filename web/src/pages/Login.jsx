@@ -24,7 +24,12 @@ export default function Login() {
         return;
       }
       
-      navigate("/dashboard");
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get("desktop") === "true") {
+        navigate("/auth-desktop");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err) {
       console.error(err);
       setError("Error Google: " + (err.message || "Desconocido"));

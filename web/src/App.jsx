@@ -12,6 +12,7 @@ import Dashboard from './pages/Dashboard'
 import AccountPage from './pages/AccountPage'
 import SubscriptionPage from './pages/SubscriptionPage'
 import WithdrawPage from './pages/WithdrawPage'
+import DesktopAuth from './pages/DesktopAuth'
 import Store from './pages/Store'
 import SupportPage from './pages/SupportPage'
 import PortConfigPage from './pages/PortConfigPage'
@@ -40,6 +41,7 @@ function App() {
               <Route path="/creadores-online" element={<OnlineCreatorsPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/auth-desktop" element={<DesktopAuth />} />
               <Route 
                 path="/dashboard" 
                 element={<PrivateRoute><Dashboard /></PrivateRoute>} 

@@ -10,6 +10,7 @@ import SubscriptionPage from './pages/SubscriptionPage';
 import PortConfigPage from './pages/PortConfigPage';
 import SupportPage from './pages/SupportPage';
 import TermsPage from './pages/TermsPage';
+import DesktopAuth from './pages/DesktopAuth';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import { useAuth } from './context/AuthContext';
@@ -1734,6 +1735,12 @@ function App() {
       )}
 
       {/* RENDERIZADO DE VENTANAS SECUNDARIAS (Si hay hashRoute) */}
+      {hashRoute === '#auth-desktop' && (
+         <DesktopAuth onNavigate={(view) => {
+             window.location.hash = '';
+             setActiveView(view);
+         }} />
+      )}
       {hashRoute === '#sounds' && (
          <section className="panel custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, paddingBottom: '15px', overflowY: 'auto' }}>
             <h2 className="neon-text-purple" style={{ textAlign: 'center', margin: '0 0 10px 0' }}>

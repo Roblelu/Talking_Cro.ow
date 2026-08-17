@@ -1,13 +1,43 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { auth, db } from "../firebase";
-import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup, signOut, signInWithCustomToken } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 
 export default function Login({ onNavigate }) {
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    if (window.electron && window.electron.onAuthToken) {
+      const unsubscribe = window.electron.onAuthToken(async (token) => {
+        try {
+          const userCredential = await signInWithCustomToken(auth, token);
+          const user = userCredential.user;
+          const docRef = doc(db, "users", user.uid);
+          const docSnap = await getDoc(docRef);
+          if (!docSnap.exists()) {
+            await signOut(auth);
+            setError("Esta cuenta aún no está registrada. Usa Registro para aceptar el aviso de privacidad y crear tu perfil.");
+            return;
+          }
+          onNavigate('main');
+        } catch (err) {
+          console.error("Token Auth Error:", err);
+          setError("Error al iniciar sesión mediante pase de acceso.");
+        }
+      });
+      return unsubscribe;
+    }
+  }, [onNavigate]);
+
   const handleGoogleLogin = async () => {
     setError("");
+
+    if (window.electron && window.electron.openExternal) {
+      window.electron.openExternal('https://talking-crow.web.app/auth-desktop');
+      setError("Se abrirá tu navegador Chrome/Edge para iniciar sesión de forma segura.");
+      return;
+    }
+
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
@@ -33,7 +63,7 @@ export default function Login({ onNavigate }) {
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', padding: '20px', boxSizing: 'border-box' }}>
       <div className="panel" style={{ width: '100%', maxWidth: '400px', maxHeight: '80vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' }}>
         <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>Iniciar Sesión</h2>
-        {error && <div style={{ color: '#ff003c', textAlign: 'center', marginBottom: '10px' }}>{error}</div>}
+        {error && <div style={{ color: 'var(--neon-orange)', textAlign: 'center', marginBottom: '10px' }}>{error}</div>}
 
         <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '20px' }}>
           Ingresa de forma rápida y segura usando tu cuenta de Google.

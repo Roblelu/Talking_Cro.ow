@@ -54,3 +54,6 @@ Thumbs.db
 *.xlsx
 *.xls
 *.csv
+
+frontend/dist_electron/
+plan_4fases_*.md

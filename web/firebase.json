@@ -12,6 +12,10 @@
         "function": "createPaymentIntent"
       },
       {
+        "source": "/api/getDesktopToken",
+        "function": "getDesktopTokenHandler"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
@@ -46,7 +50,7 @@
           },
           {
             "key": "Content-Security-Policy",
-            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' data: https://api.stripe.com https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://*.firebaseapp.com https://*.cloudfunctions.net; frame-src 'self' https://js.stripe.com https://*.firebaseapp.com; img-src 'self' data: https:;"
+            "value": "default-src 'self' talkingcrow:; script-src 'self' 'unsafe-inline' https://js.stripe.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' data: https://api.stripe.com https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://*.firebaseapp.com https://*.cloudfunctions.net talkingcrow:; frame-src 'self' https://js.stripe.com https://*.firebaseapp.com talkingcrow:; img-src 'self' data: https:;"
           }
         ]
       },

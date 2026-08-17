@@ -71,7 +71,12 @@ export default function Register() {
           await updateProfile(user, { displayName: cleanUsername });
       }
       
-      navigate("/dashboard");
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get("desktop") === "true") {
+        navigate("/auth-desktop");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err) {
       console.error(err);
       setError("Error al registrarse con Google. " + (err.message || ""));

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session } = require('electron');
+const { app, BrowserWindow, ipcMain, session, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -130,13 +130,59 @@ function createWindow() {
 // Engañar a Google para que piense que somos un navegador Edge normal y no Electron
 app.userAgentFallback = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0";
 
-app.whenReady().then(() => {
-  spawnBackend();
-  createWindow();
-  if (app.isPackaged) {
-    autoUpdater.checkForUpdatesAndNotify();
+function handleDeepLink(urlStr) {
+  try {
+    const url = new URL(urlStr);
+    if (url.hostname === 'auth' || url.pathname.includes('auth')) {
+      const token = url.searchParams.get('token');
+      if (token && mainWindow) {
+        mainWindow.webContents.send('desktop-auth-token', token);
+      }
+    }
+  } catch(e) {
+    console.error("Invalid deep link:", urlStr);
   }
-});
+}
+
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+    const deepLinkUrl = commandLine.find((arg) => arg.startsWith('talkingcrow://'));
+    if (deepLinkUrl) handleDeepLink(deepLinkUrl);
+  });
+  
+  if (process.defaultApp) {
+    if (process.argv.length >= 2) {
+      app.setAsDefaultProtocolClient('talkingcrow', process.execPath, [path.resolve(process.argv[1])]);
+    }
+  } else {
+    app.setAsDefaultProtocolClient('talkingcrow');
+  }
+
+  app.on('open-url', (event, url) => {
+    event.preventDefault();
+    if (app.isReady()) {
+      handleDeepLink(url);
+    } else {
+      app.once('ready', () => handleDeepLink(url));
+    }
+  });
+
+  app.whenReady().then(() => {
+    spawnBackend();
+    createWindow();
+    if (app.isPackaged) {
+      autoUpdater.checkForUpdatesAndNotify();
+    }
+  });
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -172,6 +218,10 @@ async function cleanupAndQuit() {
 
 ipcMain.on('close-main-window', (event) => {
   if (mainWindow && event.sender === mainWindow.webContents) cleanupAndQuit();
+});
+
+ipcMain.on('open-external-url', (event, url) => {
+  shell.openExternal(url);
 });
 
 const allowedSecondaryRoutes = new Map([
