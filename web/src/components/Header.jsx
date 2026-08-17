@@ -12,13 +12,18 @@ const Header = () => {
   const { currentUser, userData } = useAuth();
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const walletRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
+      }
+      if (walletRef.current && !walletRef.current.contains(event.target)) {
+        setIsWalletOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -70,53 +75,72 @@ const Header = () => {
         </nav>
       </div>
 
-      {/* Right: Croins Indicator & User Profile Dropdown */}
-      <div className="navbar-right navbar-side" ref={dropdownRef}>
+      {/* Right: Wallet Dropdown & User Profile Dropdown */}
+      <div className="navbar-right navbar-side">
         {currentUser ? (
-          <>
-          <div className="credits-wrapper">
-            <div 
-              className="header-indicator"
-              style={{ background: 'rgba(0,255,204,0.1)', border: '1px solid var(--neon-green)' }}
-              onClick={() => navigate('/dashboard')}
-              title="Comprar más Croins"
-            >
-              <span style={{ fontSize: '1.2rem' }}>🪙</span>
-              <span className="neon-text-green" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{((userData?.purchased_croins || 0) + (userData?.promotional_croins || 0))} Croins</span>
-            </div>
-            
-            {(userData?.has_received_app_credits || userData?.creator_credits > 0 || userData?.isPro) && (
-              <div 
-                className="header-indicator"
-                style={{ background: 'rgba(255,117,24,0.1)', border: '1px solid var(--neon-orange)' }}
-                onClick={() => navigate('/dashboard')}
-                title="Créditos de Streamer"
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+            {/* Botón de Wallet */}
+            <div style={{ position: 'relative' }} ref={walletRef}>
+              <button 
+                className="btn-neon" 
+                style={{ padding: '8px 15px', display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent' }}
+                onClick={() => setIsWalletOpen(!isWalletOpen)}
+                title="Mi Billetera"
               >
-                <span style={{ fontSize: '1.2rem' }}>✨</span>
-                <span className="neon-text-orange" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{userData?.creator_credits || 0} Créditos</span>
-              </div>
-            )}
-
-            <div 
-              className="header-indicator"
-              style={{ background: 'rgba(157, 0, 255, 0.1)', border: '1px solid var(--neon-purple)' }}
-              onClick={() => navigate('/withdraw')}
-              title="Retirar Ganancias (Croin Cash)"
-            >
-              <span style={{ fontSize: '1.2rem' }}>💰</span>
-              <span className="neon-text-purple" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
-                {Math.floor((userData?.creator_earnings || 0) * (28 / 12))} Croin Cash
-              </span>
-            </div>
-          </div>
-            
-            <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-              <img src={'/avatar_user.png'} alt="Menú de Usuario" className="avatar-placeholder" title="Menú de Usuario" style={{ objectFit: 'cover' }} />
-              <button className="settings-gear-btn" title="Ajustes" style={{ pointerEvents: 'none' }}>
-                ⚙️
-                {isMissingFields && <span style={{ position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
+                <span style={{ fontSize: '1.2rem' }}>👛</span>
+                <span className="neon-text-green" style={{ fontWeight: 'bold' }}>Wallet</span>
               </button>
+              
+              {isWalletOpen && (
+                <div className="user-dropdown-menu" style={{ width: '220px', right: 0, padding: '10px' }}>
+                  <div style={{ marginBottom: '10px', fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center', borderBottom: '1px solid rgba(0, 240, 255, 0.2)', paddingBottom: '8px' }}>
+                    Saldos Disponibles
+                  </div>
+                  <div className="credits-wrapper" style={{ flexDirection: 'column', gap: '10px', display: 'flex' }}>
+                    <div 
+                      className="header-indicator"
+                      style={{ background: 'rgba(0,255,204,0.1)', border: '1px solid var(--neon-green)', width: '100%', justifyContent: 'flex-start' }}
+                      onClick={() => { navigate('/dashboard'); setIsWalletOpen(false); }}
+                    >
+                      <span style={{ fontSize: '1.2rem', marginRight: '10px' }}>🪙</span>
+                      <span className="neon-text-green" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{((userData?.purchased_croins || 0) + (userData?.promotional_croins || 0))} Croins</span>
+                    </div>
+                    
+                    {(userData?.has_received_app_credits || userData?.creator_credits > 0 || userData?.isPro) && (
+                      <div 
+                        className="header-indicator"
+                        style={{ background: 'rgba(255,117,24,0.1)', border: '1px solid var(--neon-orange)', width: '100%', justifyContent: 'flex-start' }}
+                        onClick={() => { navigate('/dashboard'); setIsWalletOpen(false); }}
+                      >
+                        <span style={{ fontSize: '1.2rem', marginRight: '10px' }}>✨</span>
+                        <span className="neon-text-orange" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{userData?.creator_credits || 0} Créditos</span>
+                      </div>
+                    )}
+
+                    <div 
+                      className="header-indicator"
+                      style={{ background: 'rgba(157, 0, 255, 0.1)', border: '1px solid var(--neon-purple)', width: '100%', justifyContent: 'flex-start' }}
+                      onClick={() => { navigate('/withdraw'); setIsWalletOpen(false); }}
+                    >
+                      <span style={{ fontSize: '1.2rem', marginRight: '10px' }}>💰</span>
+                      <span className="neon-text-purple" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
+                        {Math.floor((userData?.creator_earnings || 0) * (28 / 12))} Croin Cash
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
+            
+            {/* Menú de Usuario */}
+            <div style={{ position: 'relative' }} ref={dropdownRef}>
+              <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
+                <img src={'/avatar_user.png'} alt="Menú de Usuario" className="avatar-placeholder" title="Menú de Usuario" style={{ objectFit: 'cover' }} />
+                <button className="settings-gear-btn" title="Ajustes" style={{ pointerEvents: 'none' }}>
+                  ⚙️
+                  {isMissingFields && <span style={{ position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
+                </button>
+              </div>
             
             {isDropdownOpen && (
               <div className="user-dropdown-menu">
@@ -146,7 +170,8 @@ const Header = () => {
                  </ul>
               </div>
             )}
-          </>
+            </div>
+          </div>
         ) : (
           <button className="btn-neon" style={{ padding: '8px 15px' }} onClick={() => navigate('/login')}>
             Iniciar Sesión
