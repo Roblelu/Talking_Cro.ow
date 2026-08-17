@@ -51,10 +51,10 @@ const TermsPage = ({ onBack }) => {
         </ul>
 
         <h3 className="neon-text-orange" style={{ marginTop: '30px', marginBottom: '15px' }}>4. Cambios a los Términos</h3>
-        <p style={{ marginBottom: '30px' }}>Nos reservamos el derecho de modificar o actualizar estos Términos de Servicio en cualquier momento para cumplir con las regulaciones internacionales de Inteligencia Artificial. Tu uso continuo de la plataforma constituye la aceptación de dichas modificaciones.</p>
+        <p style={{ marginBottom: '30px' }}>Nos reservamos el derecho de modificar o actualizar estos Términos de Servicio en cualquier momento para adaptarnos a las normativas vigentes. Tu uso continuo de la plataforma constituye la aceptación de dichas modificaciones.</p>
         
         <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.1)', margin: '30px 0' }} />
-        <p style={{ fontStyle: 'italic', color: 'var(--text-secondary)', textAlign: 'center' }}>Al hacer clic en "Acepto" y proceder al pago de tu suscripción o donación, confirmas que has leído y entendido esta política de uso responsable de Inteligencia Artificial.</p>
+        <p style={{ fontStyle: 'italic', color: 'var(--text-secondary)', textAlign: 'center' }}>Al hacer clic en "Acepto" y proceder al pago de tu suscripción o donación, confirmas que has leído y entendido esta política de uso responsable de nuestro sistema.</p>
       </div>
       </div>
       <div></div>
