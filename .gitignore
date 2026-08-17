@@ -17,6 +17,10 @@ backend/media_uploads/
 backend/tts/*.wav
 backend/tts/*.mp3
 
+# CRITICAL SECURITY EXCLUSIONS
+backend/firebase-service-account.json
+web/functions/.env
+
 # Large Binaries / Executables
 backend/ffmpeg.exe
 backend/ffprobe.exe
@@ -49,11 +53,3 @@ build/
 # OS Files
 .DS_Store
 Thumbs.db
-
-# Documents / Spreadsheets
-*.xlsx
-*.xls
-*.csv
-
-frontend/dist_electron/
-plan_4fases_*.md

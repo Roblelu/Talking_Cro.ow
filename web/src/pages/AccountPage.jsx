@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useUserData } from '../hooks/useUserData';
 import { db, functions } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -44,6 +45,7 @@ const PasswordInput = ({ label, value, onChange, show, toggleShow }) => (
 const AccountPage = ({ profileImage, setProfileImage }) => {
   const navigate = useNavigate();
   const { currentUser, userData } = useAuth();
+  const { saveProfile } = useUserData();
   
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
@@ -112,35 +114,14 @@ const AccountPage = ({ profileImage, setProfileImage }) => {
     }
     
     try {
-      const privateDocRef = doc(db, "users", currentUser.uid, "private", "contact");
-      await setDoc(privateDocRef, { email, phone, tiktok }, { merge: true });
-      
-      const userDocRef = doc(db, "users", currentUser.uid);
-      await setDoc(userDocRef, { 
-        tiktok_username: tiktok.trim().toLowerCase()
-      }, { merge: true });
-      
-      // Actualizar username si cambió
-      if (username.trim().toLowerCase() !== (userData?.username || '').toLowerCase()) {
-        const { getFunctions, httpsCallable } = await import('firebase/functions');
-        const functions = getFunctions();
-        const updateUsernameFn = httpsCallable(functions, 'updateUsername');
-        
-        try {
-          await updateUsernameFn({ newUsername: username });
-          alert('Perfil y nombre de usuario actualizados con éxito');
-        } catch (usernameErr) {
-          console.error("Error al actualizar nombre de usuario:", usernameErr);
-          alert(`Perfil guardado, pero falló el nombre de usuario: ${usernameErr.message}`);
-          setUsername(userData?.username || ''); // Revertir
-        }
-      } else {
-        alert('Perfil actualizado con éxito');
-      }
-      
+      await saveProfile({ email, phone, tiktok, username });
+      alert('Perfil actualizado con éxito');
     } catch (err) {
       console.error(err);
-      alert(`Error al guardar el perfil: ${err.message}`);
+      alert(err.message || 'Error al guardar el perfil');
+      if (err.message.includes('nombre de usuario')) {
+        setUsername(userData?.username || ''); // Revertir visualmente el username
+      }
     }
   };
 

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { auth } from '../firebase';
-import { signOut } from 'firebase/auth';
+import { logoutUser } from '../services/auth';
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
@@ -10,7 +9,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('donador'); // 'donador' o 'streamer'
 
   const handleLogout = async () => {
-    await signOut(auth);
+    await logoutUser();
     navigate('/');
   };
 

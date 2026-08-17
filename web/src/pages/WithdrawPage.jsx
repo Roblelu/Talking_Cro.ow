@@ -1,61 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { functions } from '../firebase';
-import { httpsCallable } from 'firebase/functions';
+import { useEconomy } from '../hooks/useEconomy';
 
 const WithdrawPage = () => {
-  const { userData, currentUser } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const { userData } = useAuth();
+  const { loading, error, requestPayout, createConnectAccount, checkStripeStatus } = useEconomy();
 
   useEffect(() => {
     if (userData?.stripe_account_id && !userData?.stripe_charges_enabled) {
-      const checkStatus = async () => {
-        try {
-          const checkStripeAccountStatus = httpsCallable(functions, 'checkStripeAccountStatus');
-          await checkStripeAccountStatus();
-        } catch(e) {
-          console.error("Error checking stripe status", e);
-        }
-      }
-      checkStatus();
+      checkStripeStatus();
     }
   }, [userData?.stripe_account_id, userData?.stripe_charges_enabled]);
 
   const handleStripeOnboarding = async () => {
-    setLoading(true);
     try {
-      const createConnectAccount = httpsCallable(functions, 'createConnectAccount');
-      const response = await createConnectAccount();
-      if (response.data && response.data.url) {
-        window.open(response.data.url, '_blank');
+      const data = await createConnectAccount();
+      if (data && data.url) {
+        window.open(data.url, '_blank');
       } else {
         alert("Error al generar el link de Stripe.");
       }
-    } catch (error) {
-      console.error("Stripe Onboarding error:", error);
+    } catch (err) {
       alert("Error al iniciar configuración bancaria.");
-    } finally {
-      setLoading(false);
     }
   };
 
   const handlePayout = async () => {
     if (!window.confirm(`¿Estás seguro de que deseas retirar $${(userData?.creator_earnings || 0).toFixed(2)} MXN a tu cuenta bancaria?`)) return;
     
-    setLoading(true);
     try {
-      const requestPayout = httpsCallable(functions, 'requestPayout');
-      const response = await requestPayout();
-      if (response.data && response.data.success) {
+      const data = await requestPayout();
+      if (data && data.success) {
         alert("¡Retiro solicitado con éxito! Los fondos llegarán a tu cuenta pronto.");
       } else {
         alert("Error al solicitar el retiro.");
       }
-    } catch (error) {
-      console.error("Payout error:", error);
-      alert(error.message || "Error al solicitar retiro.");
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      alert(err.message || "Error al solicitar retiro.");
     }
   };
 

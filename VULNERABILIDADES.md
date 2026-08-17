@@ -1,59 +1,99 @@
-# Registro de seguridad y deuda técnica — Talking Cro.ow
+# Auditoría de Seguridad y Lógica - Talking Crow
 
-Última revisión: **2026-08-17**  
-Alcance: código local de la app Electron/FastAPI, web React, Cloud Functions, reglas de Firestore y scripts de operación.  
-Esta revisión **no desplegó cambios**, no ejecutó pruebas intrusivas contra producción y no puede garantizar ausencia absoluta de vulnerabilidades.
+### 🚨 1. Fallas Críticas de Lógica / Implementaciones Incompletas
 
-## Leyenda
+**A. El Panel de Moderación es inaccesible (Falta de Input de API Key)**
+El archivo `web/src/pages/ModerationPanel.jsx` hace peticiones al backend local (`127.0.0.1:8763`) usando una llave de autorización: `sessionStorage.getItem("local_api_key")`. Sin embargo, en toda la página web no existe ningún formulario para que el streamer ingrese esta llave, haciendo que el panel sea inútil a menos que se inyecte la llave manualmente en la consola del navegador.
 
-| Estado | Significado |
-|---|---|
-| 🛡️ Mitigado localmente | El flujo riesgoso quedó cerrado o limitado; falta el diseño definitivo. |
-| 🟡 Parcial | Se corrigió una parte, pero queda trabajo técnico, migración o despliegue. |
-| ⏳ Pendiente | No se modificó porque requiere una decisión de producto, migración, infraestructura o cambio de alto impacto. |
-| 🌐 Externo | Depende de producción, rotación de credenciales o configuración fuera del repositorio. |
-| ✅ Corregido | Completamente resuelto localmente en el código actual. |
+**B. Autenticación de Escritorio Fantasma (`talkingcrow://`)**
+En `DesktopAuth.jsx`, la web redirige al usuario a `talkingcrow://auth?token=<customToken>`. Sin embargo, en el código actual del backend (`backend/app.py`), no existe lógica que intercepte este protocolo ni valide el `customToken`. La app de Python usa su propio sistema aislado de seguridad (`LOCAL_API_KEY`) y no consume la identidad de Firebase.
 
-> **Advertencia de release:** Asegúrate de ejecutar `firebase_deploy.bat` para desplegar las reglas y funciones antes de probar en producción.
+**C. Firmas de TikTokLive Incompletas**
+En `backend/app.py` (línea 22) se tiene `WebDefaults.sign_api_key = ""`. Actualmente, TikTok ofusca y bloquea conexiones a sus WebSockets si no se utiliza un servidor de firmas válido. Al dejar esto en blanco, es altamente probable que la conexión a los directos se caiga o falle.
 
-## Aplicación de escritorio y backend local
+**D. Creadores en Línea "Fantasma"**
+La página `OnlineCreatorsPage.jsx` tiene un diseño y lógica de filtrado para mostrar a los streamers conectados, pero la lista está *hardcodeada* y vacía (`const mockCreators = [];`). Nunca hace una petición a la base de datos para obtener creadores reales. Además, si intentaran hacerlo, chocarían con las Reglas de Firestore actuales que bloquean la visualización global de perfiles (`allow list: if false`).
 
-| ID | Hallazgo | Riesgo | Estado | Acción realizada / pendiente |
-|---|---|---:|---|---|
-| TC-51 | Medios locales no tienen cuota total, expiración ni limpieza automática | Medio | ⏳ Pendiente | Un usuario legítimo o fallo repetitivo puede llenar disco con archivos válidos de hasta 10 MB. Requiere política de retención y cuota. |
-| TC-52 | Uso de `@app.on_event` obsoleto | Bajo | ✅ Corregido | Refactorizado a `lifespan` y agregada protección de memoria `maxsize=100` a la cola TTS. |
-| TC-53 | Lectura pública de audio/media y `overlay/pop` en localhost | Bajo–Medio | ⏳ Pendiente | Es necesaria para OBS/browser source actual. Para cerrarla se requiere una URL efímera o token compatible con OBS. |
-| TC-55 | Subida manual de voz en la cuenta de Electron es un cascarón | Bajo funcional | ⏳ Pendiente | El selector solo muestra un aviso; la grabadora sí tiene lógica. No se fingió una implementación durante el parche de seguridad. |
-| TC-58 | Dependencia no documentada en API de terceros para avatares (`tikwm.com`) | Medio privacidad | ⏳ Pendiente | Si falla la obtención del avatar, se llama a esta API externa. Podría caerse o exponer uso a terceros. Reevaluar su necesidad como fallback. |
+**E. EcoVoices "Hardcodeado" (Clonación inútil)**
+En la función de cobro de TTS `processTTSMessage` (`index.js` línea 223) se tiene `let ecoVoiceId = 'EXAVITQu4vr4xnSDxMaL'; // Voz por defecto`. Esta función JAMÁS consulta la voz real clonada por el usuario en ElevenLabs, obligando a todos los donadores a usar la misma voz genérica en lugar de la que pagaron por clonar.
 
-## Página web, Firebase y pagos
+**F. Motor de Regalos de Audio Totalmente Incompleto**
+Existen rutas en `backend/app.py` (`/api/gifts`) para guardar "Regalos" en la base de datos local SQLite con un campo `script`. Sin embargo, cuando llega un regalo de TikTokLive en la función `on_gift`, solo se notifica al frontend. **Nunca se ejecuta ningún script ni se reproduce ningún sonido local**, haciendo que toda la configuración de la tienda de regalos de la app sea un adorno que no cumple ninguna función técnica real en los streams.
 
-| ID | Hallazgo | Riesgo | Estado | Acción realizada / pendiente |
-|---|---|---:|---|---|
-| TC-07 | Creación pública/automatizable de PaymentIntents | Alto | 🟡 Parcial | Ahora exige Firebase Auth y paquete válido. Falta App Check/rate limiting para abuso con cuentas automatizadas. |
-| TC-08 | Secretos incrustados en código y configuración versionada | Alto | 🌐 Externo | El árbol actual ya no contiene las claves revisadas y los tests usan variables/config local. Falta rotar todas las credenciales expuestas y, si se requiere, limpiar historial Git. |
-| TC-10 | Modelo antiguo de PII y documentos por username | Alto | 🟡 Parcial | Nuevos registros usan UID y subdocumento privado. Los datos históricos siguen sujetos a TC-19. |
-| TC-14 | Flujo de pagos mal enrutado o bundle distinto al código | Alto funcional | 🟡 Parcial | Código y builds locales son coherentes; no se verificó el bundle ni las Functions desplegadas en producción. |
-| TC-18 | CSP y encabezados incompletos | Medio | 🌐 Pendiente | Configurados CSP, anti-frame, nosniff, referrer, permissions y HSTS. Falta despliegue/verificación HTTP en producción. |
-| TC-19 | Cuentas heredadas sin migración UID/PII | Medio–Alto | ⏳ Pendiente | Requiere respaldo, inventario y migración idempotente con Admin SDK; no se ejecutó una migración destructiva. |
-| TC-21 | Datos enviados a TTS de terceros sin evidencia de consentimiento | Medio privacidad | 🟡 Parcial | Nuevos registros exigen consentimiento y guardan versión/fecha/método. Falta obtener o registrar consentimiento de cuentas existentes y definir retención del proveedor. |
-| TC-22 | Dependencias con `uuid < 11.1.1` | Medio | ✅ Corregido | Se actualizó `firebase-admin` a v14 y se forzó `uuid` a la versión parcheada. |
-| TC-24 | Producción puede servir un despliegue anterior | Medio operativo | 🌐 Pendiente | Se generaron builds locales correctos; no se desplegó ni se comparó el hash servido por producción. |
-| TC-31 | `processTTSMessage` permitía que el streamer eligiera qué cuenta TikTok pagaba | Crítico | 🛡️ Mitigado localmente | El precio ya no viene del cliente; el cliente evita llamar la Function y el servidor también rechaza el flujo premium. Falta una prueba firmada que vincule evento TikTok ↔ usuario Firebase y una operación idempotente por evento. |
-| TC-32 | Retiro Stripe ejecutado dentro de una transacción reintentable | Crítico financiero | 🛡️ Mitigado localmente | `requestPayout` queda deshabilitada. Falta ledger, idempotency key, estados de retiro y reconciliación por webhook. |
-| TC-33 | `consumeFeature` aceptaba feature/precio del navegador | Alto | 🛡️ Mitigado localmente | Función cerrada hasta contar con catálogo de servidor y consumidores reales. |
-| TC-36 | Clonado de voz con payload inconsistente, sin límites y errores fuera del `catch` | Alto abuso/costo | 🟡 Parcial | Payload unificado, MIME/base64/tamaño máximo 10 MB, nombre controlado por servidor, `maxInstances` y cooldown de 10 minutos. Falta cuota diaria, borrado/reemplazo de voz anterior y política de retención. |
-| TC-47 | Cancelación, expiración o impago de suscripción no revoca `isPro` | Alto negocio | ⏳ Pendiente | Falta definir periodo de gracia y manejar `customer.subscription.deleted`, `invoice.payment_failed` y estados de Stripe de forma idempotente. |
-| TC-48 | Stripe Connect usa URLs antiguas `talking-crow.web.app` | Medio funcional | ⏳ Pendiente | Requiere confirmar dominio canónico y URLs autorizadas en Stripe antes de cambiar onboarding. |
-| TC-49 | `usernames/{username}` permite consultas puntuales públicas | Medio privacidad | ⏳ Pendiente | `list` está bloqueado, pero se puede probar existencia nombre por nombre. Cerrarlo requiere una Callable de disponibilidad con rate limit/App Check. |
-| TC-50 | Puede quedar usuario Auth huérfano si falla el batch Firestore | Medio funcional | ⏳ Pendiente | Requiere onboarding recuperable/compensación del usuario Auth; no se intentó borrar cuentas automáticamente. |
-| TC-57 | Regla de creación de `support_tickets` permite inyección de campos | Bajo | ✅ Corregido | Se usaba `hasAll`, permitiendo inyectar campos. Se cambió a `hasOnly` para asegurar el esquema. |
+**G. Link de MD a Fans Roto y Mensaje Ineficaz**
+La aplicación frontend (`App.jsx`) intenta invitar a los fans por MD mediante una llamada al servidor local `GET /api/moderation/link` para copiar un enlace. Sin embargo, **esa ruta no existe en el servidor `app.py`**, por lo que la petición da un error 404 (Not Found). Adicionalmente, la lógica actual no provee un mensaje persuasivo personalizado para atrapar al usuario; solo intenta copiar un texto genérico o URL cruda. Se requiere crear una API en Firebase o Python que devuelva un enlace dinámico con un mensaje persuasivo real (`Ej: "¡Hey! Escucha tu voz en mi directo..."`).
 
-## Orden recomendado de lo pendiente
+**H. Falta de Wallet Dropdown en Header (Lógica Incompleta - NUEVO)**
+Tanto en la App de escritorio como en la Web, el header solo muestra un número genérico de saldo. Se solicitó implementar un botón interactivo (Wallet Dropdown) junto a la imagen de perfil del usuario. Al oprimirlo, se debe activar un *toggle* que muestre las tres monedas del sistema (`Croins`, `Créditos IA` y `Croin Cash`), respetando las reglas de visualización actuales (ocultando los que no apliquen o tengan cero, según corresponda).
 
-1. Mantener cerrados `processTTSMessage`, `requestPayout` y `consumeFeature` hasta implementar identidad, ledger e idempotencia.
-2. Rotar credenciales expuestas históricamente y revisar historial Git/secret manager.
-3. Diseñar baja/impago de suscripciones y reconciliación Stripe.
-4. Migrar cuentas/PII heredados y consentimiento de usuarios existentes.
-5. Planear la actualización mayor de Firebase Admin que resuelve `uuid` y ejecutar regresión de pagos/webhooks.
-6. Añadir App Check, límites por usuario/IP y cuotas de ElevenLabs/almacenamiento.
+**I. Suscripciones Pro No Procesadas en el Webhook (NUEVO)**
+La plataforma permite iniciar un `checkout` de suscripción mensual (Plan Pro) en `createSubscriptionCheckout`, pero el `index.js` del Webhook de Stripe **no maneja el evento `checkout.session.completed`**. Cuando un usuario paga exitosamente la suscripción, la plataforma nunca se entera y no le otorga los "Créditos IA" ni la bandera `isPro`.
+
+**J. Ausencia de Generación y Envío de Facturas de Stripe**
+La plataforma procesa pagos, pero actualmente en la configuración de la intención de pago (`createPaymentIntent`) no se activa la bandera para generar automáticamente una factura fiscal (invoice) ni se envían comprobantes (receipt_email) automáticos al donador con validez ante Hacienda o el usuario final. El usuario debe tener un panel o un correo automático donde pueda consultar sus facturas o "Receipts" de las compras de Croins.
+
+**K. Vacío Legal y Fiscal (Falta de Contratos Vinculantes)**
+- **Términos y Condiciones (T&C):** Actualmente el sistema no exige explícitamente a los fans reconocer que los Croins son "Non-refundable" y no representan dinero real (sólo una licencia de uso de software cerrado).
+- **Acuerdo de Creadores:** Los streamers no firman ni aceptan una adenda donde estipulen que sus ganancias son "Comisiones" y que ellos son responsables de su propia declaración de impuestos (ISR/IVA) en su país respectivo, lo cual expone legalmente a la plataforma ante la autoridad fiscal.
+
+### ⚠️ 2. Vulnerabilidades Críticas y de Seguridad
+
+**A. Robo de Croins y Fraude Financiero (Vulnerabilidad Crítica en `processTTSMessage`)**
+La Cloud Function `processTTSMessage` es llamada por el cliente del Streamer para procesar un mensaje. El streamer envía el parámetro `tiktok_username` del fan que supuestamente hizo la donación. La función **confía ciegamente en este parámetro** y deduce los Croins de la cuenta de ese fan, acreditando dinero real (`creator_earnings`) al streamer. 
+**Impacto:** Un streamer malicioso puede modificar su cliente local para enviar peticiones falsas a nombre de usuarios ricos (ej. `@UsuarioConMuchosCroins`), robando su saldo para generar ganancias económicas reales sin el consentimiento del usuario.
+
+**B. Fuga de Llave Maestra en Control de Versiones (NUEVO - Catastrófico)**
+El archivo `backend/firebase-service-account.json` está guardado dentro del directorio del proyecto, y el archivo `.gitignore` **NO lo está excluyendo**.
+**Impacto:** Si se hace un `git push` a un repositorio público o privado, cualquier atacante que consiga acceso al repo tendrá la llave maestra "Root" de Firebase, pudiendo saltarse todas las reglas de Firestore, descargar toda la base de datos de usuarios y borrar el proyecto entero.
+
+**C. LFI (Local File Inclusion) y Borrado Arbitrario (Crítico)**
+Los endpoints `@app.get("/api/audio/{filename}")` y `@app.delete("/api/audio/{filename}")` unen la variable `filename` directamente a la ruta usando `os.path.join` **sin sanitizar los caracteres `../` ni requerir autenticación**. 
+**Impacto:** Cualquier web maliciosa o script puede leer archivos de contraseñas de la PC del streamer, o incluso peor, enviar un `DELETE` a `../../../../Windows/System32/cmd.exe` o archivos vitales del sistema, logrando destrucción arbitraria de archivos en la máquina local de los creadores.
+
+**D. Escucha Furtiva de Chat (SSE Hijacking - Privacidad)**
+El endpoint `@app.get("/api/live_events")` transmite en tiempo real (Server-Sent Events) todo lo que ocurre en el directo del streamer (mensajes de chat crudos, IDs únicos, eventos). Sin embargo, este endpoint **no requiere la llave de autenticación**.
+**Impacto:** Dado el CORS permisivo, un tercero malicioso puede suscribirse silenciosamente a este canal y espiar la actividad del stream.
+
+**E. Denegación de Servicio (DoS) Local en el Motor de Voz**
+El endpoint `@app.post("/api/tts/test")` está completamente desprotegido (no requiere `LOCAL_API_KEY`).
+**Impacto:** Un atacante puede aprovechar esto para enviar miles de peticiones de síntesis de voz masivas al mismo tiempo. Al procesarse localmente, esto saturaría por completo el CPU/GPU de la PC del streamer, bloqueando su juego o directo hasta congelar la máquina.
+
+**F. Ausencia de Prevención de Lavado de Dinero (AML) y Manejo de Contracargos**
+El sistema actual transfiere ingresos inmediatamente al balance `creator_earnings` y permite retirarlos sin un periodo de "Cuarentena" (congelamiento de fondos).
+**Impacto:** Un atacante con tarjetas de crédito clonadas podría comprar Croins, donárselos a su propia cuenta de Streamer o a un cómplice, y retirar el dinero a su banco instantáneamente. Cuando el dueño real de la tarjeta inicie un contracargo en Stripe, el dinero ya habrá desaparecido de la plataforma. Tu webhook actual de Stripe ignora los eventos de fraude (`charge.dispute.created`).
+
+**G. Fuga de Información Personal (API Endpoint sin Autenticar)**
+En el backend local (`backend/app.py`), el endpoint `@app.get("/api/settings")` **NO cuenta con protección de token**. 
+**Impacto:** Revela silenciosamente el nombre de usuario de TikTok y la estructura interna de rutas de archivos de la PC.
+
+**H. Puertos y Direcciones Hardcodeadas (Vulnerabilidad de Estabilidad)**
+El frontend asume ciegamente que el backend siempre estará en `127.0.0.1:8763`. Si este puerto es ocupado por un antivirus, la app se "romperá".
+
+**I. CORS Extremadamente Permisivo en el Backend Local**
+El servidor local de FastAPI (`backend/app.py`) tiene configurado `allow_origins=["*"]`, permitiendo a cualquier página web externa intentar los ataques LFI/DoS descritos arriba en nombre del usuario local.
+
+**J. App Check Ausente en Funciones Core**
+La función `processTTSMessage` no tiene habilitado `{ enforceAppCheck: true }`, permitiendo automatización externa si el token es robado.
+
+**K. Sobrescritura Destructiva de Voces (EcoVoices)**
+En `createEcoVoice`, se usa una ruta estática `eco_voices/${uid}/voice_sample.webm`. Si el usuario sube un audio nuevo por error, el antiguo se sobrescribe y se pierde irreparablemente.
+
+---
+
+## 📝 Plan de Implementación de Fases (Borrador)
+
+1. **Fase 5: Blindaje de Seguridad y Finanzas (Prioridad Absoluta)**
+   - Cerrar fugas del `firebase-service-account.json`.
+   - Asegurar rutas locales (`LFI`, `SSE Hijacking`, `DoS`).
+   - Reparar la Cloud Function de donaciones (`processTTSMessage`) para evitar robos y fraudes.
+2. **Fase 6: Dashboard de Rentabilidad Administrativo (Ledger)**
+   - Crear el panel administrador.
+   - Implementar matemática de descuentos (Stripe, Firebase, ElevenLabs) y reportes de rentabilidad en tiempo real.
+3. **Fase 7: Frontend Clean Architecture**
+   - Refactorizar el espagueti de React en `web/src` introduciendo Custom Hooks y Capa de Servicios.
+4. **Fase 8: Empaquetado y Distribución de App**
+   - Configurar scripts de construcción (Electron Builder) para Windows/Mac.
+   - Proveer enlaces de descarga directa desde la Landing Page (`talkingcroow.com`).
+5. **Fase 9: Interfaz y Experiencia (Nuevas Características)**
+   - Implementar el Wallet Dropdown (Croins, Credits, Croin Cash) en el header universal.
+   - Rediseño de componentes visuales pendientes.
