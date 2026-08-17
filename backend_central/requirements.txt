@@ -1,5 +1,5 @@
-firebase-admin==6.5.0
-TikTokLive==3.0.7
+firebase-admin>=6.5.0
+TikTokLive>=6.0.0
 asyncio
 python-dotenv
 requests
