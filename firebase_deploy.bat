@@ -15,7 +15,13 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [2/2] Desplegando en Firebase (Hosting, Functions, Rules)...
+echo [2/3] Instalando dependencias de Cloud Functions...
+cd functions
+call npm install
+cd ..
+
+echo.
+echo [3/3] Desplegando en Firebase (Hosting, Functions, Rules)...
 call npx firebase-tools deploy --only hosting,functions,firestore:rules
 if %errorlevel% neq 0 (
     echo Error al desplegar en Firebase.

@@ -87,7 +87,7 @@ const Header = () => {
                 onClick={() => setIsWalletOpen(!isWalletOpen)}
                 title="Mi Billetera"
               >
-                <span style={{ fontSize: '1.2rem' }}>👛</span>
+                <span style={{ fontSize: '1.2rem' }}>💳</span>
                 <span className="neon-text-green" style={{ fontWeight: 'bold' }}>Wallet</span>
               </button>
               

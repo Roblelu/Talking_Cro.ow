@@ -339,7 +339,7 @@ exports.processTTSMessage = onCall(async (request) => {
                 responseType: 'arraybuffer'
             });
 
-            const audioBase64 = Buffer.from(response.data, 'binary').toString('base64');
+            const audioBase64 = Buffer.from(response.data).toString('base64');
             
             // Fase 5: Almacenar en la cola de TTS del Streamer en Firestore
             await db.collection('tts_queue').doc(streamer_uid).collection('requests').add({

@@ -158,6 +158,9 @@ function App() {
   const { currentUser, userData } = useAuth();
   const [gifts, setGifts] = useState([]);
   
+  const [isWalletOpen, setIsWalletOpen] = useState(false);
+  const walletRef = React.useRef(null);
+  
   const isMissingFields = currentUser && (!userData?.username || !(userData?.email || currentUser?.email) || !(userData?.tiktok || userData?.tiktok_username));
   const hasEverBeenPro = userData?.isPro || userData?.last_subscription_payment || userData?.stripe_account_id || (userData?.creator_earnings || 0) > 0;
   
@@ -523,6 +526,9 @@ function App() {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
+      }
+      if (walletRef.current && !walletRef.current.contains(event.target)) {
+        setIsWalletOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -974,43 +980,63 @@ function App() {
           
           {/* Indicador de Croins o Botón Iniciar Sesión */}
           {currentUser ? (
-            <div className="credits-wrapper">
-              <div 
-                className="header-indicator"
-                style={{ background: 'rgba(0,255,204,0.1)', border: '1px solid var(--neon-green)' }}
-                onClick={() => setActiveView('subscription')}
-                title="Comprar más Croins"
+            <div style={{ position: 'relative' }} ref={walletRef}>
+              <button 
+                className="btn-neon" 
+                style={{ padding: '8px 15px', display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent' }}
+                onClick={() => setIsWalletOpen(!isWalletOpen)}
+                title="Mi Billetera"
               >
-                <span style={{ fontSize: '1.2rem' }}>🪙</span>
-                <span className="neon-text-green" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{((userData?.purchased_croins || 0) + (userData?.promotional_croins || 0))} Croins</span>
-              </div>
+                <span style={{ fontSize: '1.2rem' }}>💳</span>
+                <span className="neon-text-green" style={{ fontWeight: 'bold' }}>Wallet</span>
+              </button>
               
-              <div 
-                className="header-indicator"
-                style={{ background: 'rgba(255,117,24,0.1)', border: '1px solid var(--neon-orange)' }}
-                onClick={() => setActiveView('subscription')}
-                title="Créditos de Streamer"
-              >
-                <span style={{ fontSize: '1.2rem' }}>✨</span>
-                <span className="neon-text-orange" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{userData?.creator_credits || 0} Créditos</span>
-              </div>
-              <div 
-                className="header-indicator"
-                style={{ background: 'rgba(157, 0, 255, 0.1)', border: '1px solid var(--neon-purple)' }}
-                onClick={() => {
-                  if (window.backend && window.backend.open_url) {
-                    window.backend.open_url('https://talkingcroow.com/withdraw');
-                  } else {
-                    window.open('https://talkingcroow.com/withdraw', '_blank');
-                  }
-                }}
-                title="Retirar Ganancias (Croin Cash)"
-              >
-                <span style={{ fontSize: '1.2rem' }}>💰</span>
-                <span className="neon-text-purple" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
-                  {Math.floor((userData?.creator_earnings || 0) * (28 / 12))} Croin Cash
-                </span>
-              </div>
+              {isWalletOpen && (
+                <div className="user-dropdown-menu" style={{ width: '220px', right: 0, padding: '10px' }}>
+                  <div style={{ marginBottom: '10px', fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center', borderBottom: '1px solid rgba(0, 240, 255, 0.2)', paddingBottom: '8px' }}>
+                    Saldos Disponibles
+                  </div>
+                  <div className="credits-wrapper" style={{ flexDirection: 'column', gap: '10px', display: 'flex', alignItems: 'stretch' }}>
+                    <div 
+                      className="header-indicator"
+                      style={{ background: 'rgba(0,255,204,0.1)', border: '1px solid var(--neon-green)', width: '100%', justifyContent: 'flex-start', padding: '8px 15px', boxSizing: 'border-box' }}
+                      onClick={() => { setActiveView('subscription'); setIsWalletOpen(false); }}
+                    >
+                      <span style={{ fontSize: '1.2rem', marginRight: '10px' }}>🪙</span>
+                      <span className="neon-text-green" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{((userData?.purchased_croins || 0) + (userData?.promotional_croins || 0))} Croins</span>
+                    </div>
+                    
+                    {(userData?.has_received_app_credits || userData?.creator_credits > 0 || userData?.isPro) && (
+                      <div 
+                        className="header-indicator"
+                        style={{ background: 'rgba(255,117,24,0.1)', border: '1px solid var(--neon-orange)', width: '100%', justifyContent: 'flex-start', padding: '8px 15px', boxSizing: 'border-box' }}
+                        onClick={() => { setActiveView('subscription'); setIsWalletOpen(false); }}
+                      >
+                        <span style={{ fontSize: '1.2rem', marginRight: '10px' }}>✨</span>
+                        <span className="neon-text-orange" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{userData?.creator_credits || 0} Créditos</span>
+                      </div>
+                    )}
+
+                    <div 
+                      className="header-indicator"
+                      style={{ background: 'rgba(157, 0, 255, 0.1)', border: '1px solid var(--neon-purple)', width: '100%', justifyContent: 'flex-start', padding: '8px 15px', boxSizing: 'border-box' }}
+                      onClick={() => {
+                        if (window.backend && window.backend.open_url) {
+                          window.backend.open_url('https://talkingcroow.com/withdraw');
+                        } else {
+                          window.open('https://talkingcroow.com/withdraw', '_blank');
+                        }
+                        setIsWalletOpen(false);
+                      }}
+                    >
+                      <span style={{ fontSize: '1.2rem', marginRight: '10px' }}>💰</span>
+                      <span className="neon-text-purple" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
+                        {Math.floor((userData?.creator_earnings || 0) * (28 / 12))} Croin Cash
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <button className="btn-neon" style={{ padding: '8px 15px' }} onClick={() => setActiveView('login')}>Iniciar Sesión</button>

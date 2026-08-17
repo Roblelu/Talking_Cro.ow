@@ -142,8 +142,8 @@
   .header-indicator .neon-text-purple { display: inline-block; font-size: 0.9rem !important; }
   
   .credits-wrapper { 
-    display: grid !important; 
-    grid-template-columns: 140px 140px !important; 
+    display: flex !important; 
+    flex-direction: column !important;
     justify-content: center !important;
     gap: 10px; 
     width: 100% !important; 
@@ -152,24 +152,19 @@
   }
   .header-indicator {
     width: 100% !important;
-    justify-content: center !important;
-    padding: 6px 0 !important;
+    justify-content: flex-start !important;
+    padding: 8px 15px !important;
     box-sizing: border-box !important;
   }
-  .credits-wrapper > div:nth-child(3) { grid-column: 1 / -1 !important; width: 180px !important; justify-self: center !important; }
 }
 
 
 
 .credits-wrapper {
-  display: grid;
-  grid-template-columns: auto auto;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-  justify-items: center;
-}
-
-.credits-wrapper > div:nth-child(3) {
-  grid-column: 1 / -1;
+  align-items: stretch;
 }
 
 .header-indicator {
