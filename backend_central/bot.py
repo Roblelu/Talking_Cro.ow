@@ -133,7 +133,7 @@ def on_active_streams_snapshot(col_snapshot, changes, read_time):
         if doc.id not in active_streams and tiktok_username:
             # Validación de Seguridad Anti-Robo de Streams
             # Verificamos que el UID realmente sea dueño de ese tiktok_username en su perfil
-            user_doc = db.collection('users').doc(doc.id).get()
+            user_doc = db.collection('users').document(doc.id).get()
             if not user_doc.exists or user_doc.to_dict().get('tiktok_username') != tiktok_username:
                 print(f"[Seguridad] Intento de Robo de Stream detectado: UID {doc.id} intentó escuchar a @{tiktok_username}. Bloqueado.")
                 continue
