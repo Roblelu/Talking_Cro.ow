@@ -82,13 +82,13 @@ const Header = () => {
             {/* Botón de Wallet */}
             <div style={{ position: 'relative' }} ref={walletRef}>
               <button 
-                className="btn-neon" 
+                className="btn-neon wallet-btn" 
                 style={{ padding: '8px 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'transparent', height: '40px' }}
                 onClick={() => setIsWalletOpen(!isWalletOpen)}
                 title="Mi Billetera"
               >
-                <span style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', lineHeight: '1' }}>💳</span>
-                <span className="neon-text-green" style={{ fontWeight: 'bold', letterSpacing: '1px', display: 'flex', alignItems: 'center', lineHeight: '1' }}>WALLET</span>
+                <span style={{ fontSize: '1.4rem', display: 'flex', alignItems: 'center' }}>💳</span>
+                <span className="neon-text-green" style={{ fontWeight: 'bold', letterSpacing: '1px', display: 'flex', alignItems: 'center' }}>WALLET</span>
               </button>
               
               {isWalletOpen && (

@@ -107,6 +107,13 @@ async def start_tiktok_listener(streamer_uid: str, tiktok_username: str):
     try:
         print(f"[Bot] Iniciando conexión para @{tiktok_username} ({streamer_uid})...")
         await client.start()
+        # client.start() no bloquea, así que mantenemos viva la tarea hasta que sea cancelada
+        while True:
+            await asyncio.sleep(3600)
+    except asyncio.CancelledError:
+        print(f"[Bot] Desconexión solicitada para {streamer_uid}.")
+        # Opcional: client.stop() o client.disconnect() si la librería lo expone
+        raise
     except UserOfflineError:
         print(f"[Bot Error] El usuario @{tiktok_username} está offline.")
     except Exception as e:

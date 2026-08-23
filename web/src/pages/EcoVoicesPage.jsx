@@ -81,7 +81,7 @@ const EcoVoicesPage = () => {
             <div className="eco-step-icon">👤</div>
             <div className="eco-step-content">
               <h3><span className="step-gray">Paso 1:</span> Regístrate y Clona tu voz</h3>
-              <p>Crea tu cuenta vinculando tu usuario de TikTok (@Nombre_de_Usuario). Después, graba un audio rápido de 30 segundos leyendo un texto que te daremos para clonar tu voz de forma fácil y segura <em>(puedes revisar nuestras políticas de privacidad)</em>.</p>
+              <p>Crea tu cuenta vinculando tu usuario de TikTok (@Nombre_de_Usuario) colocando un código temporal en tu Bio. Después, graba un audio rápido de 30 segundos leyendo un texto que te daremos para clonar tu voz de forma fácil y segura <em>(puedes revisar nuestras políticas de privacidad)</em>.</p>
             </div>
           </div>
 

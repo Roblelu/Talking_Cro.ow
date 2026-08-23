@@ -69,9 +69,19 @@ const AudioPlayItem = ({ audio, isFirst, inQueue, handlePlayAudio, handleRejectA
 
   const audioQueueRef = useRef([]);
 
-  const themeColor = audio.isEcoVoice ? '#ffd700' : '#00f0ff';
-  const themeBg = audio.isEcoVoice ? 'rgba(255, 215, 0, 0.1)' : 'rgba(0, 240, 255, 0.1)';
-  const themeGrad = audio.isEcoVoice ? 'rgba(255, 215, 0, 0.3)' : 'rgba(0, 240, 255, 0.3)';
+  let themeColor = '#00f0ff';
+  let themeBg = 'rgba(0, 240, 255, 0.1)';
+  let themeGrad = 'rgba(0, 240, 255, 0.3)';
+  
+  if (audio.isDowngraded) {
+      themeColor = '#ff4444';
+      themeBg = 'rgba(255, 68, 68, 0.1)';
+      themeGrad = 'rgba(255, 68, 68, 0.3)';
+  } else if (audio.isEcoVoice) {
+      themeColor = '#ffd700';
+      themeBg = 'rgba(255, 215, 0, 0.1)';
+      themeGrad = 'rgba(255, 215, 0, 0.3)';
+  }
 
   // Manejo de audios recibidos desde IPC
   const handlePlayRef = React.useRef(handlePlayAudio);
@@ -112,10 +122,18 @@ const AudioPlayItem = ({ audio, isFirst, inQueue, handlePlayAudio, handleRejectA
   return (
     <div style={{ marginBottom: '15px', padding: '12px', borderLeft: `4px solid ${themeColor}`, background: themeBg, borderRadius: '0 8px 8px 0', animation: 'fadeIn 0.3s ease-out' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-         <strong style={{ color: themeColor, textShadow: `0 0 5px ${themeColor}` }}>{audio.username} {audio.isEcoVoice ? 'Eco Voice' : 'Texto a Voz Local'}</strong>
+         <strong style={{ color: themeColor, textShadow: `0 0 5px ${themeColor}` }}>
+            {audio.username} 
+            {audio.isDowngraded ? ' (Intento de Eco Voice)' : (audio.isEcoVoice ? ' Eco Voice' : ' Texto a Voz Local')}
+         </strong>
          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{audio.timestamp.toLocaleTimeString()}</div>
       </div>
       <div style={{ margin: '8px 0', color: 'var(--text-primary)', fontStyle: 'italic' }}>"{audio.message.replace(/\[.*?\]/g, '')}"</div>
+      {audio.isDowngraded && (
+          <div style={{ fontSize: '0.85rem', color: '#ffaa00', marginBottom: '8px' }}>
+              ⚠️ Este usuario intentó usar el comando eco pero no ha cargado su voz para ser clonada.
+          </div>
+      )}
       
       <div style={{ display: 'flex', gap: '10px' }}>
          <button 
@@ -638,18 +656,36 @@ function App() {
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'added') {
           const data = change.doc.data();
-          const audioSource = `data:audio/mp3;base64,${data.audioBase64}`;
-          const newAudio = { 
-              type: 'priority_audio', 
-              username: data.tiktok_username, 
-              message: data.message,
-              audio_url: audioSource,
-              isEcoVoice: true,
-              timestamp: new Date(), 
-              id: change.doc.id 
-          };
-          setAudioQueue(prev => [...prev, newAudio]);
-          setLiveEvents(prev => [...prev.slice(-49), newAudio]);
+          
+          if (data.use_edge) {
+            // FALLBACK DOWNGRADE: Enviar al backend local para Edge TTS
+            const token = localStorage.getItem('localApiKey');
+            fetch('http://127.0.0.1:8763/api/tts/fallback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    username: data.tiktok_username,
+                    message: data.message
+                })
+            }).catch(err => console.error("Error en fallback Edge TTS:", err));
+          } else {
+            // COMPORTAMIENTO NORMAL: Eco Voice pagado
+            const audioSource = `data:audio/mp3;base64,${data.audioBase64}`;
+            const newAudio = { 
+                type: 'priority_audio', 
+                username: data.tiktok_username, 
+                message: data.message,
+                audio_url: audioSource,
+                isEcoVoice: true,
+                timestamp: new Date(), 
+                id: change.doc.id 
+            };
+            setAudioQueue(prev => [...prev, newAudio]);
+            setLiveEvents(prev => [...prev.slice(-49), newAudio]);
+          }
           
           // Eliminar el documento de Firestore para no saturar la BD
           deleteDoc(doc(db, 'tts_queue', currentUser.uid, 'requests', change.doc.id)).catch(e => console.error(e));
@@ -987,8 +1023,8 @@ function App() {
                 onClick={() => setIsWalletOpen(!isWalletOpen)}
                 title="Mi Billetera"
               >
-                <span style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', lineHeight: '1' }}>💳</span>
-                <span className="neon-text-green" style={{ fontWeight: 'bold', letterSpacing: '1px', display: 'flex', alignItems: 'center', lineHeight: '1' }}>WALLET</span>
+                <span style={{ fontSize: '1.4rem', transform: 'translateY(-3px)' }}>💳</span>
+                <span className="neon-text-green" style={{ fontWeight: 'bold', letterSpacing: '1px', transform: 'translateY(1px)' }}>WALLET</span>
               </button>
               
               {isWalletOpen && (

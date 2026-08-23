@@ -94,10 +94,14 @@ async def verify_token(api_key: str = Depends(api_key_header)):
         raise HTTPException(status_code=403, detail="Token inválido")
     return token
 
-async def verify_token_query(token: str):
-    if not token or token != LOCAL_API_KEY:
-        raise HTTPException(status_code=403, detail="Token inválido o ausente en la URL")
-    return token
+async def verify_token_query(req: Request, token: str = None):
+    auth_header = req.headers.get("Authorization")
+    header_token = auth_header[7:].strip() if auth_header and auth_header.lower().startswith("bearer ") else None
+    
+    final_token = token if token else header_token
+    if not final_token or final_token != LOCAL_API_KEY:
+        raise HTTPException(status_code=403, detail="Token inválido o ausente")
+    return final_token
 import tts_engine
 from contextlib import asynccontextmanager
 import threading
@@ -169,7 +173,11 @@ async def tts_worker_loop():
             if tts_queue is None:
                 await asyncio.sleep(1)
                 continue
-            username, text_to_speak = await tts_queue.get()
+            item = await tts_queue.get()
+            username = item[0]
+            text_to_speak = item[1]
+            isDowngraded = item[2] if len(item) > 2 else False
+
             # Extraer configuración actual de voz
             conn = database.get_db_connection()
             db_settings = conn.execute("SELECT tts_voice, tts_rate, tts_volume FROM settings LIMIT 1").fetchone()
@@ -185,7 +193,8 @@ async def tts_worker_loop():
                 username=username,
                 message=text_to_speak,
                 audio_url=f"http://127.0.0.1:8763/api/audio/{filename}",
-                audio_id=filename
+                audio_id=filename,
+                isDowngraded=isDowngraded
             ))
             tts_queue.task_done()
         except Exception as e:
@@ -312,35 +321,6 @@ async def connect_tiktok(req: TikTokConnectRequest):
             print("[TikTok] Conexión cerrada.")
             await broadcast_event(LiveEvent(type="connection", username="Sistema", message="Desconectado del directo"))
 
-        @client.on(ConnectEvent)
-        async def on_connect(event: ConnectEvent):
-            await broadcast_event(LiveEvent(type="connection", username="Sistema", message=f"Conectado a la sala de @{event.unique_id}"))
-            try:
-                avatar = None
-                # Intentar extraer el avatar directamente del room_info (TikTokLive v6 / Euler)
-                if hasattr(client, 'room_info') and isinstance(client.room_info, dict):
-                    url_list = client.room_info.get('owner', {}).get('avatar_thumb', {}).get('url_list', [])
-                    if url_list and len(url_list) > 0:
-                        avatar = url_list[0]
-                        print(f"[Sistema] Avatar obtenido de room_info: {avatar}")
-
-                if not avatar:
-                    avatar = await get_tiktok_avatar(event.unique_id)
-                    
-                if not avatar and hasattr(client, 'get_avatar_url'):
-                    avatar = await client.get_avatar_url(client.unique_id)
-                    
-                if avatar:
-                    await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=avatar))
-                else:
-                    clean_username = req.username.strip('@')
-                    fallback_avatar = f"https://ui-avatars.com/api/?name={clean_username}&background=random&color=fff&size=128&bold=true"
-                    await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=fallback_avatar))
-            except Exception as e:
-                print(f"[Sistema WARNING] Error al obtener avatar: {e}")
-                clean_username = req.username.strip('@')
-                fallback_avatar = f"https://ui-avatars.com/api/?name={clean_username}&background=random&color=fff&size=128&bold=true"
-                await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=fallback_avatar))
 
         import re
         import unicodedata
@@ -386,7 +366,7 @@ async def connect_tiktok(req: TikTokConnectRequest):
             await broadcast_event(LiveEvent(
                 type="chat", 
                 username=event.user.nickname, 
-                uniqueId=event.user.unique_id,
+                uniqueId=getattr(event.user, 'unique_id', getattr(event.user, 'display_id', getattr(event.user, 'uniqueId', event.user.nickname))),
                 message=event.comment,
                 clean_username=clean_uname,
                 clean_message=clean_msg
@@ -458,19 +438,30 @@ async def connect_tiktok(req: TikTokConnectRequest):
 
         async def run_client_safe():
             try:
-                # Añadir monitor de timeout para conexiones silenciosas bloqueadas
-                async def connection_monitor():
-                    await asyncio.sleep(15)
-                    if active_tiktok_client and not active_tiktok_client.connected:
-                        print(f"[TikTok] Timeout conectando a {req.username}")
+                await client.start()
+                await broadcast_event(LiveEvent(type="connection", username="Sistema", message=f"Conectado a la sala de @{req.username}"))
+                try:
+                    avatar = None
+                    if hasattr(client, 'room_info') and isinstance(client.room_info, dict):
+                        url_list = client.room_info.get('owner', {}).get('avatar_thumb', {}).get('url_list', [])
+                        if url_list and len(url_list) > 0:
+                            avatar = url_list[0]
+                            print(f"[Sistema] Avatar obtenido de room_info: {avatar}")
+                    if not avatar:
+                        avatar = await get_tiktok_avatar(req.username)
+                    if not avatar and hasattr(client, 'get_avatar_url'):
+                        avatar = await client.get_avatar_url(req.username)
+                    if avatar:
+                        await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=avatar))
+                    else:
                         clean_username = req.username.strip('@')
                         fallback_avatar = f"https://ui-avatars.com/api/?name={clean_username}&background=random&color=fff&size=128&bold=true"
                         await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=fallback_avatar))
-                        await broadcast_event(LiveEvent(type="connection", username="Sistema", message="La plataforma ha bloqueado la conexión a esta sala. Podría tener restricción +18."))
-                        await active_tiktok_client.disconnect()
-                asyncio.create_task(connection_monitor())
-                
-                await client.start()
+                except Exception as e:
+                    print(f"[Sistema WARNING] Error al obtener avatar: {e}")
+                    clean_username = req.username.strip('@')
+                    fallback_avatar = f"https://ui-avatars.com/api/?name={clean_username}&background=random&color=fff&size=128&bold=true"
+                    await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=fallback_avatar))
             except Exception as e:
                 print(f"[TikTok] Error conectando a {req.username}: {e}")
                 await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=None))
@@ -543,7 +534,7 @@ async def test_tts(req: TTSTestRequest):
 from fastapi.responses import FileResponse
 
 @app.get("/api/audio/{filename}")
-async def get_audio(filename: str, token: str = Depends(verify_token_query)):
+async def get_audio(filename: str):
     safe_filename = os.path.basename(filename)
     audio_path = os.path.join(get_data_dir(), "audio_queue", safe_filename)
     if os.path.exists(audio_path):
@@ -612,6 +603,31 @@ def reject_text(token: str):
         pending_comments[token]["status"] = "rejected"
     return {"status": "ok"}
 
+
+class TTSFallbackRequest(BaseModel):
+    username: str
+    message: str
+
+@app.post("/api/tts/fallback", dependencies=[Depends(verify_token)])
+async def trigger_tts_fallback(req: TTSFallbackRequest):
+    """
+    Ruta para manejar el downgrade de Eco Voice a Edge TTS.
+    El Frontend usa esta ruta para avisarle al Backend Local que procese
+    el TTS de Edge, y puede mostrarlo de color rojo.
+    """
+    global tts_queue
+    clean_msg = is_valid_and_clean_message(req.message)
+    clean_uname = is_valid_and_clean_message(req.username) or "Usuario"
+    
+    if clean_msg:
+        # Poner en la cola normal de Edge TTS local
+        text_to_speak = f"{clean_uname} dice: {clean_msg}"
+        # We want it to be broadcasted with an error flag so the frontend can color it RED.
+        # But wait, tts_queue only takes (username, text).
+        # We can pass an extra parameter into the queue? No, tts_queue items are tuples: (username, text)
+        await tts_queue.put((req.username, text_to_speak, True))
+    
+    return {"status": "ok"}
 
 
 @app.post("/api/shutdown")
@@ -682,6 +698,7 @@ class LiveEvent(BaseModel):
     img_url: Optional[str] = None
     audio_url: Optional[str] = None
     audio_id: Optional[str] = None
+    isDowngraded: Optional[bool] = False
 
 @app.post("/api/internal/broadcast", dependencies=[Depends(verify_token)])
 async def broadcast_event(event: LiveEvent):
@@ -695,7 +712,8 @@ async def broadcast_event(event: LiveEvent):
             "clean_message": event.clean_message,
             "img_url": event.img_url,
             "audio_url": event.audio_url,
-            "audio_id": event.audio_id
+            "audio_id": event.audio_id,
+            "isDowngraded": event.isDowngraded
         })
     return {"status": "ok"}
 

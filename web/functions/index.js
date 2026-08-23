@@ -187,6 +187,74 @@ exports.consumeTTSCredit = onCall(async (request) => {
     }
 });
 
+// ============================================================================
+// VERIFICACIÓN DE BIOGRAFÍA (ANTI-SANGUIJUELAS)
+// ============================================================================
+exports.verifyTiktokBio = onCall({
+    maxInstances: 10,
+    timeoutSeconds: 30,
+}, async (request) => {
+    // Verificar autenticación
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
+    }
+
+    const { tiktokUsername, verificationCode } = request.data;
+    
+    if (!tiktokUsername || !verificationCode) {
+        throw new HttpsError('invalid-argument', 'Faltan parámetros requeridos.');
+    }
+    
+    // Limpiar el username por si acaso
+    let cleanUsername = tiktokUsername.trim();
+    if (cleanUsername.startsWith('@')) {
+        cleanUsername = cleanUsername.substring(1);
+    }
+    
+    logger.info(`Validando bio para @${cleanUsername} esperando el código ${verificationCode}...`);
+    
+    try {
+        // Hacemos el request a la página pública
+        const profileUrl = `https://www.tiktok.com/@${cleanUsername}`;
+        const response = await axios.get(profileUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+            },
+            timeout: 10000 // 10 segundos máximo
+        });
+        
+        const html = response.data;
+        
+        // Verificamos si el string está en cualquier parte del HTML
+        // (TikTok suele inyectar la bio en un objeto JSON grande en <script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">)
+        if (html.includes(verificationCode)) {
+            logger.info(`Código ${verificationCode} encontrado para @${cleanUsername}`);
+            return { success: true };
+        } else {
+            logger.warn(`Código ${verificationCode} NO encontrado para @${cleanUsername}`);
+            throw new HttpsError('not-found', 'No se encontró el código en la biografía. Asegúrate de haberlo guardado correctamente.');
+        }
+    } catch (error) {
+        if (error instanceof HttpsError) {
+            throw error;
+        }
+        
+        // Si fue un error de Axios (ej. 404 de TikTok, o bloqueo de Cloudflare)
+        if (error.response) {
+            if (error.response.status === 404) {
+                throw new HttpsError('not-found', 'El usuario de TikTok no existe.');
+            }
+            logger.error(`TikTok retornó error HTTP ${error.response.status} para @${cleanUsername}`);
+        } else {
+            logger.error(`Error de red/Axios verificando bio para @${cleanUsername}: ${error.message}`);
+        }
+        
+        throw new HttpsError('internal', 'No se pudo verificar la biografía. Intenta nuevamente.');
+    }
+});
+
 exports.processTTSMessage = onCall(async (request) => {
     // Seguridad Fase 5: Solo el Servidor Central puede ejecutar esta función para descontar Croins.
     const { tiktok_username, streamer_uid, message, server_secret } = request.data || {};
@@ -220,28 +288,30 @@ exports.processTTSMessage = onCall(async (request) => {
     let deductedPromo = 0;
     let deductedPurchased = 0;
     let earningsAdded = 0;
-    let fanUid = null;
     let eventId = db.collection('admin').doc().id; // Ledger ID
     
     try {
-        await db.runTransaction(async (transaction) => {
+        const txResult = await db.runTransaction(async (transaction) => {
             // 1. Buscar al usuario donador por su tiktok_username
             const usersQuery = await transaction.get(
                 db.collection('users').where('tiktok_username', '==', cleanUsername.toLowerCase()).limit(1)
             );
 
             if (usersQuery.empty) {
-                throw new HttpsError('not-found', 'El usuario de TikTok no está registrado en la base de datos.');
+                // FALLBACK: Usuario no registrado, degradar a Edge TTS
+                return { needsDowngrade: true };
             }
 
             const userDoc = usersQuery.docs[0];
             const userRef = userDoc.ref;
             const userData = userDoc.data();
-            fanUid = userDoc.id;
 
-            if (userData.eco_voice_id) {
-                ecoVoiceId = userData.eco_voice_id;
+            if (!userData.eco_voice_id) {
+                // FALLBACK: Usuario sin voz configurada, degradar a Edge TTS
+                return { needsDowngrade: true };
             }
+
+            ecoVoiceId = userData.eco_voice_id;
 
             // 2. Verificar si el streamer existe
             const streamerDoc = await transaction.get(streamerRef);
@@ -268,30 +338,27 @@ exports.processTTSMessage = onCall(async (request) => {
                 deductPurchased = costInt - promotional;
             }
 
+            // 5. Restar Croins al donador
             transaction.update(userRef, {
                 promotional_croins: admin.firestore.FieldValue.increment(-deductPromo),
                 purchased_croins: admin.firestore.FieldValue.increment(-deductPurchased)
             });
 
-            // Escribir en Ledger del Fan (Gasto)
-            const fanTxRef = userRef.collection('transactions').doc(eventId);
-            transaction.set(fanTxRef, {
+            // Escribir en Ledger del Donador (Gasto)
+            const donatorTxRef = userRef.collection('transactions').doc(eventId);
+            transaction.set(donatorTxRef, {
                 type: 'tts_message_sent',
-                amount_promotional: -deductPromo,
-                amount_purchased: -deductPurchased,
+                amount: costInt,
                 currency: 'croins',
-                description: `Mensaje de voz premium enviado a streamer`,
+                description: `Mensaje de voz enviado a ${streamer_uid}`,
                 date: admin.firestore.FieldValue.serverTimestamp(),
                 status: 'succeeded'
             });
 
-            // 5. Calcular ganancias para el creador (Revenue Split)
+            // 6. Si hubo deducción de purchased_croins, asignar regalías al streamer
             let earningsToAdd = 0;
             if (deductPurchased > 0) {
-                earningsToAdd = deductPurchased * ECONOMY.CREATOR_COMMISSION_PERCENTAGE; 
-            }
-
-            if (earningsToAdd > 0) {
+                earningsToAdd = deductPurchased * ECONOMY.CASH_RATE_PER_CROIN;
                 transaction.update(streamerRef, {
                     creator_earnings: admin.firestore.FieldValue.increment(earningsToAdd)
                 });
@@ -311,7 +378,20 @@ exports.processTTSMessage = onCall(async (request) => {
             deductedPromo = deductPromo;
             deductedPurchased = deductPurchased;
             earningsAdded = earningsToAdd;
+
+            return { needsDowngrade: false };
         });
+        
+        if (txResult && txResult.needsDowngrade) {
+            // Downgrade a Edge TTS (no llamamos a ElevenLabs ni descontamos Croins)
+            await db.collection('tts_queue').doc(streamer_uid).collection('requests').add({
+                tiktok_username: tiktok_username,
+                message: message,
+                use_edge: true,
+                timestamp: admin.firestore.FieldValue.serverTimestamp()
+            });
+            return { success: true, downgraded_to_edge: true };
+        }
         
         transactionSuccess = true;
     } catch (error) {

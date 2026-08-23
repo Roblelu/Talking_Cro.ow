@@ -115,6 +115,14 @@ const AccountPage = ({ onBack, profileImage, setProfileImage }) => {
     }
   };
 
+  const [verificationCode, setVerificationCode] = React.useState('');
+  const [isVerifyingTiktok, setIsVerifyingTiktok] = React.useState(false);
+  const [isScraping, setIsScraping] = React.useState(false);
+
+  const generateCode = () => {
+    return 'TC-' + Math.floor(10000 + Math.random() * 90000);
+  };
+
   const handleSaveProfile = async () => {
     if (!currentUser) return;
     
@@ -123,6 +131,17 @@ const AccountPage = ({ onBack, profileImage, setProfileImage }) => {
       return;
     }
     
+    const currentTiktok = userData?.tiktok_username || userData?.tiktok || '';
+    if (tiktok.trim().toLowerCase() !== currentTiktok.toLowerCase()) {
+      setVerificationCode(generateCode());
+      setIsVerifyingTiktok(true);
+      return;
+    }
+
+    await executeProfileSave();
+  };
+
+  const executeProfileSave = async () => {
     try {
       const privateDocRef = doc(db, "users", currentUser.uid, "private", "contact");
       await setDoc(privateDocRef, { email, phone, tiktok }, { merge: true });
@@ -149,11 +168,20 @@ const AccountPage = ({ onBack, profileImage, setProfileImage }) => {
       } else {
         alert('Perfil actualizado con éxito');
       }
-      
+      setIsVerifyingTiktok(false);
     } catch (err) {
       console.error(err);
       alert(`Error al guardar el perfil: ${err.message}`);
     }
+  };
+
+  const verifyTiktokBio = async () => {
+    setIsScraping(true);
+    setTimeout(async () => {
+      setIsScraping(false);
+      alert(`[MODO PRUEBA] Scraping simulado de ${tiktok}... ¡Código ${verificationCode} encontrado! Validación exitosa.`);
+      await executeProfileSave();
+    }, 2000);
   };
 
   return (
@@ -463,6 +491,38 @@ const AccountPage = ({ onBack, profileImage, setProfileImage }) => {
                 </div>
                 <div className="modal-actions">
                   <button className="btn-neon" style={{ borderColor: '#ff003c', color: '#ff003c' }} onClick={() => setIsImageModalOpen(false)}>Cancelar</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {isVerifyingTiktok && (
+            <div className="modal-overlay">
+              <div className="modal-content" style={{ border: '1px solid var(--neon-green)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.8), 0 0 20px rgba(57, 255, 20, 0.2)', width: '500px' }}>
+                <h3 className="modal-title neon-text-green" style={{ marginBottom: '15px' }}>Verificación de Autoría</h3>
+                <p style={{ color: 'var(--text-primary)', marginBottom: '15px', lineHeight: '1.5' }}>
+                  Para evitar el robo de streams, debemos comprobar que <strong>{tiktok}</strong> realmente te pertenece.
+                </p>
+                <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px dashed rgba(255,255,255,0.2)' }}>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#ccc' }}>1. Entra a TikTok y edita tu perfil.</p>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#ccc' }}>2. Coloca este código temporal en tu <strong>biografía pública</strong>:</p>
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }}>
+                    <h2 style={{ color: 'var(--neon-green)', margin: '10px 0', letterSpacing: '2px' }}>{verificationCode}</h2>
+                    <button 
+                      className="btn-neon btn-neon-green" 
+                      style={{ padding: '5px 10px', fontSize: '0.8rem' }}
+                      onClick={() => { navigator.clipboard.writeText(verificationCode); alert("Copiado al portapapeles"); }}
+                    >
+                      Copiar
+                    </button>
+                  </div>
+                  <p style={{ margin: '10px 0 0 0', fontSize: '0.85rem', color: '#999' }}>* Podrás borrarlo en cuanto termines este proceso.</p>
+                </div>
+                
+                <div className="modal-actions" style={{ justifyContent: 'space-between' }}>
+                  <button className="btn-neon" style={{ borderColor: '#ff003c', color: '#ff003c' }} onClick={() => setIsVerifyingTiktok(false)} disabled={isScraping}>Cancelar</button>
+                  <button className="btn-neon btn-neon-green" onClick={verifyTiktokBio} disabled={isScraping}>
+                    {isScraping ? 'Buscando código...' : '¡Listo! Verificar Biografía'}
+                  </button>
                 </div>
               </div>
             </div>
