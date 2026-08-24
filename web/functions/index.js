@@ -1299,7 +1299,7 @@ exports.redeemCoupon = onCall(async (request) => {
 });
 
 const { getStorage } = require('firebase-admin/storage');
-exports.fixCors = functions.https.onRequest(async (req, res) => {
+exports.fixCors = onRequest(async (req, res) => {
   try {
     const bucket = getStorage().bucket('talking-crow.firebasestorage.app');
     await bucket.setCorsConfiguration([{
