@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useUserData } from '../hooks/useUserData';
-import { db, functions } from '../firebase';
+import { db, functions, storage, auth } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, updateProfile } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import VoiceRecorderModal from '../components/VoiceRecorderModal';
 import './AccountPage.css';
 

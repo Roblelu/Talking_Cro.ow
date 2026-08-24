@@ -117,7 +117,7 @@ function createWindow() {
     }
   });
 
-  mainWindow.removeMenu(); mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => { require('fs').appendFileSync('renderer_log.txt', message + '\n'); }); mainWindow.webContents.openDevTools();
+  mainWindow.removeMenu();
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5175');
