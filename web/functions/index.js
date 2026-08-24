@@ -19,7 +19,7 @@ const db = getFirestore();
 
 // Configuración de las APIs protegidas
 // Extraemos las variables de entorno que subiremos a Firebase
-const PREMIUM_TTS_API_KEY = process.env.PREMIUM_TTS_API_KEY;
+const PREMIUM_TTS_API_KEY = process.env.ELEVENLABS_API_KEY || process.env.PREMIUM_TTS_API_KEY;
 // El cliente actual no aporta una prueba firmada que vincule al autor del chat
 // de TikTok con una cuenta de Firebase. Mantener el cobro activo permitiría que
 // un streamer eligiera qué cuenta registrada paga el mensaje.
@@ -993,19 +993,33 @@ exports.createEcoVoice = onCall({
 
     const requestData = request.data || {};
     const base64Audio = requestData.base64Audio || requestData.audioBase64;
-    const mimeType = requestData.mimeType || 'audio/webm';
+    const fileName = (requestData.fileName || '').toLowerCase();
+    let mimeType = requestData.mimeType;
+    if (!mimeType) {
+        if (fileName.endsWith('.mp3')) mimeType = 'audio/mpeg';
+        else if (fileName.endsWith('.wav')) mimeType = 'audio/wav';
+        else if (fileName.endsWith('.m4a') || fileName.endsWith('.mp4')) mimeType = 'audio/mp4';
+        else if (fileName.endsWith('.ogg')) mimeType = 'audio/ogg';
+        else mimeType = 'audio/webm';
+    }
     const extensionByMime = {
         'audio/mpeg': '.mp3',
+        'audio/mp3': '.mp3',
         'audio/wav': '.wav',
         'audio/x-wav': '.wav',
         'audio/mp4': '.m4a',
-        'audio/webm': '.webm'
+        'audio/m4a': '.m4a',
+        'audio/x-m4a': '.m4a',
+        'audio/aac': '.aac',
+        'audio/webm': '.webm',
+        'audio/ogg': '.ogg'
     };
     const maxAudioBytes = 10 * 1024 * 1024;
     const maxBase64Chars = Math.ceil(maxAudioBytes / 3) * 4 + 4;
 
-    if (typeof base64Audio !== 'string' || !base64Audio || !extensionByMime[mimeType]) {
-        throw new HttpsError('invalid-argument', 'Faltan los datos del audio.');
+    const baseMimeType = mimeType.split(';')[0].trim();
+    if (typeof base64Audio !== 'string' || !base64Audio || !extensionByMime[baseMimeType]) {
+        throw new HttpsError('invalid-argument', 'Faltan los datos del audio o el formato (' + mimeType + ') no es soportado.');
     }
     if (base64Audio.length > maxBase64Chars || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64Audio)) {
         throw new HttpsError('invalid-argument', 'El audio no tiene un formato Base64 válido o supera 10 MB.');
@@ -1028,7 +1042,7 @@ exports.createEcoVoice = onCall({
         // 2.5. Guardar el audio original en Firebase Storage para respaldos a largo plazo
         try {
             const bucket = admin.storage().bucket();
-            const filePath = `eco_voices/${uid}/voice_sample${extensionByMime[mimeType]}`;
+            const filePath = `eco_voices/${uid}/voice_sample${extensionByMime[baseMimeType]}`;
             const file = bucket.file(filePath);
             await file.save(audioBuffer, {
                 contentType: mimeType,
@@ -1050,7 +1064,7 @@ exports.createEcoVoice = onCall({
         form.append('name', `EcoVoice_${uid.substring(0, 8)}`);
         form.append('description', `Clon de voz para el usuario ${uid} en Talking Cro.ow`);
         form.append('files', audioBuffer, {
-            filename: `voice_sample${extensionByMime[mimeType]}`,
+            filename: `voice_sample${extensionByMime[baseMimeType]}`,
             contentType: mimeType
         });
 

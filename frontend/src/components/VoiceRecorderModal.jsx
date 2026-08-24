@@ -47,7 +47,16 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
           ? { deviceId: { exact: selectedInputDevice } } 
           : true;
       const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraint });
-      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      
+      let options = { mimeType: 'audio/webm' };
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options = { mimeType: 'audio/mp4' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+          options = {}; // Deja que el navegador elija su formato predeterminado
+        }
+      }
+      
+      mediaRecorderRef.current = new MediaRecorder(stream, options);
       
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -56,7 +65,7 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
       };
 
       mediaRecorderRef.current.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorderRef.current.mimeType || 'audio/mp4' });
         const audioUrl = URL.createObjectURL(audioBlob);
         setAudioURL(audioUrl);
         setAudioBlob(audioBlob);

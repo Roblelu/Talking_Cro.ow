@@ -22,19 +22,17 @@ export default function Register() {
     }
 
     try {
-      // 1. Check if username is available before opening popup
-      const usernameRef = doc(db, "usernames", cleanUsername);
-      const usernameSnap = await getDoc(usernameRef);
-      
-      if (usernameSnap.exists()) {
-         return setError("El nombre de usuario ya está ocupado. Elige otro.");
-      }
-
-      // 2. Open Google Auth
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       const userCredential = await signInWithPopup(auth, provider);
       const user = userCredential.user;
+      
+      const usernameRef = doc(db, "usernames", cleanUsername);
+      const usernameSnap = await getDoc(usernameRef);
+      if (usernameSnap.exists() && usernameSnap.data().uid !== user.uid) {
+         await auth.signOut();
+         return setError("El nombre de usuario ya está ocupado. Elige otro.");
+      }
       
       const docRef = doc(db, "users", user.uid);
       const docSnap = await getDoc(docRef);
@@ -108,8 +106,8 @@ export default function Register() {
           </div>
 
           <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginTop: '5px' }}>
-            <input type="checkbox" required id="privacy_consent" checked={consentAccepted} onChange={(e) => setConsentAccepted(e.target.checked)} style={{ marginTop: '3px' }} />
-            <label htmlFor="privacy_consent" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'left', lineHeight: '1.4' }}>
+            <input type="checkbox" required id="privacy_consent" checked={consentAccepted} onChange={(e) => setConsentAccepted(e.target.checked)} style={{ marginTop: '3px', flexShrink: 0 }} />
+            <label htmlFor="privacy_consent" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'left', lineHeight: '1.4', flex: 1, minWidth: 0, wordBreak: 'break-word' }}>
               Acepto los <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--neon-green)', textDecoration: 'underline' }}>Términos y Condiciones</a> y que mis mensajes y nombre de usuario pueden ser procesados temporalmente por modelos de Inteligencia Artificial (TTS) para la generación de audio.
             </label>
           </div>
