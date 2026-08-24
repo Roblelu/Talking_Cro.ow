@@ -170,7 +170,7 @@ const AudioPlayItem = ({ audio, isFirst, inQueue, handlePlayAudio, handleRejectA
 
 function App() {
   const [activeView, setActiveView] = useState('main');
-  const [profileImage, setProfileImage] = useState('/avatar_m.jpg');
+  const [profileImage, setProfileImage] = useState('./avatar_m.jpg');
   const [hashRoute, setHashRoute] = useState(window.location.hash);
   
   const { currentUser, userData } = useAuth();
@@ -1395,7 +1395,7 @@ function App() {
                     </div>
                   )
                ) : (
-                  <img src="/avatar_user.png" alt="Placeholder Usuario" style={{ width: '60px', height: '60px', borderRadius: '50%', border: '2px solid rgba(157, 0, 255, 0.4)', objectFit: 'cover' }} />
+                  <img src="./avatar_user.png" alt="Placeholder Usuario" style={{ width: '60px', height: '60px', borderRadius: '50%', border: '2px solid rgba(157, 0, 255, 0.4)', objectFit: 'cover' }} />
                )}
             </div>
             

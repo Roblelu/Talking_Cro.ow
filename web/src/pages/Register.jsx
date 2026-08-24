@@ -46,7 +46,7 @@ export default function Register() {
           
           const newData = { 
             purchased_croins: 0, 
-            promotional_croins: 0, 
+            promotional_croins: 24, 
             creator_credits: 0, 
             creator_earnings: 0, 
             isPro: false, 

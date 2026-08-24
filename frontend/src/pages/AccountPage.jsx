@@ -202,7 +202,7 @@ const AccountPage = ({ onBack, profileImage, setProfileImage }) => {
           <div style={{ padding: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '30px', marginBottom: '30px', justifyContent: 'center' }}>
               <img 
-                src={profileImage || '/avatar_m.jpg'} 
+                src={profileImage || './avatar_m.jpg'} 
                 alt="Perfil" 
                 className="avatar-placeholder" 
                 style={{ width: '100px', height: '100px', cursor: 'pointer', objectFit: 'cover' }} 
@@ -457,16 +457,16 @@ const AccountPage = ({ onBack, profileImage, setProfileImage }) => {
                 <h3 className="modal-title neon-text-purple">Selecciona tu Avatar</h3>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', margin: '20px 0' }}>
                   <img 
-                    src="/avatar_m.jpg" 
+                    src="./avatar_m.jpg" 
                     alt="Avatar Masculino" 
-                    style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', cursor: 'pointer', border: profileImage === '/avatar_m.jpg' ? '2px solid var(--neon-green)' : '2px solid transparent', boxShadow: profileImage === '/avatar_m.jpg' ? '0 0 10px rgba(57, 255, 20, 0.5)' : 'none' }} 
-                    onClick={() => { if(setProfileImage) setProfileImage('/avatar_m.jpg'); setIsImageModalOpen(false); }}
+                    style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', cursor: 'pointer', border: profileImage === './avatar_m.jpg' ? '2px solid var(--neon-green)' : '2px solid transparent', boxShadow: profileImage === './avatar_m.jpg' ? '0 0 10px rgba(57, 255, 20, 0.5)' : 'none' }} 
+                    onClick={() => { if(setProfileImage) setProfileImage('./avatar_m.jpg'); setIsImageModalOpen(false); }}
                   />
                   <img 
-                    src="/avatar_f.jpg" 
+                    src="./avatar_f.jpg" 
                     alt="Avatar Femenino" 
-                    style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', cursor: 'pointer', border: profileImage === '/avatar_f.jpg' ? '2px solid var(--neon-green)' : '2px solid transparent', boxShadow: profileImage === '/avatar_f.jpg' ? '0 0 10px rgba(57, 255, 20, 0.5)' : 'none' }} 
-                    onClick={() => { if(setProfileImage) setProfileImage('/avatar_f.jpg'); setIsImageModalOpen(false); }}
+                    style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', cursor: 'pointer', border: profileImage === './avatar_f.jpg' ? '2px solid var(--neon-green)' : '2px solid transparent', boxShadow: profileImage === './avatar_f.jpg' ? '0 0 10px rgba(57, 255, 20, 0.5)' : 'none' }} 
+                    onClick={() => { if(setProfileImage) setProfileImage('./avatar_f.jpg'); setIsImageModalOpen(false); }}
                   />
                 </div>
                 <div style={{ margin: '20px 0' }}>

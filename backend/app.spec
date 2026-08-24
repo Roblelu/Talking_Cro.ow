@@ -1,12 +1,18 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_submodules
+
+hiddenimports = ['edge_tts', 'httpx', 'requests', 'sqlite3', 'uvicorn', 'asyncio', 'database', 'tts_engine']
+hiddenimports += collect_submodules('fastapi')
+hiddenimports += collect_submodules('TikTokLive')
+hiddenimports += collect_submodules('pydantic')
 
 
 a = Analysis(
     ['pyarmor_dist/app.py'],
-    pathex=['pyarmor_dist'],
+    pathex=['pyarmor_dist', '.'],
     binaries=[],
     datas=[],
-    hiddenimports=['edge_tts', 'TikTokLive', 'fastapi', 'httpx', 'requests', 'fastapi.middleware.cors', 'sqlite3', 'uvicorn', 'pydantic', 'asyncio'],
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

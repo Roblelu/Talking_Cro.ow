@@ -39,7 +39,7 @@ service cloud.firestore {
                       'creator_earnings', 'isPro', 'username', 'createdAt'
                     ])
                     && request.resource.data.purchased_croins == 0
-                    && request.resource.data.promotional_croins == 0
+                    && (request.resource.data.promotional_croins == 24 || request.resource.data.promotional_croins == 0)
                     && request.resource.data.creator_credits == 0
                     && request.resource.data.creator_earnings == 0
                     && request.resource.data.isPro == false;

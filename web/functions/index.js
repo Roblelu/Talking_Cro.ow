@@ -1210,3 +1210,78 @@ exports.downloadApp = onRequest(async (request, response) => {
         response.redirect(302, 'https://github.com/Roblelu/Talking_Cro.ow/releases/latest');
     }
 });
+
+exports.generateCoupons = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Acceso denegado.');
+    const adminDoc = await db.collection('users').doc(request.auth.uid).get();
+    if (!adminDoc.exists || adminDoc.data().isAdmin !== true) {
+        throw new HttpsError('permission-denied', 'No eres superusuario.');
+    }
+    
+    const generateCode = () => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let code = '';
+        for (let i = 0; i < 10; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+        return code;
+    };
+    
+    const batch = db.batch();
+    const codesCreated = [];
+    
+    for (let i = 0; i < 25; i++) {
+        const code = generateCode();
+        batch.set(db.collection('coupons').doc(code), {
+            amount: 96,
+            redeemed: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        codesCreated.push({ code, amount: 96 });
+    }
+    
+    for (let i = 0; i < 50; i++) {
+        const code = generateCode();
+        batch.set(db.collection('coupons').doc(code), {
+            amount: 24,
+            redeemed: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        codesCreated.push({ code, amount: 24 });
+    }
+    
+    await batch.commit();
+    return { success: true, coupons: codesCreated };
+});
+
+exports.redeemCoupon = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Debes iniciar sesión para canjear un cupón.');
+    const code = request.data.code?.trim().toUpperCase();
+    if (!code) throw new HttpsError('invalid-argument', 'Código inválido.');
+    
+    const result = await db.runTransaction(async (t) => {
+        const couponRef = db.collection('coupons').doc(code);
+        const couponDoc = await t.get(couponRef);
+        
+        if (!couponDoc.exists) {
+            throw new HttpsError('not-found', 'Cupón no encontrado o inválido.');
+        }
+        
+        if (couponDoc.data().redeemed) {
+            throw new HttpsError('failed-precondition', 'Este cupón ya ha sido canjeado.');
+        }
+        
+        t.update(couponRef, {
+            redeemed: true,
+            redeemedBy: request.auth.uid,
+            redeemedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        
+        const userRef = db.collection('users').doc(request.auth.uid);
+        t.update(userRef, {
+            promotional_croins: admin.firestore.FieldValue.increment(couponDoc.data().amount)
+        });
+        
+        return couponDoc.data().amount;
+    });
+    
+    return { success: true, amount: result };
+});

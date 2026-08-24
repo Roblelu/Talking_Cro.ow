@@ -105,6 +105,30 @@ export default function AdminLedger() {
 
         </div>
 
+        <div style={{ marginTop: '40px', padding: '20px', border: '1px solid rgba(0, 255, 255, 0.3)', borderRadius: '8px', background: 'rgba(0, 255, 255, 0.05)' }}>
+          <h3 className="neon-text-blue" style={{ margin: '0 0 15px 0' }}>Generador de Cupones Promocionales</h3>
+          <p style={{ color: 'var(--text-secondary)' }}>Haz clic abajo para generar un nuevo lote de cupones (25 de 96 Croins, 50 de 24 Croins).</p>
+          <button 
+            className="btn-neon" 
+            onClick={async () => {
+              if(!window.confirm('¿Seguro que quieres generar 75 cupones nuevos?')) return;
+              try {
+                const generateCoupons = httpsCallable(functions, 'generateCoupons');
+                const result = await generateCoupons();
+                if(result.data.success) {
+                  const codes = result.data.coupons.map(c => `${c.code} (${c.amount} Croins)`).join('\n');
+                  console.log("Cupones:", codes);
+                  alert(`¡${result.data.coupons.length} Cupones generados con éxito!\nRevisa la consola (F12) para ver la lista completa o búscalos en Firebase.`);
+                }
+              } catch(err) {
+                alert("Error generando cupones: " + err.message);
+              }
+            }}
+          >
+            Generar Cupones (Lote 75)
+          </button>
+        </div>
+
         <div style={{ marginTop: '40px', padding: '20px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}>
           <h4 style={{ margin: '0 0 10px 0', color: '#fff' }}>📋 Notas del Ledger:</h4>
           <ul style={{ margin: 0, paddingLeft: '20px', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6' }}>

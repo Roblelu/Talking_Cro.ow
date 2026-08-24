@@ -1,17 +1,43 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../firebase';
 import './EcoVoices.css';
 
 const EcoVoicesPage = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const [couponCode, setCouponCode] = useState("");
+  const [isRedeeming, setIsRedeeming] = useState(false);
 
   const handleBuyClick = (packageId) => {
     if (currentUser) {
       navigate(`/store?packageId=${packageId}`);
     } else {
       navigate('/login');
+    }
+  };
+
+  const handleRedeemCoupon = async () => {
+    if (!currentUser) {
+      alert("Debes iniciar sesión para canjear un cupón.");
+      navigate('/login');
+      return;
+    }
+    if (!couponCode.trim()) return;
+    setIsRedeeming(true);
+    try {
+      const redeemCoupon = httpsCallable(functions, 'redeemCoupon');
+      const result = await redeemCoupon({ code: couponCode });
+      if (result.data.success) {
+        alert(`¡Felicidades! Has canjeado ${result.data.amount} Croins con éxito.`);
+        setCouponCode("");
+      }
+    } catch (err) {
+      alert(err.message || "Error al canjear el cupón.");
+    } finally {
+      setIsRedeeming(false);
     }
   };
 
@@ -65,6 +91,19 @@ const EcoVoicesPage = () => {
         </div>
 
         <div className="donadores-hero-text">
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '10px', border: '1px solid rgba(0, 255, 255, 0.2)' }}>
+            <input 
+              type="text" 
+              placeholder="Ingresa tu cupón..." 
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+              style={{ padding: '10px', borderRadius: '6px', border: 'none', background: 'rgba(0,0,0,0.4)', color: '#fff', flex: '1', outline: 'none' }}
+            />
+            <button className="btn-neon" style={{ padding: '10px 20px', fontSize: '0.9rem' }} onClick={handleRedeemCoupon} disabled={isRedeeming}>
+              {isRedeeming ? "Canjeando..." : "Canjear"}
+            </button>
+          </div>
+
           <h1 className="donadores-title">Haz que tu Streamer te Escuche.<br/>Literalmente.</h1>
           <p className="donadores-subtitle">
             Olvídate del texto aburrido. Únete a Eco Voices, clona tu voz y manda mensajes en vivo para que tu streamer favorito te escuche con tu propio tono de voz.

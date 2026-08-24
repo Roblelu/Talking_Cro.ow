@@ -32,17 +32,19 @@ if %errorlevel% neq 0 (
 pyinstaller --noconfirm --log-level=WARN ^
     --onefile ^
     --name app ^
+    --collect-submodules "fastapi" ^
+    --collect-submodules "TikTokLive" ^
+    --collect-submodules "pydantic" ^
     --hidden-import "edge_tts" ^
-    --hidden-import "TikTokLive" ^
-    --hidden-import "fastapi" ^
     --hidden-import "httpx" ^
     --hidden-import "requests" ^
-    --hidden-import "fastapi.middleware.cors" ^
     --hidden-import "sqlite3" ^
     --hidden-import "uvicorn" ^
-    --hidden-import "pydantic" ^
     --hidden-import "asyncio" ^
+    --hidden-import "database" ^
+    --hidden-import "tts_engine" ^
     --paths "pyarmor_dist" ^
+    --paths "." ^
     pyarmor_dist\app.py
 
 if %errorlevel% neq 0 (
