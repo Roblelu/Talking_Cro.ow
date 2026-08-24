@@ -119,7 +119,7 @@ exports.createSubscriptionCheckout = onCall(async (request) => {
     }
 });
 
-exports.claimWelcomeCredits = onCall({ enforceAppCheck: true }, async (request) => {
+exports.claimWelcomeCredits = onCall({ enforceAppCheck: false }, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Debe iniciar sesión.');
     }
@@ -958,7 +958,7 @@ exports.consumeFeature = onCall(async (request) => {
 // Clonación de Voz (EcoVoices) con PremiumTTS
 // ---------------------------------------------------------
 exports.createEcoVoice = onCall({
-    enforceAppCheck: true,
+    enforceAppCheck: false,
     maxInstances: 10,
     cors: true,
     timeoutSeconds: 120 // PremiumTTS puede tardar un poco clonando
@@ -1164,7 +1164,7 @@ exports.getDesktopTokenHandler = functionsV1.https.onRequest(async (req, res) =>
 // ---------------------------------------------------------
 // Verificación segura de disponibilidad de username (TC-49)
 // ---------------------------------------------------------
-exports.checkUsernameAvailability = onCall({ enforceAppCheck: true }, async (request) => {
+exports.checkUsernameAvailability = onCall({ enforceAppCheck: false }, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
     }
