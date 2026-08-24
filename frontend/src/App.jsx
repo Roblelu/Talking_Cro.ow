@@ -455,22 +455,22 @@ function App() {
   const [donators, setDonators] = useState([]);
   
   const [sounds, setSounds] = useState([
-    { icon: '🐦‍⬛', name: 'Cuervo', url: '/sounds/cuervo.wav' }, 
-    { icon: '👏', name: 'Aplausos', url: '/sounds/aplausos.wav' }, 
-    { icon: '😂', name: 'Risas', url: '/sounds/trompeta.wav' },
-    { icon: '🦗', name: 'Grillos', url: '/sounds/grillos.wav' }, 
-    { icon: '😲', name: 'Wow!', url: '/sounds/wow.wav' }, 
-    { icon: '🎺', name: 'Womp Womp', url: '/sounds/womp.wav' },
-    { icon: '🎉', name: 'Ta-Da!', url: '/sounds/tada.wav' }
+    { icon: '🐦‍⬛', name: 'Cuervo', url: './sounds/cuervo.wav' }, 
+    { icon: '👏', name: 'Aplausos', url: './sounds/aplausos.wav' }, 
+    { icon: '😂', name: 'Risas', url: './sounds/trompeta.wav' },
+    { icon: '🦗', name: 'Grillos', url: './sounds/grillos.wav' }, 
+    { icon: '😲', name: 'Wow!', url: './sounds/wow.wav' }, 
+    { icon: '🎺', name: 'Womp Womp', url: './sounds/womp.wav' },
+    { icon: '🎉', name: 'Ta-Da!', url: './sounds/tada.wav' }
   ]);
   const [stickers, setStickers] = useState([
-    { icon: '❤️', name: 'Corazón', url: '/stickers/corazon.jpg' }, 
-    { icon: '⭐', name: 'Estrella', url: '/stickers/estrella.jpg' }, 
-    { icon: '🔥', name: 'Fuego', url: '/stickers/fuego.jpg' },
-    { icon: '🐱', name: 'Gato', url: '/stickers/gato.jpg' }, 
-    { icon: '🗡️', name: 'Espada', url: '/stickers/espada.jpg' }, 
-    { icon: '👑', name: 'Corona', url: '/stickers/corona.jpg' },
-    { icon: '👻', name: 'Fantasma', url: '/stickers/fantasma.jpg' }
+    { icon: '❤️', name: 'Corazón', url: './stickers/corazon.jpg' }, 
+    { icon: '⭐', name: 'Estrella', url: './stickers/estrella.jpg' }, 
+    { icon: '🔥', name: 'Fuego', url: './stickers/fuego.jpg' },
+    { icon: '🐱', name: 'Gato', url: './stickers/gato.jpg' }, 
+    { icon: '🗡️', name: 'Espada', url: './stickers/espada.jpg' }, 
+    { icon: '👑', name: 'Corona', url: './stickers/corona.jpg' },
+    { icon: '👻', name: 'Fantasma', url: './stickers/fantasma.jpg' }
   ]);
 
   const handleDeleteSound = (index, e) => {

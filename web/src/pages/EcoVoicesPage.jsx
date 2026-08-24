@@ -106,18 +106,31 @@ const EcoVoicesPage = () => {
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
               style={{ 
-                padding: '8px 12px', 
+                height: '38px',
+                padding: '0 12px', 
                 borderRadius: '6px', 
                 border: '1px solid rgba(0, 255, 255, 0.2)', 
                 background: 'rgba(0,0,0,0.4)', 
                 color: '#fff', 
                 outline: 'none',
-                maxWidth: '200px'
+                maxWidth: '200px',
+                boxSizing: 'border-box',
+                margin: '0',
+                fontFamily: 'inherit'
               }}
             />
             <button 
               className="btn-neon" 
-              style={{ padding: '8px 16px', fontSize: '0.9rem', margin: '0' }} 
+              style={{ 
+                height: '38px', 
+                padding: '0 16px', 
+                fontSize: '0.9rem', 
+                margin: '0', 
+                boxSizing: 'border-box', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center' 
+              }} 
               onClick={handleRedeemCoupon} 
               disabled={isRedeeming}
             >
