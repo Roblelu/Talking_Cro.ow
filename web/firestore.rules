@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Bloqueo de acceso por defecto (Zero Trust)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // 2. Reglas para tickets de soporte (solo escritura)
+    match /support_tickets/{ticketId} {
+      allow read, update, delete: if false; // Solo accesible desde el Backend/Admin
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasOnly(['uid', 'email', 'username', 'subject', 'message', 'createdAt', 'status'])
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.status == 'unread';
+    }
+
+    // 3. Colección global de nombres de usuario para verificación única (Anti-Enumeración estricta)
+    match /usernames/{username} {
+      allow get: if request.auth != null; // TC-49: Solo usuarios autenticados pueden verificar usernames
+      allow list: if false; // Bloquea obtener la lista de todos los usuarios
+      allow create: if request.auth != null
+                    && !exists(/databases/$(database)/documents/usernames/$(username))
+                    && request.resource.data.keys().hasOnly(['uid'])
+                    && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false; // Los cambios de nombre pasan por updateUsername (Admin SDK)
+    }
+
+    // 3. Reglas para perfiles unificados (creadores y donadores)
+    match /users/{uid} {
+      // El perfil general solo puede ser leído por el propio usuario
+      allow read: if request.auth != null && request.auth.uid == uid;
+      
+      // La creación exige iniciar los saldos en 0
+      allow create: if request.auth != null && request.auth.uid == uid 
+                    && request.resource.data.keys().hasOnly([
+                      'purchased_croins', 'promotional_croins', 'creator_credits',
+                      'creator_earnings', 'isPro', 'username', 'createdAt'
+                    ])
+                    && request.resource.data.purchased_croins == 0
+                    && request.resource.data.promotional_croins == 0
+                    && request.resource.data.creator_credits == 0
+                    && request.resource.data.creator_earnings == 0
+                    && request.resource.data.isPro == false;
+                    
+      // Las actualizaciones del perfil general desde el cliente no pueden alterar los saldos o privilegios
+      // (Los saldos solo pueden ser modificados por Firebase Functions/Admin)
+      // TC-30: Validación estricta del esquema para evitar inyección de campos arbitrarios.
+      // El cliente solo puede actualizar su usuario de TikTok. Los saldos y privilegios los maneja el Admin SDK.
+      allow update: if request.auth != null && request.auth.uid == uid 
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tiktok_username'])
+                    && request.resource.data.tiktok_username is string
+                    && request.resource.data.tiktok_username.size() <= 80;
+      
+      // 4. Subcolección privada de contacto (PII)
+      match /private/contact {
+        // Estrictamente: Solo el dueño de la cuenta puede leer o modificar su información de contacto
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
+    // 5. Colección para registrar streams activos (Bot Maestro)
+    match /active_streams/{uid} {
+      allow read: if false; // Solo el Bot Central (Admin) lee todos los streams
+      // El streamer puede escribir su estado activo o eliminarlo
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // 6. Cola TTS para comunicación Bot -> Local App
+    match /tts_queue/{uid}/requests/{requestId} {
+      // Solo el streamer dueño puede leer (para reproducir) y eliminar (tras reproducir)
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if false; // Solo el backend Cloud Functions crea los requests
+    }
+  }
+}
