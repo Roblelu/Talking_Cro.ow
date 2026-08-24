@@ -17,7 +17,7 @@ const Home = () => {
             Activa el texto a voz para que el chat cobre vida y escuches la voz clonada de tu comunidad.
           </p>
           <div className="hero-buttons">
-            <button className="btn-hero primary" onClick={() => window.open('https://github.com/HevelG/Talking_Cro.ow/releases/latest', '_blank')}>
+            <button className="btn-hero primary" onClick={() => window.open('https://github.com/Roblelu/Talking_Cro.ow/releases/latest', '_blank')}>
               Descargar App (Windows)
             </button>
             <button className="btn-hero secondary" onClick={() => navigate('/creadores')}>Soy Creador</button>

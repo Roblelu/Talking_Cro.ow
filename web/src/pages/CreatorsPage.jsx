@@ -18,7 +18,7 @@ const CreatorsPage = () => {
           <p className="streamers-subtitle">
             Convierte a tu audiencia en participantes activos. Permite que tus donadores donen y activen audios o efectos visuales, tambien deja de leer los comentarios y escuchalos directamente durante la transmision.
           </p>
-          <a className="btn-streamer" href="https://github.com/HevelG/Talking_Cro.ow/releases/latest" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', display: 'inline-block', textAlign: 'center' }}>
+          <a className="btn-streamer" href="https://github.com/Roblelu/Talking_Cro.ow/releases/latest" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', display: 'inline-block', textAlign: 'center' }}>
             Descargar App (Windows)
           </a>
         </div>
