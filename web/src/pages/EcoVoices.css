@@ -1,0 +1,260 @@
+/* EcoVoices.css */
+.donadores-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #c5c6c7;
+  font-family: 'Space Grotesk', sans-serif;
+  min-height: 100vh;
+  padding: 40px 20px 50px 20px;
+}
+
+.donadores-container::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: radial-gradient(circle at 90% 10%, #1a0b16, #05000a);
+  z-index: -1;
+}
+
+/* HERO SECTION - RESTRUCTURED */
+.donadores-hero {
+  display: flex;
+  flex-direction: column; /* Stacked by default for mobile */
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 1200px;
+  margin: 60px auto 40px;
+  gap: 40px;
+  padding: 0 20px;
+}
+
+.donadores-hero-text {
+  flex: 1;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.donadores-hero-visual {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 500px;
+  height: 350px; /* Necesario para que el scroller no colapse */
+}
+
+@media (min-width: 900px) {
+  .donadores-hero {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  .donadores-hero-text {
+    align-items: flex-start;
+    text-align: left;
+  }
+}
+@media (max-width: 899px) {
+  .donadores-hero-visual {
+    display: none !important;
+  }
+  .donadores-hero {
+    margin: 20px auto 30px;
+  }
+}
+
+/* Phone Mockup Styling */
+.phone-mockup {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 9 / 19; /* Standard phone ratio */
+  background: linear-gradient(145deg, #1f2833, #0b0c10);
+  border-radius: 40px;
+  box-shadow: 
+    0 0 0 10px #1f2833, /* Bezel */
+    0 20px 50px rgba(0, 0, 0, 0.8), /* Drop shadow */
+    inset 0 0 20px rgba(102, 252, 241, 0.2); /* Inner glow */
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 15px;
+}
+
+.phone-notch {
+  position: absolute;
+  top: 0;
+  width: 150px;
+  height: 25px;
+  background-color: #1f2833;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+  z-index: 10;
+}
+
+.phone-screen {
+  width: 100%;
+  height: 100%;
+  border-radius: 30px;
+  overflow: hidden;
+  position: relative;
+  /* Use a placeholder image or gradient if image fails */
+  background-color: #12151c; 
+}
+
+.phone-screen-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Cover the whole screen area */
+  border-radius: 30px; /* Match screen radius */
+}
+
+
+.chat-scroller {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+}
+
+.chat-track {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: scroll-chat 20s linear infinite;
+}
+
+@keyframes scroll-chat {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
+.chat-bubble-placeholder {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  padding: 15px;
+  width: 80%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chat-bubble-placeholder.left {
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.chat-bubble-placeholder.right {
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+  background: linear-gradient(135deg, rgba(255,8,68,0.1), rgba(255,177,153,0.1));
+}
+
+.chat-line {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.chat-line.short {
+  width: 60%;
+  margin-bottom: 0;
+}
+
+.donadores-title {
+  font-size: 2.5rem;
+  font-weight: 900;
+  margin-bottom: 20px;
+  background: linear-gradient(to right, #ff0844 0%, #ffb199 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: pulse-title 3s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-title {
+  0% { text-shadow: 0 0 20px rgba(255, 8, 68, 0.2); }
+  100% { text-shadow: 0 0 40px rgba(255, 8, 68, 0.5); }
+}
+
+.donadores-subtitle {
+  font-size: 1.15rem;
+  color: #d1d5db;
+  max-width: 600px;
+  margin: 0 auto 40px;
+  line-height: 1.6;
+}
+
+/* Steps Section */
+.eco-steps-section {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.eco-section-title {
+  font-size: 2rem;
+  color: #fff;
+  margin-bottom: 30px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.eco-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.eco-step-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 25px 15px;
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  gap: 10px;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.eco-step-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 8, 68, 0.4);
+}
+
+.eco-step-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0px;
+}
+
+.eco-step-content h3 {
+  font-size: 1rem;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.step-gray {
+  color: #8892b0;
+  font-weight: normal;
+}
+
+.eco-step-content p {
+  font-size: 0.85rem;
+  color: #a0aec0;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Packages Section */
+.eco-packages-section {
+  width: 100%;
+  margin-top: 50px;
+}
