@@ -170,7 +170,7 @@ const AudioPlayItem = ({ audio, isFirst, inQueue, handlePlayAudio, handleRejectA
 
 function App() {
   const [activeView, setActiveView] = useState('main');
-  const [profileImage, setProfileImage] = useState('./avatar_m.jpg');
+
   const [hashRoute, setHashRoute] = useState(window.location.hash);
   
   const { currentUser, userData } = useAuth();
@@ -1158,7 +1158,7 @@ function App() {
                           setIsTopGiftsOpen(false);
                         }}
                       >
-                        <img src={`/gifts/${gift.img}`} alt={gift.name} style={{ width: '24px', height: '24px', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'inline-block'; }} />
+                        <img src={`./gifts/${gift.img}`} alt={gift.name} style={{ width: '24px', height: '24px', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'inline-block'; }} />
                         <span style={{ display: 'none', fontSize: '1.2rem' }}>🎁</span>
                         <span className="dropdown-item-name" style={{ flex: 1 }}>{gift.name}</span>
                         <span className="dropdown-item-key">({gift.key})</span>
@@ -1536,7 +1536,7 @@ function App() {
                            <span className={`accordion-arrow ${isTtsGiftDropdownOpen ? 'open' : ''}`} style={{ fontSize: '0.7rem' }}>▶</span>
                            {ttsRequiredGift === 'All' ? 'All' : (
                              <img 
-                               src={`/gifts/${topTikTokGifts.find(g => g.key === ttsRequiredGift)?.img || 'rose.png'}`} 
+                               src={`./gifts/${topTikTokGifts.find(g => g.key === ttsRequiredGift)?.img || 'rose.png'}`} 
                                alt={ttsRequiredGift} 
                                style={{ width: '20px', height: '20px', objectFit: 'contain' }} 
                                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'inline-block'; }}
@@ -1582,7 +1582,7 @@ function App() {
                                    style={{ padding: '5px', cursor: 'pointer', display: 'flex', justifyContent: 'center' }}
                                    title={g.name}
                                  >
-                                   <img src={`/gifts/${g.img}`} alt={g.name} style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                                   <img src={`./gifts/${g.img}`} alt={g.name} style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
                                  </div>
                                ))}
                              </div>

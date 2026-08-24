@@ -140,7 +140,7 @@ const Header = () => {
             {/* Menú de Usuario */}
             <div style={{ position: 'relative' }} ref={dropdownRef}>
               <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-                <img src={'/avatar_user.png'} alt="Menú de Usuario" className="avatar-placeholder" title="Menú de Usuario" style={{ objectFit: 'cover' }} />
+                <img src={currentUser.photoURL || '/avatar_user.png'} alt="Menú de Usuario" className="avatar-placeholder" title="Menú de Usuario" style={{ objectFit: 'cover' }} />
                 <button className="settings-gear-btn" title="Ajustes" style={{ pointerEvents: 'none' }}>
                   ⚙️
                   {isMissingFields && <span style={{ position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
@@ -154,7 +154,7 @@ const Header = () => {
                      onClick={() => { navigate('/account'); setIsDropdownOpen(false); }}
                      style={{ display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(157, 0, 255, 0.3)', paddingBottom: '12px', marginBottom: '8px', color: '#00f0ff', fontWeight: 'bold' }}
                    >
-                     <img src={'/avatar_user.png'} alt="Perfil" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--neon-purple)' }} />
+                     <img src={currentUser.photoURL || '/avatar_user.png'} alt="Perfil" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--neon-purple)' }} />
                      <div style={{ display: 'flex', justifyContent: 'space-between', flex: 1, alignItems: 'center' }}>
                        <span>Cuenta Talking Cro.ow</span>
                        {isMissingFields && <span style={{ width: '8px', height: '8px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}

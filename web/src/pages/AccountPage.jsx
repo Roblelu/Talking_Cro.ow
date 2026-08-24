@@ -43,14 +43,18 @@ const PasswordInput = ({ label, value, onChange, show, toggleShow }) => (
   </div>
 );
 
-const AccountPage = ({ profileImage, setProfileImage }) => {
+const AccountPage = () => {
   const navigate = useNavigate();
   const { currentUser, userData } = useAuth();
   const { saveProfile } = useUserData();
   
+  const [profileImage, setProfileImage] = useState(currentUser?.photoURL || '/avatar_user.png');
+  const [isUploading, setIsUploading] = useState(false);
+  
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const fileInputRef = useRef(null);
+
   
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -400,31 +404,56 @@ const AccountPage = ({ profileImage, setProfileImage }) => {
                     src="/avatar_m.jpg" 
                     alt="Avatar Masculino" 
                     style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', cursor: 'pointer', border: profileImage === '/avatar_m.jpg' ? '2px solid var(--neon-green)' : '2px solid transparent', boxShadow: profileImage === '/avatar_m.jpg' ? '0 0 10px rgba(57, 255, 20, 0.5)' : 'none' }} 
-                    onClick={() => { if(setProfileImage) setProfileImage('/avatar_m.jpg'); setIsImageModalOpen(false); }}
+                    onClick={async () => {
+                      if(!currentUser) return;
+                      await updateProfile(currentUser, { photoURL: '/avatar_m.jpg' });
+                      setProfileImage('/avatar_m.jpg'); 
+                      setIsImageModalOpen(false); 
+                    }}
                   />
                   <img 
                     src="/avatar_f.jpg" 
                     alt="Avatar Femenino" 
                     style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', cursor: 'pointer', border: profileImage === '/avatar_f.jpg' ? '2px solid var(--neon-green)' : '2px solid transparent', boxShadow: profileImage === '/avatar_f.jpg' ? '0 0 10px rgba(57, 255, 20, 0.5)' : 'none' }} 
-                    onClick={() => { if(setProfileImage) setProfileImage('/avatar_f.jpg'); setIsImageModalOpen(false); }}
+                    onClick={async () => { 
+                      if(!currentUser) return;
+                      await updateProfile(currentUser, { photoURL: '/avatar_f.jpg' });
+                      setProfileImage('/avatar_f.jpg'); 
+                      setIsImageModalOpen(false); 
+                    }}
                   />
                 </div>
                 <div style={{ margin: '20px 0' }}>
-                  <button className="btn-neon" onClick={() => fileInputRef.current.click()}>Subir imagen desde PC</button>
+                  <button className="btn-neon" onClick={() => fileInputRef.current.click()} disabled={isUploading}>
+                    {isUploading ? "Subiendo..." : "Subir imagen desde PC"}
+                  </button>
                   <input 
                     type="file" 
                     ref={fileInputRef} 
                     style={{ display: 'none' }} 
                     accept="image/*" 
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files[0];
                       if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          if(setProfileImage) setProfileImage(reader.result);
+                        if (file.size > 5 * 1024 * 1024) {
+                          alert("La imagen no debe superar los 5MB.");
+                          return;
+                        }
+                        setIsUploading(true);
+                        try {
+                          const avatarRef = ref(storage, `avatars/${currentUser.uid}`);
+                          await uploadBytes(avatarRef, file);
+                          const url = await getDownloadURL(avatarRef);
+                          await updateProfile(currentUser, { photoURL: url });
+                          setProfileImage(url);
                           setIsImageModalOpen(false);
-                        };
-                        reader.readAsDataURL(file);
+                          alert("Avatar actualizado correctamente");
+                        } catch (err) {
+                          console.error(err);
+                          alert("Error al subir el avatar: " + err.message);
+                        } finally {
+                          setIsUploading(false);
+                        }
                       }
                     }} 
                   />
