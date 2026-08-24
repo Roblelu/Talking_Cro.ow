@@ -105,6 +105,28 @@ export default function AdminLedger() {
           </div>
 
         </div>
+        
+        <div style={{ marginTop: '40px', padding: '20px', border: '1px solid rgba(255, 0, 0, 0.3)', borderRadius: '8px', background: 'rgba(255, 0, 0, 0.05)' }}>
+          <h3 className="neon-text-red" style={{ margin: '0 0 15px 0', color: '#ff4444' }}>Otorgar Saldo de Superusuario</h3>
+          <p style={{ color: 'var(--text-secondary)' }}>Añade 35 Croins y Créditos TTS a tu propia cuenta de desarrollador para hacer pruebas.</p>
+          <button 
+            className="btn-neon" 
+            style={{ borderColor: 'red', color: '#ff4444' }}
+            onClick={async () => {
+              if(!window.confirm('¿Seguro que quieres añadir saldo DEV a tu cuenta?')) return;
+              try {
+                const adminAdd = httpsCallable(functions, 'adminAddCredits');
+                await adminAdd();
+                alert('Saldo DEV otorgado (35 Croins y Créditos).');
+                window.location.reload(); // Reload to reflect changes in UI
+              } catch (err) {
+                alert('Error: ' + err.message);
+              }
+            }}
+          >
+            🛠️ Añadir +Saldo
+          </button>
+        </div>
 
         <div style={{ marginTop: '40px', padding: '20px', border: '1px solid rgba(0, 255, 255, 0.3)', borderRadius: '8px', background: 'rgba(0, 255, 255, 0.05)' }}>
           <h3 className="neon-text-blue" style={{ margin: '0 0 15px 0' }}>Generador de Cupones Promocionales</h3>

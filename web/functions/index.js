@@ -1297,3 +1297,19 @@ exports.redeemCoupon = onCall(async (request) => {
     
     return { success: true, amount: result };
 });
+
+const { getStorage } = require('firebase-admin/storage');
+exports.fixCors = functions.https.onRequest(async (req, res) => {
+  try {
+    const bucket = getStorage().bucket('talking-crow.firebasestorage.app');
+    await bucket.setCorsConfiguration([{
+      origin: ['*'],
+      method: ['GET', 'PUT', 'POST', 'DELETE', 'HEAD', 'OPTIONS'],
+      maxAgeSeconds: 3600,
+      responseHeader: ['*']
+    }]);
+    res.send('CORS arreglado con exito para Firebase Storage. Ya puedes cerrar esta ventana.');
+  } catch (error) {
+    res.status(500).send('Error: ' + error.message);
+  }
+});

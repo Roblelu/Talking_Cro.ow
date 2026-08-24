@@ -956,26 +956,6 @@ function App() {
       <header className="main-navbar">
         <div className="navbar-left navbar-side" onClick={() => setActiveView('main')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px' }}>
           <img src={logoImg} alt="Talking Cro.ow Logo" className="logo-img" />
-          {currentUser && userData?.isAdmin && (
-            <div 
-              className="header-indicator"
-              style={{ background: 'rgba(255,0,0,0.2)', border: '1px solid red', cursor: 'pointer', padding: '5px 10px', marginLeft: '240px', position: 'relative', zIndex: 20 }}
-              onClick={async (e) => {
-                e.stopPropagation(); // Evitar que cambie la vista al main
-                try {
-                  const adminAdd = httpsCallable(functions, 'adminAddCredits');
-                  await adminAdd();
-                  alert('Saldo DEV otorgado (35 Croins y Créditos).');
-                } catch (err) {
-                  alert('Error: ' + err.message);
-                }
-              }}
-              title="Añadir saldo de Superusuario (DEV)"
-            >
-              <span style={{ fontSize: '1rem' }}>🛠️</span>
-              <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#ff4444' }}>+Saldo</span>
-            </div>
-          )}
         </div>
         
         <div className="navbar-center" style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={() => setActiveView('main')}>
