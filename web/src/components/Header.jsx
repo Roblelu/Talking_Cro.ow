@@ -66,7 +66,12 @@ const Header = () => {
 
         <nav className={`main-nav ${isMobileMenuOpen ? 'open' : ''}`}>
           {currentUser && (
-            <NavLink to="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Dashboard</NavLink>
+            <>
+              {(currentUser.email === 'cnkrxdu@gmail.com' || currentUser.email === 'roblecro.ow@gmail.com') && (
+                <NavLink to="/admin/ledger" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => isActive ? "nav-link active" : "nav-link"} style={{ color: '#00ffff' }}>Admin</NavLink>
+              )}
+              <NavLink to="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Dashboard</NavLink>
+            </>
           )}
           <NavLink to="/" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Inicio</NavLink>
           <NavLink to="/creadores" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>Creadores</NavLink>

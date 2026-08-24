@@ -568,45 +568,18 @@ function App() {
         } else if (data.type === 'priority_audio') {
             const newAudio = { ...data, timestamp: new Date(), id: Date.now().toString() };
             setAudioQueue(prev => [...prev, newAudio]);
-            setLiveEvents(prev => [...prev.slice(-49), newAudio]);
+            setLiveEvents(prev => [...prev.slice(-399), newAudio]);
         } else {
             const newEvent = { ...data, timestamp: new Date() };
             
             // Removed undefined setOnlineUsers
 
-            // --- LÓGICA DE CROINS PARA TTS (CHAT) ---
-            if (data.type === 'chat' && currentUser) {
-                // Verificar si el mensaje tiene el comando "Eco Voice" (case-insensitive)
-                // Fallback para eliminar emojis si el backend no lo hizo (p. ej. si no se reinició app.py)
-                const removeEmojis = (str) => {
-  if (!str) return '';
-  // Eliminar emojis unicode y luego los emojis personalizados de TikTok que vienen en [corchetes]
-  let cleaned = str.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '');
-  return cleaned.replace(/\[.*?\]/g, '').trim();
-};
-                let cleanMessage = data.clean_message || removeEmojis(data.message);
-                let cleanUsername = data.clean_username || removeEmojis(data.uniqueId);
+            // --- LÓGICA DE CROINS PARA TTS (ECO COMMAND) ---
+            if (data.type === 'eco_command' && currentUser) {
+                let cleanUsername = data.username;
+                let cleanMessage = data.message;
                 
-                const lowerMsg = data.message.toLowerCase().trim();
-                const lowerClean = cleanMessage.toLowerCase().trim();
-                const ecoVoicePrefix = 'eco ';
-                let isEcoVoiceCommand = false;
-                
-                if (lowerMsg.startsWith(ecoVoicePrefix) || lowerClean.startsWith(ecoVoicePrefix)) {
-                    isEcoVoiceCommand = true;
-                    // Extraer el mensaje sin el comando para enviarlo a ElevenLabs
-                    if (lowerClean.startsWith(ecoVoicePrefix)) {
-                        cleanMessage = cleanMessage.substring(ecoVoicePrefix.length).trim();
-                    } else {
-                        cleanMessage = data.message.substring(ecoVoicePrefix.length).trim();
-                    }
-                } else if (lowerMsg === 'eco' || lowerClean === 'eco') {
-                    // Si solo dicen 'eco' sin texto adicional, ignoramos o tomamos como vacío
-                    isEcoVoiceCommand = true;
-                    cleanMessage = '';
-                }
-
-                if (isEcoVoiceCommand && cleanMessage !== '') {
+                if (cleanMessage !== '') {
                     // Intentar cobrar 12 Croins al usuario
                     const processTTS = httpsCallable(functions, 'processTTSMessage');
                     processTTS({ 
@@ -633,7 +606,7 @@ function App() {
             // Añadir al FINAL para que con flexDirection: column los nuevos salgan abajo
             setLiveEvents(prev => {
                 const updated = [...prev, newEvent];
-                return updated.length > 50 ? updated.slice(updated.length - 50) : updated;
+                return updated.length > 400 ? updated.slice(updated.length - 400) : updated;
             });
         }
       } catch(err) {
@@ -684,7 +657,7 @@ function App() {
                 id: change.doc.id 
             };
             setAudioQueue(prev => [...prev, newAudio]);
-            setLiveEvents(prev => [...prev.slice(-49), newAudio]);
+            setLiveEvents(prev => [...prev.slice(-399), newAudio]);
           }
           
           // Eliminar el documento de Firestore para no saturar la BD

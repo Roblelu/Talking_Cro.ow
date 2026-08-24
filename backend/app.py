@@ -236,7 +236,7 @@ class Settings(BaseModel):
     tts_read_username: int = 1
     tts_delay: int = 1
 
-@app.get("/api/settings")
+@app.get("/api/settings", dependencies=[Depends(verify_token)])
 def get_settings():
     conn = database.get_db_connection()
     settings = conn.execute("SELECT * FROM settings LIMIT 1").fetchone()
@@ -306,14 +306,8 @@ async def connect_tiktok(req: TikTokConnectRequest):
         active_tiktok_client = client
 
         async def get_tiktok_avatar(unique_id: str):
-            try:
-                async with httpx.AsyncClient(timeout=5.0) as c:
-                    res = await c.get(f"https://www.tikwm.com/api/user/info?unique_id={unique_id}")
-                    data = res.json()
-                    if data.get("code") == 0:
-                        return data.get("data", {}).get("user", {}).get("avatarThumb")
-            except:
-                pass
+            # TC-58: tikwm API dependency removed for security/privacy.
+            # We return None so the frontend uses a default avatar.
             return None
 
         @client.on(DisconnectEvent)
@@ -359,7 +353,7 @@ async def connect_tiktok(req: TikTokConnectRequest):
 
         @client.on(CommentEvent)
         async def on_comment(event: CommentEvent):
-            print(f"[Chat Debug] Recibido comentario de {event.user.nickname}: {event.comment}")
+            # TC-19: Print de PII removido
             clean_msg = is_valid_and_clean_message(event.comment)
             clean_uname = is_valid_and_clean_message(event.user.nickname) or "Usuario"
             
@@ -372,10 +366,31 @@ async def connect_tiktok(req: TikTokConnectRequest):
                 clean_message=clean_msg
             ))
             
-            # Evitar enviar a TTS Base si es un comando "eco"
-            if event.comment.lower().strip().startswith("eco "):
-                print(f"[Comando] {event.user.nickname} solicitó Eco Voice. Delegando a Frontend/Firebase.")
+            # TC-19: Chat debug print removido para proteger PII
+            
+            # --- DETECCIÓN DE COMANDOS ECO VOICE (FASE 3) ---
+            eco_match = re.match(r'^!?eco[,.]?\s*(.*)', event.comment, re.IGNORECASE)
+            if eco_match:
+                # Extraemos el mensaje sin el prefijo "eco"
+                eco_message = eco_match.group(1).strip()
+                if eco_message:
+                    # Enviamos el evento directamente a React como 'eco_command'
+                    await broadcast_event(LiveEvent(
+                        type="eco_command", 
+                        username=event.user.nickname, 
+                        message=eco_message,
+                        avatar=getattr(event.user, 'avatar_url', None)
+                    ))
                 return
+
+            # --- FILTRADO LOCAL LIGERO ---
+            if len(event.comment) > 250:
+                return # Ignorar biblias
+            
+            bad_words = ['puto', 'pendejo', 'verga', 'mierda', 'nigger', 'nigga', 'chinga', 'zorra', 'puta']
+            if any(bw in event.comment.lower() for bw in bad_words):
+                # TC-19: Profanidad log removido
+                return 
 
             global tts_global_enabled, tts_queue, tts_required_gift, tts_allowed_users
             if tts_global_enabled and tts_queue is not None:

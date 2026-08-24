@@ -35,6 +35,7 @@
   "build": {
     "appId": "com.hevel.talkingcrow",
     "productName": "Talking Crow",
+    "artifactName": "Talking_Cro.ow_${version}.${ext}",
     "directories": {
       "output": "dist_electron"
     },
@@ -54,8 +55,7 @@
         "to": "backend",
         "filter": [
           "ffmpeg.exe",
-          "ffprobe.exe",
-          "cloudflared.exe"
+          "ffprobe.exe"
         ]
       }
     ],

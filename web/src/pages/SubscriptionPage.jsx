@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../firebase';
 
 const SubscriptionPage = () => {
   const navigate = useNavigate();
@@ -43,6 +45,7 @@ const SubscriptionPage = () => {
         {/* Paquetes */}
         <h1 className="neon-text-green" style={{ fontSize: '2.5rem', marginBottom: '10px', marginTop: '0' }}>Tienda y Suscripciones</h1>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>Adquiere Croins para usar tu voz clonada y se lea en vivo con los streamers afiliados.</p>
+
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '40px' }}>
           

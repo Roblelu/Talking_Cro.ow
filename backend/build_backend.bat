@@ -16,7 +16,19 @@ call venv\Scripts\activate.bat
 echo [2/3] Instalando PyInstaller...
 pip install pyinstaller
 
-echo [3/3] Compilando app.py...
+echo [3/3] Instalando PyArmor...
+pip install pyarmor
+
+echo [4/4] Ofuscando y Compilando app.py con PyArmor...
+:: Pyarmor 8.0+ syntax
+pyarmor gen -O pyarmor_dist app.py
+if %errorlevel% neq 0 (
+    echo Error durante la ofuscacion con PyArmor.
+    pause
+    exit /b %errorlevel%
+)
+
+:: Compilar con PyInstaller usando el codigo ofuscado
 pyinstaller --noconfirm --log-level=WARN ^
     --onefile ^
     --name app ^
@@ -26,7 +38,8 @@ pyinstaller --noconfirm --log-level=WARN ^
     --hidden-import "uvicorn" ^
     --hidden-import "pydantic" ^
     --hidden-import "asyncio" ^
-    app.py
+    --paths "pyarmor_dist" ^
+    pyarmor_dist\app.py
 
 if %errorlevel% neq 0 (
     echo Error durante la compilacion.

@@ -17,6 +17,7 @@ import Store from './pages/Store'
 import SupportPage from './pages/SupportPage'
 import PortConfigPage from './pages/PortConfigPage'
 import TermsPage from './pages/TermsPage'
+import AdminLedger from './pages/AdminLedger'
 import './App.css'
 
 const PrivateRoute = ({ children }) => {
@@ -53,6 +54,7 @@ function App() {
               <Route path="/withdraw" element={<PrivateRoute><WithdrawPage /></PrivateRoute>} />
               <Route path="/support" element={<PrivateRoute><SupportPage /></PrivateRoute>} />
               <Route path="/port" element={<PrivateRoute><PortConfigPage /></PrivateRoute>} />
+              <Route path="/admin/ledger" element={<PrivateRoute><AdminLedger /></PrivateRoute>} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

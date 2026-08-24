@@ -2,8 +2,8 @@
 
 
 a = Analysis(
-    ['app.py'],
-    pathex=[],
+    ['pyarmor_dist/app.py'],
+    pathex=['pyarmor_dist'],
     binaries=[],
     datas=[],
     hiddenimports=['edge_tts', 'TikTokLive', 'fastapi', 'uvicorn', 'pydantic', 'asyncio'],

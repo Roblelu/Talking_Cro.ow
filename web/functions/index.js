@@ -47,7 +47,7 @@ const PACKAGES = {
     'pack_8': { price_mxn: 399, croins: 2700 }
 };
 
-exports.createPaymentIntent = onCall({ enforceAppCheck: true }, async (request) => {
+exports.createPaymentIntent = onCall(async (request) => {
     // TC-07: Verificación estricta de autenticación
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Debe iniciar sesión para realizar compras.');
@@ -83,7 +83,7 @@ exports.createPaymentIntent = onCall({ enforceAppCheck: true }, async (request) 
     }
 });
 
-exports.createSubscriptionCheckout = onCall({ enforceAppCheck: true }, async (request) => {
+exports.createSubscriptionCheckout = onCall(async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Debe iniciar sesión para realizar compras.');
     }
@@ -256,12 +256,16 @@ exports.verifyTiktokBio = onCall({
 });
 
 exports.processTTSMessage = onCall(async (request) => {
-    // Seguridad Fase 5: Solo el Servidor Central puede ejecutar esta función para descontar Croins.
-    const { tiktok_username, streamer_uid, message, server_secret } = request.data || {};
+    // Seguridad Fase 5: Solo el streamer logueado en la app puede solicitar procesar un TTS de su chat.
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Debes estar autenticado para procesar TTS.');
+    }
+
+    const { tiktok_username, streamer_uid, message } = request.data || {};
     
-    // Verificamos que el secreto coincida (solo el bot maestro en GCP lo conoce)
-    if (server_secret !== (process.env.CENTRAL_SERVER_SECRET || 'dev_secret_12345')) {
-        throw new HttpsError('permission-denied', 'Acceso denegado: Firma de servidor central inválida.');
+    // Verificamos que el streamer no intente cobrar a nombre de otro
+    if (request.auth.uid !== streamer_uid) {
+        throw new HttpsError('permission-denied', 'Acceso denegado: No puedes procesar TTS para otro streamer.');
     }
 
     if (!PREMIUM_TTS_BILLING_ENABLED) {
@@ -935,7 +939,7 @@ exports.stripeWebhook = onRequest((req, res) => {
 // ---------------------------------------------------------
 // Consumo de Features (Economía unificada)
 // ---------------------------------------------------------
-exports.consumeFeature = onCall({ enforceAppCheck: true }, async (request) => {
+exports.consumeFeature = onCall(async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'User must be authenticated.');
     }
@@ -1112,6 +1116,32 @@ exports.adminAddCredits = onCall(async (request) => {
         logger.error(`Error en adminAddCredits: ${error.message}`);
         if (error instanceof HttpsError) throw error;
         throw new HttpsError('internal', 'No se pudieron acreditar las monedas de superusuario.');
+    }
+});
+
+exports.getAdminStats = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Debes estar autenticado.');
+    }
+    const email = request.auth.token.email;
+    const allowedEmails = ['cnkrxdu@gmail.com', 'roblecro.ow@gmail.com'];
+    if (!email || !allowedEmails.includes(email.toLowerCase())) {
+        throw new HttpsError('permission-denied', 'No eres administrador.');
+    }
+
+    try {
+        const statsDoc = await db.collection('admin').doc('stats').get();
+        if (!statsDoc.exists) {
+            return {
+                platform_profit: {
+                    total_gross_mxn: 0,
+                    total_estimated_net_mxn: 0
+                }
+            };
+        }
+        return statsDoc.data();
+    } catch (error) {
+        throw new HttpsError('internal', error.message);
     }
 });
 

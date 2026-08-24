@@ -36,6 +36,5 @@ echo.
 echo ==========================================================
 echo EXITO!
 echo El instalador final esta en:
-echo frontend\dist_electron\Talking Crow Setup 0.0.0.exe
+echo frontend\dist_electron\Talking_Cro.ow_1.0.0.exe
 echo ==========================================================
-pause
