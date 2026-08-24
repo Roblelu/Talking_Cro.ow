@@ -91,16 +91,37 @@ const EcoVoicesPage = () => {
         </div>
 
         <div className="donadores-hero-text">
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '10px', border: '1px solid rgba(0, 255, 255, 0.2)' }}>
+          <div style={{ 
+            display: 'flex', 
+            gap: '10px', 
+            marginBottom: '30px', 
+            alignItems: 'center',
+            justifyContent: 'center',
+            alignSelf: 'center',
+            width: '100%'
+          }}>
             <input 
               type="text" 
               placeholder="Ingresa tu cupón..." 
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-              style={{ padding: '10px', borderRadius: '6px', border: 'none', background: 'rgba(0,0,0,0.4)', color: '#fff', flex: '1', outline: 'none' }}
+              style={{ 
+                padding: '8px 12px', 
+                borderRadius: '6px', 
+                border: '1px solid rgba(0, 255, 255, 0.2)', 
+                background: 'rgba(0,0,0,0.4)', 
+                color: '#fff', 
+                outline: 'none',
+                maxWidth: '200px'
+              }}
             />
-            <button className="btn-neon" style={{ padding: '10px 20px', fontSize: '0.9rem' }} onClick={handleRedeemCoupon} disabled={isRedeeming}>
-              {isRedeeming ? "Canjeando..." : "Canjear"}
+            <button 
+              className="btn-neon" 
+              style={{ padding: '8px 16px', fontSize: '0.9rem', margin: '0' }} 
+              onClick={handleRedeemCoupon} 
+              disabled={isRedeeming}
+            >
+              {isRedeeming ? "Canjeando..." : "CANJEAR"}
             </button>
           </div>
 

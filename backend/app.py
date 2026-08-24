@@ -243,7 +243,7 @@ def get_settings():
     conn.close()
     if settings:
         return dict(settings)
-    return {"tiktok_username": "@SoyVridel", "base_audio_path": "", "tts_voice": "es-MX-DaliaNeural", "tts_rate": "+0%", "tts_volume": "+0%", "tts_read_username": 1, "tts_delay": 1}
+    return {"tiktok_username": "", "base_audio_path": "", "tts_voice": "es-MX-DaliaNeural", "tts_rate": "+0%", "tts_volume": "+0%", "tts_read_username": 1, "tts_delay": 1}
 
 @app.post("/api/settings", dependencies=[Depends(verify_token)])
 def update_settings(settings: Settings):

@@ -1228,12 +1228,17 @@ exports.generateCoupons = onCall(async (request) => {
     const batch = db.batch();
     const codesCreated = [];
     
+    const now = new Date();
+    const expiresDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const expiresAt = admin.firestore.Timestamp.fromDate(expiresDate);
+    
     for (let i = 0; i < 25; i++) {
         const code = generateCode();
         batch.set(db.collection('coupons').doc(code), {
             amount: 96,
             redeemed: false,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expiresAt: expiresAt
         });
         codesCreated.push({ code, amount: 96 });
     }
@@ -1243,7 +1248,8 @@ exports.generateCoupons = onCall(async (request) => {
         batch.set(db.collection('coupons').doc(code), {
             amount: 24,
             redeemed: false,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expiresAt: expiresAt
         });
         codesCreated.push({ code, amount: 24 });
     }
@@ -1265,8 +1271,14 @@ exports.redeemCoupon = onCall(async (request) => {
             throw new HttpsError('not-found', 'Cupón no encontrado o inválido.');
         }
         
-        if (couponDoc.data().redeemed) {
+        const data = couponDoc.data();
+        
+        if (data.redeemed) {
             throw new HttpsError('failed-precondition', 'Este cupón ya ha sido canjeado.');
+        }
+        
+        if (data.expiresAt && data.expiresAt.toDate() < new Date()) {
+            throw new HttpsError('failed-precondition', 'Este cupón ha expirado.');
         }
         
         t.update(couponRef, {
@@ -1277,10 +1289,10 @@ exports.redeemCoupon = onCall(async (request) => {
         
         const userRef = db.collection('users').doc(request.auth.uid);
         t.update(userRef, {
-            promotional_croins: admin.firestore.FieldValue.increment(couponDoc.data().amount)
+            promotional_croins: admin.firestore.FieldValue.increment(data.amount)
         });
         
-        return couponDoc.data().amount;
+        return data.amount;
     });
     
     return { success: true, amount: result };

@@ -16,7 +16,7 @@ def init_db():
     c.execute('''
         CREATE TABLE IF NOT EXISTS settings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tiktok_username TEXT DEFAULT '@SoyVridel',
+            tiktok_username TEXT DEFAULT '',
             base_audio_path TEXT DEFAULT ''
         )
     ''')
@@ -24,7 +24,7 @@ def init_db():
     # Insertar configuración por defecto si no existe
     c.execute('SELECT COUNT(*) FROM settings')
     if c.fetchone()[0] == 0:
-        c.execute("INSERT INTO settings (tiktok_username) VALUES ('@SoyVridel')")
+        c.execute("INSERT INTO settings (tiktok_username) VALUES ('')")
         
     # Migración: Añadir nuevas columnas TTS si no existen
     try:

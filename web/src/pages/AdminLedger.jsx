@@ -10,6 +10,7 @@ export default function AdminLedger() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [generatedCoupons, setGeneratedCoupons] = useState('');
 
   useEffect(() => {
     // Only fetch if they have an allowed email
@@ -117,8 +118,8 @@ export default function AdminLedger() {
                 const result = await generateCoupons();
                 if(result.data.success) {
                   const codes = result.data.coupons.map(c => `${c.code} (${c.amount} Croins)`).join('\n');
-                  console.log("Cupones:", codes);
-                  alert(`¡${result.data.coupons.length} Cupones generados con éxito!\nRevisa la consola (F12) para ver la lista completa o búscalos en Firebase.`);
+                  setGeneratedCoupons(codes);
+                  alert(`¡${result.data.coupons.length} Cupones generados con éxito!`);
                 }
               } catch(err) {
                 alert("Error generando cupones: " + err.message);
@@ -127,6 +128,33 @@ export default function AdminLedger() {
           >
             Generar Cupones (Lote 75)
           </button>
+          
+          {generatedCoupons && (
+            <div style={{ marginTop: '20px' }}>
+              <h4 style={{ margin: '0 0 10px 0', color: '#00ffcc' }}>Cupones Generados:</h4>
+              <textarea 
+                readOnly 
+                value={generatedCoupons} 
+                style={{ 
+                  width: '100%', 
+                  height: '200px', 
+                  background: 'rgba(0,0,0,0.5)', 
+                  border: '1px solid rgba(0,255,255,0.3)', 
+                  color: '#fff', 
+                  padding: '10px', 
+                  borderRadius: '5px',
+                  fontFamily: 'monospace'
+                }} 
+              />
+              <button 
+                className="btn-neon" 
+                style={{ marginTop: '10px', padding: '5px 10px', fontSize: '0.9rem' }}
+                onClick={() => { navigator.clipboard.writeText(generatedCoupons); alert("Copiados al portapapeles"); }}
+              >
+                Copiar Todos
+              </button>
+            </div>
+          )}
         </div>
 
         <div style={{ marginTop: '40px', padding: '20px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}>

@@ -1,18 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../firebase';
-import { doc, setDoc } from 'firebase/firestore';
-import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import { db, functions, storage, auth } from '../firebase';
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, updateProfile } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import VoiceRecorderModal from '../components/VoiceRecorderModal';
 
+// Iconos SVG simples para mostrar/ocultar contraseña
 const EyeIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--neon-green)' }}>
+  <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
     <circle cx="12" cy="12" r="3"></circle>
   </svg>
 );
+
 const EyeOffIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)' }}>
+  <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
     <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
     <line x1="1" y1="1" x2="23" y2="23"></line>
   </svg>
@@ -38,12 +42,13 @@ const PasswordInput = ({ label, value, onChange, show, toggleShow }) => (
           transform: 'translateY(-50%)', 
           background: 'transparent', 
           border: 'none', 
+          color: 'var(--neon-purple)', 
           cursor: 'pointer',
-          outline: 'none',
           padding: 0,
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          outline: 'none'
         }}
         title={show ? "Ocultar" : "Mostrar"}
       >
@@ -53,8 +58,11 @@ const PasswordInput = ({ label, value, onChange, show, toggleShow }) => (
   </div>
 );
 
-const AccountPage = ({ onBack, profileImage, setProfileImage }) => {
+const AccountPage = ({ onBack }) => {
   const { currentUser, userData } = useAuth();
+  
+  const [profileImage, setProfileImage] = useState(currentUser?.photoURL || './avatar_user.png');
+  const [isUploading, setIsUploading] = useState(false);
   
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
@@ -460,31 +468,56 @@ const AccountPage = ({ onBack, profileImage, setProfileImage }) => {
                     src="./avatar_m.jpg" 
                     alt="Avatar Masculino" 
                     style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', cursor: 'pointer', border: profileImage === './avatar_m.jpg' ? '2px solid var(--neon-green)' : '2px solid transparent', boxShadow: profileImage === './avatar_m.jpg' ? '0 0 10px rgba(57, 255, 20, 0.5)' : 'none' }} 
-                    onClick={() => { if(setProfileImage) setProfileImage('./avatar_m.jpg'); setIsImageModalOpen(false); }}
+                    onClick={async () => {
+                      if(!currentUser) return;
+                      await updateProfile(currentUser, { photoURL: './avatar_m.jpg' });
+                      setProfileImage('./avatar_m.jpg'); 
+                      setIsImageModalOpen(false); 
+                    }}
                   />
                   <img 
                     src="./avatar_f.jpg" 
                     alt="Avatar Femenino" 
                     style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', cursor: 'pointer', border: profileImage === './avatar_f.jpg' ? '2px solid var(--neon-green)' : '2px solid transparent', boxShadow: profileImage === './avatar_f.jpg' ? '0 0 10px rgba(57, 255, 20, 0.5)' : 'none' }} 
-                    onClick={() => { if(setProfileImage) setProfileImage('./avatar_f.jpg'); setIsImageModalOpen(false); }}
+                    onClick={async () => { 
+                      if(!currentUser) return;
+                      await updateProfile(currentUser, { photoURL: './avatar_f.jpg' });
+                      setProfileImage('./avatar_f.jpg'); 
+                      setIsImageModalOpen(false); 
+                    }}
                   />
                 </div>
                 <div style={{ margin: '20px 0' }}>
-                  <button className="btn-neon" onClick={() => fileInputRef.current.click()}>Subir imagen desde PC</button>
+                  <button className="btn-neon" onClick={() => fileInputRef.current.click()} disabled={isUploading}>
+                    {isUploading ? "Subiendo..." : "Subir imagen desde PC"}
+                  </button>
                   <input 
                     type="file" 
                     ref={fileInputRef} 
                     style={{ display: 'none' }} 
                     accept="image/*" 
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files[0];
                       if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          if(setProfileImage) setProfileImage(reader.result);
+                        if (file.size > 5 * 1024 * 1024) {
+                          alert("La imagen no debe superar los 5MB.");
+                          return;
+                        }
+                        setIsUploading(true);
+                        try {
+                          const avatarRef = ref(storage, `avatars/${currentUser.uid}`);
+                          await uploadBytes(avatarRef, file);
+                          const url = await getDownloadURL(avatarRef);
+                          await updateProfile(currentUser, { photoURL: url });
+                          setProfileImage(url);
                           setIsImageModalOpen(false);
-                        };
-                        reader.readAsDataURL(file);
+                          alert("Avatar actualizado correctamente");
+                        } catch (err) {
+                          console.error(err);
+                          alert("Error al subir el avatar: " + err.message);
+                        } finally {
+                          setIsUploading(false);
+                        }
                       }
                     }} 
                   />
