@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, session, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
-const isDev = require('electron-is-dev');
+const isDev = !app.isPackaged;
 const { autoUpdater } = require('electron-updater');
 
 function getBackendDir() {
@@ -51,7 +51,7 @@ function startLocalServer() {
   serverApp.use(express.static(distPath));
 
   // Fallback para React Router
-  serverApp.get('*', (req, res) => {
+  serverApp.use((req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 
@@ -117,7 +117,7 @@ function createWindow() {
     }
   });
 
-  mainWindow.removeMenu();
+  mainWindow.removeMenu(); mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => { require('fs').appendFileSync('renderer_log.txt', message + '\n'); }); mainWindow.webContents.openDevTools();
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5175');

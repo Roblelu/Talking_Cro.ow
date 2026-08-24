@@ -35,6 +35,10 @@ pyinstaller --noconfirm --log-level=WARN ^
     --hidden-import "edge_tts" ^
     --hidden-import "TikTokLive" ^
     --hidden-import "fastapi" ^
+    --hidden-import "httpx" ^
+    --hidden-import "requests" ^
+    --hidden-import "fastapi.middleware.cors" ^
+    --hidden-import "sqlite3" ^
     --hidden-import "uvicorn" ^
     --hidden-import "pydantic" ^
     --hidden-import "asyncio" ^

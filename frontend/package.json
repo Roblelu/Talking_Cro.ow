@@ -1,7 +1,7 @@
 {
   "name": "talking-crow",
   "private": true,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Talking Crow Desktop App",
   "author": "Roblelu <rooblelu@gmail.com>",
   "main": "main.cjs",
@@ -19,8 +19,7 @@
     "express": "^5.2.1",
     "firebase": "^12.17.0",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "electron-is-dev": "^3.0.1"
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",

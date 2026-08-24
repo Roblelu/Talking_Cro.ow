@@ -18,7 +18,7 @@ service cloud.firestore {
 
     // 3. Colección global de nombres de usuario para verificación única (Anti-Enumeración estricta)
     match /usernames/{username} {
-      allow get: if request.auth != null; // TC-49: Solo usuarios autenticados pueden verificar usernames
+      allow get: if true; // Permitir verificar disponibilidad de nombre en el registro sin estar logueado
       allow list: if false; // Bloquea obtener la lista de todos los usuarios
       allow create: if request.auth != null
                     && !exists(/databases/$(database)/documents/usernames/$(username))
