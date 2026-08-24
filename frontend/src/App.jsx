@@ -576,6 +576,21 @@ function App() {
 
             // --- LÓGICA DE CROINS PARA TTS (ECO COMMAND) ---
             if (data.type === 'eco_command' && currentUser) {
+                // SANGUIJUELA PROTECT: Solo permitir cobrar si la sala de TikTok coincide con la sala vinculada a su cuenta
+                let isMyLive = false;
+                if (userData && (userData.tiktok || userData.tiktok_username)) {
+                    let myVerifiedTiktok = (userData.tiktok || userData.tiktok_username).replace('@', '').toLowerCase().trim();
+                    let monitoredTiktok = tiktokUsername.replace('@', '').toLowerCase().trim();
+                    if (myVerifiedTiktok === monitoredTiktok) {
+                        isMyLive = true;
+                    }
+                }
+                
+                if (!isMyLive) {
+                    console.log('[Sanguijuela Protect] Ignorando evento EcoVoice porque estas monitoreando un Live que no es el tuyo.');
+                    return;
+                }
+
                 let cleanUsername = data.username;
                 let cleanMessage = data.message;
                 

@@ -160,7 +160,7 @@ const AccountPage = ({ onBack }) => {
       }, { merge: true });
       
       // Actualizar username si cambió
-      if (username.trim().toLowerCase() !== (userData?.username || '').toLowerCase()) {
+      if (username.trim() !== (userData?.username || '')) {
         const { getFunctions, httpsCallable } = await import('firebase/functions');
         const functions = getFunctions();
         const updateUsernameFn = httpsCallable(functions, 'updateUsername');

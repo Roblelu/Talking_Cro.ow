@@ -1,7 +1,7 @@
 {
   "name": "talking-crow",
   "private": true,
-  "version": "1.0.10",
+  "version": "1.0.12",
   "description": "Talking Crow Desktop App",
   "author": "Roblelu <rooblelu@gmail.com>",
   "main": "main.cjs",

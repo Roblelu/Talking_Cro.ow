@@ -23,7 +23,7 @@ export function useUserData() {
       );
 
       // Handle username update explicitly if changed
-      if (username && username.trim().toLowerCase() !== (userData?.username || '').toLowerCase()) {
+      if (username && username.trim() !== (userData?.username || '')) {
         const functions = getFunctions();
         const updateUsernameFn = httpsCallable(functions, 'updateUsername');
         

@@ -467,14 +467,16 @@ exports.updateUsername = onCall(async (request) => {
     const uid = request.auth.uid;
     const { newUsername } = request.data;
     
-    if (!newUsername || newUsername.length < 3 || newUsername.length > 20) {
+    if (!newUsername || newUsername.trim().length < 3 || newUsername.trim().length > 20) {
         throw new HttpsError('invalid-argument', 'El nombre de usuario debe tener entre 3 y 20 caracteres.');
     }
     
-    const cleanNewUsername = newUsername.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+    const displayUsername = newUsername.trim();
+    // Reemplaza espacios con guiones bajos y deja solo letras/números/guiones para el ID único
+    const normalizedUsername = displayUsername.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
     
-    if (cleanNewUsername !== newUsername.trim().toLowerCase()) {
-        throw new HttpsError('invalid-argument', 'El nombre de usuario solo puede contener letras, números y guiones bajos.');
+    if (normalizedUsername.length < 3) {
+        throw new HttpsError('invalid-argument', 'El nombre de usuario contiene caracteres inválidos.');
     }
 
     try {
@@ -487,13 +489,16 @@ exports.updateUsername = onCall(async (request) => {
             }
             
             const userData = userSnap.data();
-            const currentUsername = userData.username;
+            const currentUsername = userData.username || '';
+            const currentNormalized = currentUsername.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
             
-            if (currentUsername === cleanNewUsername) {
+            if (currentUsername === displayUsername) {
                 throw new HttpsError('already-exists', 'Ese ya es tu nombre de usuario actual.');
             }
             
-            // Verificar cooldown de 7 días
+            const isJustChangingCase = currentNormalized === normalizedUsername;
+            
+            // Verificar cooldown de 7 días (incluso si solo cambia mayúsculas)
             if (userData.last_username_change) {
                 const lastChange = userData.last_username_change.toDate();
                 const now = new Date();
@@ -504,57 +509,57 @@ exports.updateUsername = onCall(async (request) => {
                 }
             }
             
-            // Verificar disponibilidad del nuevo nombre
-            const newUsernameRef = db.collection('usernames').doc(cleanNewUsername);
-            const newUsernameSnap = await t.get(newUsernameRef);
-            
-            if (newUsernameSnap.exists) {
-                const newUsernameData = newUsernameSnap.data();
+            if (!isJustChangingCase) {
+                // Verificar disponibilidad del nuevo nombre
+                const newUsernameRef = db.collection('usernames').doc(normalizedUsername);
+                const newUsernameSnap = await t.get(newUsernameRef);
                 
-                // Si está reservado, revisar si ya expiró
-                if (newUsernameData.reserved_until) {
-                    const reservedUntil = newUsernameData.reserved_until.toDate();
-                    if (new Date() < reservedUntil && newUsernameData.original_owner !== uid) {
-                        throw new HttpsError('already-exists', 'Este nombre de usuario está reservado temporalmente.');
-                    }
-                } else {
-                    // Está en uso activo por alguien más
-                    if (newUsernameData.uid !== uid) {
-                        throw new HttpsError('already-exists', 'El nombre de usuario ya está en uso.');
+                if (newUsernameSnap.exists) {
+                    const newUsernameData = newUsernameSnap.data();
+                    
+                    // Si está reservado, revisar si ya expiró
+                    if (newUsernameData.reserved_until) {
+                        const reservedUntil = newUsernameData.reserved_until.toDate();
+                        if (new Date() < reservedUntil && newUsernameData.original_owner !== uid) {
+                            throw new HttpsError('already-exists', 'Este nombre de usuario está reservado temporalmente.');
+                        }
+                    } else {
+                        // Está en uso activo por alguien más
+                        if (newUsernameData.uid !== uid) {
+                            throw new HttpsError('already-exists', 'El nombre de usuario ya está en uso.');
+                        }
                     }
                 }
-            }
-            
-            // Todo bien, proceder con el cambio
-            
-            // 1. Reservar el nombre actual por 14 días (si el usuario tenía uno)
-            if (currentUsername) {
-                const oldUsernameRef = db.collection('usernames').doc(currentUsername);
-                const reserveDate = new Date();
-                reserveDate.setDate(reserveDate.getDate() + 14); // +14 días
                 
-                t.set(oldUsernameRef, {
-                    uid: null,
-                    original_owner: uid,
-                    reserved_until: admin.firestore.Timestamp.fromDate(reserveDate)
+                // Reservar el nombre actual por 14 días (si el usuario tenía uno)
+                if (currentNormalized) {
+                    const oldUsernameRef = db.collection('usernames').doc(currentNormalized);
+                    const reserveDate = new Date();
+                    reserveDate.setDate(reserveDate.getDate() + 14); // +14 días
+                    
+                    t.set(oldUsernameRef, {
+                        uid: null,
+                        original_owner: uid,
+                        reserved_until: admin.firestore.Timestamp.fromDate(reserveDate)
+                    });
+                }
+                
+                // Tomar posesión del nuevo nombre
+                t.set(newUsernameRef, {
+                    uid: uid,
+                    reserved_until: null,
+                    original_owner: uid
                 });
             }
             
-            // 2. Tomar posesión del nuevo nombre
-            t.set(newUsernameRef, {
-                uid: uid,
-                reserved_until: null,
-                original_owner: uid
-            });
-            
-            // 3. Actualizar perfil de usuario
+            // Actualizar perfil de usuario con la versión que tiene espacios/mayúsculas
             t.update(userRef, {
-                username: cleanNewUsername,
+                username: displayUsername,
                 last_username_change: admin.firestore.FieldValue.serverTimestamp()
             });
         });
         
-        return { success: true, username: cleanNewUsername };
+        return { success: true, username: displayUsername };
     } catch (error) {
         logger.error('Error en updateUsername:', error);
         throw new HttpsError(error.code || 'internal', error.message || 'Error interno al actualizar el nombre de usuario.');
