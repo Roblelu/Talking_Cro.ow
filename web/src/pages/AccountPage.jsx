@@ -6,8 +6,9 @@ import { db, functions, storage, auth } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, updateProfile } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, listAll } from 'firebase/storage';
 import VoiceRecorderModal from '../components/VoiceRecorderModal';
+import WebAudioPlayer from '../components/WebAudioPlayer';
 import './AccountPage.css';
 
 const PasswordInput = ({ label, value, onChange, show, toggleShow }) => (
@@ -61,6 +62,27 @@ const AccountPage = () => {
   const [tiktok, setTiktok] = useState('');
   const [username, setUsername] = useState('');
   const [ecoVoiceId, setEcoVoiceId] = useState('');
+  const [isTestingVoice, setIsTestingVoice] = useState(false);
+  const [sampleAudioUrl, setSampleAudioUrl] = useState(null);
+  
+  const testVoice = async () => {
+      setIsTestingVoice(true);
+      try {
+          const folderRef = ref(storage, `eco_voices/${currentUser.uid}`);
+          const res = await listAll(folderRef);
+          if (res.items.length > 0) {
+              const url = await getDownloadURL(res.items[0]);
+              setSampleAudioUrl(url);
+          } else {
+              alert('No se encontró la grabación original.');
+          }
+      } catch (err) {
+          console.error('Error al cargar audio:', err);
+          alert('Error al obtener el audio original.');
+      } finally {
+          setIsTestingVoice(false);
+      }
+  };
   
   const [isRecorderOpen, setIsRecorderOpen] = useState(false);
   
@@ -78,7 +100,7 @@ const AccountPage = () => {
       setPhone(userData.phone || '');
       setTiktok(userData.tiktok || '');
       setUsername(userData.username || '');
-      setEcoVoiceId(userData.eco_voice_id || '');
+      setEcoVoiceId(userData.has_eco_voice || userData.eco_voice_id ? true : false);
     }
   }, [userData]);
 
@@ -254,9 +276,18 @@ const AccountPage = () => {
                 <p style={{ fontSize: '0.85rem', color: '#ccc', marginTop: '5px' }}>
                   Tu voz está lista para usarse.
                 </p>
-                <button className="btn-neon btn-neon-orange" onClick={() => setIsRecorderOpen(true)} style={{ marginTop: '10px', padding: '8px 15px', fontSize: '0.9rem' }}>
-                  Regrabar mi voz
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
+                    {!sampleAudioUrl ? (
+                      <button className="btn-neon" onClick={testVoice} disabled={isTestingVoice} style={{ padding: '8px 15px', fontSize: '0.9rem' }}>
+                        {isTestingVoice ? 'Cargando...' : '▶ Escuchar mi grabación'}
+                      </button>
+                    ) : (
+                      <WebAudioPlayer src={sampleAudioUrl} style={{ marginBottom: '10px' }} />
+                    )}
+                    <button className="btn-neon btn-neon-orange" onClick={() => setIsRecorderOpen(true)} style={{ padding: '8px 15px', fontSize: '0.9rem' }}>
+                      Regrabar mi voz
+                    </button>
+                </div>
               </div>
             ) : (
               <div style={{ textAlign: 'center' }}>
@@ -314,6 +345,7 @@ const AccountPage = () => {
                           mimeType: file.type
                         });
                         if(result.data.success) {
+                          setSampleAudioUrl(null);
                           alert("¡Voz clonada y configurada con éxito!");
                           window.location.reload();
                         }
@@ -337,7 +369,7 @@ const AccountPage = () => {
           isOpen={isRecorderOpen} 
           onClose={() => setIsRecorderOpen(false)} 
           onSuccess={() => {
-            // Recargar datos o forzar re-render si fuera necesario
+            setSampleAudioUrl(null);
             alert("Voz actualizada. Recarga la página si no ves el cambio.");
           }} 
         />

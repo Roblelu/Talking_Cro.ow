@@ -30,8 +30,8 @@ export default function Dashboard() {
                 style={{ 
                   display: 'inline-block',
                   padding: '10px 20px',
-                  background: userData?.eco_voice_id ? 'rgba(0,255,204,0.1)' : 'rgba(255,0,60,0.1)', 
-                  border: `1px solid ${userData?.eco_voice_id ? 'var(--neon-green)' : '#ff003c'}`, 
+                  background: (userData?.has_eco_voice || userData?.eco_voice_id) ? 'rgba(0,255,204,0.1)' : 'rgba(255,0,60,0.1)', 
+                  border: `1px solid ${(userData?.has_eco_voice || userData?.eco_voice_id) ? 'var(--neon-green)' : '#ff003c'}`, 
                   borderRadius: '8px',
                   cursor: 'pointer',
                   transition: 'transform 0.2s',
@@ -42,8 +42,8 @@ export default function Dashboard() {
                 onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
               >
                 <span style={{ fontSize: '1.5rem', marginRight: '10px', verticalAlign: 'middle' }}>🎙️</span>
-                <span className={userData?.eco_voice_id ? "neon-text-green" : ""} style={{ fontWeight: 'bold', fontSize: '1.1rem', color: userData?.eco_voice_id ? '' : '#ff003c', verticalAlign: 'middle' }}>
-                  {userData?.eco_voice_id ? 'Tu voz está lista para usarse' : 'Necesitas subir tu audio (Ve a Cuenta Talking Cro.ow)'}
+                <span className={(userData?.has_eco_voice || userData?.eco_voice_id) ? "neon-text-green" : ""} style={{ fontWeight: 'bold', fontSize: '1.1rem', color: (userData?.has_eco_voice || userData?.eco_voice_id) ? '' : '#ff003c', verticalAlign: 'middle' }}>
+                  {(userData?.has_eco_voice || userData?.eco_voice_id) ? 'Tu voz está lista para usarse' : 'Necesitas subir tu audio (Ve a Cuenta Talking Cro.ow)'}
                 </span>
               </div>
             </div>

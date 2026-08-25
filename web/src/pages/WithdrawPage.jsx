@@ -60,8 +60,9 @@ const WithdrawPage = () => {
       }
   }
 
-  const croinsEquivalent = (earnings * (28 / 12)).toFixed(2);
-
+  const croinBalance = earnings.toFixed(2);
+  const mxnEquivalent = (earnings * 0.14).toFixed(2);
+  
   return (
     <div style={{ display: 'flex', justifyContent: 'center', marginTop: '30px', padding: '20px' }}>
       <div className="panel" style={{ width: '100%', maxWidth: '600px', display: 'flex', flexDirection: 'column', padding: '2rem' }}>
@@ -75,10 +76,10 @@ const WithdrawPage = () => {
         <div style={{ padding: '15px', background: 'rgba(157, 0, 255, 0.05)', borderRadius: '10px', border: '1px solid rgba(157, 0, 255, 0.2)', textAlign: 'center', marginBottom: '20px' }}>
           <h3 style={{ color: 'var(--text-secondary)', marginBottom: '5px', fontSize: '1rem' }}>Balance Disponible</h3>
           <h1 className="neon-text-green" style={{ fontSize: '2.5rem', margin: '0' }}>
-            {croinsEquivalent} Croin Cash
+            {croinBalance} Croin Cash
           </h1>
           <p className="neon-text-orange" style={{ margin: '5px 0 0 0', fontWeight: 'bold' }}>
-            (Equivalente a ${earnings.toFixed(2)} MXN)
+            (Equivalente a ${mxnEquivalent} MXN)
           </p>
         </div>
 

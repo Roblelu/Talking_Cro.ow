@@ -85,22 +85,56 @@ export default function AdminLedger() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '40px' }}>
           
           <div style={{ padding: '20px', border: '1px solid rgba(255, 117, 24, 0.3)', borderRadius: '12px', background: 'rgba(255, 117, 24, 0.05)' }}>
-            <h3 style={{ color: 'var(--neon-orange)', marginBottom: '15px', borderBottom: '1px solid rgba(255,117,24,0.2)', paddingBottom: '10px' }}>📉 Gastos Fijos Mensuales (Estimados)</h3>
-            <ul style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.8', listStyleType: 'none', padding: 0 }}>
-              <li><strong>Infraestructura:</strong> Firebase (Base de Datos, Storage, Hosting)</li>
-              <li><strong>APIs de IA:</strong> PremiumTTS (TTS Multilingüe)</li>
-              <li><strong>Dominios:</strong> talkingcroow.com (Anual)</li>
-              <li><strong>Marketing y Publicidad:</strong> Pauta para atraer creadores</li>
+            <h3 style={{ color: 'var(--neon-orange)', marginBottom: '15px', borderBottom: '1px solid rgba(255,117,24,0.2)', paddingBottom: '10px' }}>📉 Gastos Operativos y Fiscales (Por Mensaje)</h3>
+            <ul style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.6', listStyleType: 'none', padding: 0 }}>
+              <li style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span><strong>🎙️ API ElevenLabs (TTS):</strong></span> <span style={{ color: '#fff' }}>~$0.50 MXN</span>
+              </li>
+              <li style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span><strong>🤖 Euler Stream / Bot Nube:</strong></span> <span style={{ color: '#fff' }}>~$0.15 MXN</span>
+              </li>
+              <li style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span><strong>☁️ Google Cloud/Firebase:</strong></span> <span style={{ color: '#fff' }}>~$0.05 MXN</span>
+              </li>
+              <li style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span><strong>💳 Stripe Fee (3.6% + $3) Amortizado:</strong></span> <span style={{ color: '#fff' }}>$0.07 a $1.47 MXN</span>
+              </li>
+              <hr style={{ borderColor: 'rgba(255,117,24,0.2)', margin: '10px 0' }}/>
+              <li style={{ color: '#ffcc00', marginBottom: '5px' }}>
+                <strong>🏦 Costos Ocultos Stripe Connect (Retiros):</strong><br/>
+                -$35.00 MXN mensuales por streamer activo.<br/>
+                -$12.00 MXN + 0.25% por cada retiro (Payout).
+              </li>
+              <li style={{ color: '#ff4444', marginBottom: '5px' }}>
+                <strong>🏛️ Impuestos:</strong><br/>
+                -Los ingresos incluyen IVA (16%) y retenciones a declarar.
+              </li>
             </ul>
           </div>
 
           <div style={{ padding: '20px', border: '1px solid rgba(157, 0, 255, 0.3)', borderRadius: '12px', background: 'rgba(157, 0, 255, 0.05)' }}>
-            <h3 className="neon-text-purple" style={{ marginBottom: '15px', borderBottom: '1px solid rgba(157,0,255,0.2)', paddingBottom: '10px' }}>🍰 División de Ganancias (Revenue Share)</h3>
-            <ul style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.8', listStyleType: 'none', padding: 0 }}>
-              <li><span style={{ color: '#00ffff' }}>1. Comisión Stripe:</span> ~3.6% + $3.00 MXN por transacción.</li>
-              <li><span style={{ color: '#00ffcc' }}>2. Creadores (Streamers):</span> Escalonado entre 5% y 30% del volumen, según el partner.</li>
-              <li><span style={{ color: '#9d00ff' }}>3. Gastos Operativos:</span> Se descuentan los gastos fijos mensuales.</li>
-              <li><span style={{ color: '#fff' }}>4. Utilidad Neta (Socios):</span> El remanente se divide entre los fundadores/socios.</li>
+            <h3 className="neon-text-purple" style={{ marginBottom: '15px', borderBottom: '1px solid rgba(157,0,255,0.2)', paddingBottom: '10px' }}>💰 Propuesta Revenue Share Escalonado (Por Mensaje)</h3>
+            <ul style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6', listStyleType: 'none', padding: 0 }}>
+              <li style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ color: '#00ffff' }}><strong>Nivel 1 (15%):</strong> Gana $0.25 MXN</span>
+                <span style={{ color: '#9d00ff' }}>Margen Empresa: $0.74 a $2.72 MXN</span>
+              </li>
+              <li style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ color: '#00ffcc' }}><strong>Nivel 2 (20%):</strong> Gana $0.34 MXN</span>
+                <span style={{ color: '#9d00ff' }}>Margen Empresa: $0.65 a $2.63 MXN</span>
+              </li>
+              <li style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ color: '#00ccff' }}><strong>Nivel 3 (25%):</strong> Gana $0.42 MXN</span>
+                <span style={{ color: '#9d00ff' }}>Margen Empresa: $0.57 a $2.55 MXN</span>
+              </li>
+              <li style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ color: '#ff4444' }}><strong>Nivel 4 (30%):</strong> Gana $0.50 MXN</span>
+                <span style={{ color: '#9d00ff' }}>Margen Empresa: $0.49 a $2.47 MXN</span>
+              </li>
+              <hr style={{ borderColor: 'rgba(157,0,255,0.2)', margin: '15px 0' }}/>
+              <li style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                * El margen de la empresa ya incluye el descuento de los gastos operativos fijos (ElevenLabs, Bot, Cloud) y las comisiones de Stripe por paquete.
+              </li>
             </ul>
           </div>
 

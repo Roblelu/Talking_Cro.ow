@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../firebase';
+import fixWebmDuration from 'fix-webm-duration';
+import WebAudioPlayer from './WebAudioPlayer';
 
 const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
   const [isRecording, setIsRecording] = useState(false);
@@ -12,6 +14,7 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerIntervalRef = useRef(null);
+  const startTimeRef = useRef(0);
 
   useEffect(() => {
     if (isRecording) {
@@ -45,22 +48,35 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
       };
 
       mediaRecorderRef.current.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorderRef.current.mimeType || 'audio/mp4' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        setAudioURL(audioUrl);
-        setAudioBlob(audioBlob);
-        audioChunksRef.current = [];
+        const mimeType = mediaRecorderRef.current.mimeType || 'audio/mp4';
+        const rawBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        const duration = Date.now() - startTimeRef.current;
+
+        if (mimeType.includes('webm')) {
+            fixWebmDuration(rawBlob, duration, (fixedBlob) => {
+                const audioUrl = URL.createObjectURL(fixedBlob);
+                setAudioURL(audioUrl);
+                setAudioBlob(fixedBlob);
+                audioChunksRef.current = [];
+            });
+        } else {
+            const audioUrl = URL.createObjectURL(rawBlob);
+            setAudioURL(audioUrl);
+            setAudioBlob(rawBlob);
+            audioChunksRef.current = [];
+        }
       };
 
       setAudioURL(null);
       setAudioBlob(null);
       setTimer(0);
       audioChunksRef.current = [];
+      startTimeRef.current = Date.now();
       mediaRecorderRef.current.start();
       setIsRecording(true);
     } catch (err) {
-      console.error("Error accessing microphone:", err);
-      alert("No se pudo acceder al micrófono. Por favor revisa los permisos.");
+      console.error("Error al acceder al micrófono: ", err);
+      alert("No se pudo acceder al micrófono. Verifica los permisos de tu navegador.");
     }
   };
 
@@ -68,7 +84,6 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
-      // Detener todos los tracks para apagar el ícono del micrófono en la pestaña
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
     }
   };
@@ -89,27 +104,26 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
       }
       const dataUrl = await new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onerror = () => reject(new Error('No se pudo leer la grabación.'));
+        reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
         reader.onloadend = () => resolve(reader.result);
         reader.readAsDataURL(audioBlob);
       });
-      const base64data = dataUrl.split(',')[1];
-      const mimeType = audioBlob.type || 'audio/webm';
+      const base64Data = dataUrl.split(',')[1];
       const createEcoVoice = httpsCallable(functions, 'createEcoVoice');
       const result = await createEcoVoice({
-        base64Audio: base64data,
-        fileName: 'voice_sample.webm',
-        mimeType
+        base64Audio: base64Data,
+        fileName: 'voice_sample',
+        mimeType: audioBlob.type || 'audio/mp4'
       });
-
+      
       if (result.data.success) {
-        alert('¡Tu EcoVoice se ha creado con éxito!');
-        onSuccess();
-        onClose();
+        onSuccess && onSuccess(result.data.voice_id);
+      } else {
+        throw new Error("Error desconocido al crear la voz.");
       }
     } catch (error) {
-      console.error("Error al subir:", error);
-      alert("Ocurrió un error al crear la voz: " + error.message);
+      console.error("Error al procesar la subida:", error);
+      alert("Hubo un problema al subir tu audio: " + error.message);
     } finally {
       setIsUploading(false);
     }
@@ -118,28 +132,23 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
   if (!isOpen) return null;
 
   return (
-    <div style={{
+    <div className="modal-overlay" style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       backgroundColor: 'rgba(0,0,0,0.8)',
       display: 'flex', justifyContent: 'center', alignItems: 'center',
       zIndex: 9999
     }}>
-      <div style={{
+      <div className="modal-content" style={{
         backgroundColor: '#1a1a1a', padding: '30px', borderRadius: '15px',
-        width: '500px', border: '1px solid rgba(157, 0, 255, 0.4)',
-        boxShadow: '0 0 20px rgba(157, 0, 255, 0.2)'
+        width: '500px', border: '1px solid var(--neon-purple)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.8), 0 0 20px rgba(157, 0, 255, 0.2)'
       }}>
-        <h2 style={{ color: 'var(--neon-purple)', marginTop: 0 }}>Graba tu EcoVoice</h2>
-        
-        <p style={{ color: 'var(--text-secondary)' }}>
+        <h2 className="modal-title neon-text-purple" style={{ color: 'var(--neon-purple)', marginTop: 0, marginBottom: '10px' }}>Graba tu EcoVoice</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: '1.5' }}>
           Para lograr una clonación perfecta, presiona "Grabar" y lee el siguiente texto en voz alta y clara. Intenta que dure al menos 20 segundos.
         </p>
 
-        <div style={{
-          backgroundColor: 'rgba(0,0,0,0.4)', padding: '15px', borderRadius: '8px',
-          borderLeft: '4px solid var(--neon-green)', margin: '20px 0',
-          fontStyle: 'italic', color: '#ddd'
-        }}>
+        <div style={{ padding: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', borderLeft: '4px solid var(--neon-green)', marginBottom: '20px', fontStyle: 'italic', color: '#e0e0e0', lineHeight: '1.6' }}>
           "El cuervo, con su plumaje negro y brillante, es una de las aves más inteligentes que existen. Se dice que pueden recordar rostros, usar herramientas y hasta imitar sonidos humanos. Observarlos volar nos recuerda que la naturaleza esconde secretos fascinantes. Al igual que el cuervo imita los sonidos de su entorno, con esta grabación mi propia voz formará parte de la parvada."
         </div>
 
@@ -173,7 +182,7 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
         {audioURL && (
           <div style={{ marginTop: '20px', marginBottom: '20px' }}>
             <p style={{ margin: '0 0 10px 0', color: 'var(--text-secondary)' }}>Escucha tu grabación antes de enviarla:</p>
-            <audio controls src={audioURL} style={{ width: '100%' }} />
+            <WebAudioPlayer blob={audioBlob} style={{ width: '100%', justifyContent: 'center' }} />
           </div>
         )}
 
@@ -188,6 +197,12 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
           >
             {isUploading ? 'Creando EcoVoice...' : 'Subir y Crear Voz'}
           </button>
+        </div>
+
+        <div style={{ marginTop: '25px', padding: '15px', background: 'rgba(255, 0, 60, 0.05)', border: '1px dashed rgba(255, 0, 60, 0.3)', borderRadius: '8px' }}>
+            <p style={{ margin: 0, fontSize: '0.75rem', color: '#ff8888', textAlign: 'justify', lineHeight: '1.4' }}>
+            ⚠️ <strong>Aviso de Privacidad y Consentimiento:</strong> Al subir este audio, confirmas y aceptas que esta voz es tuya y no de una tercera persona, y otorgas permiso para su uso exclusivo dentro del sistema de Talking Cro.ow. Nos comprometemos a que tu voz no será compartida, distribuida, ni utilizada para clonarse en ninguna otra plataforma externa.
+            </p>
         </div>
       </div>
     </div>

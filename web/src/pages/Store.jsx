@@ -149,7 +149,7 @@ export default function Store() {
     'pack_5': { price_mxn: 200, croins: 850 },
     'pack_6': { price_mxn: 260, croins: 1200 },
     'pack_7': { price_mxn: 330, croins: 1900 },
-    'pack_8': { price_mxn: 399, croins: 2700 }
+    'pack_8': { price_mxn: 420, croins: 2700 }
   };
 
   const packDetails = PACKAGES[packageId];

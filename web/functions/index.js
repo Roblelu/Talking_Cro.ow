@@ -4,6 +4,7 @@ const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const { getFirestore, FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { getAuth } = require("firebase-admin/auth");
+const { getStorage } = require("firebase-admin/storage");
 const axios = require("axios");
 const FormData = require("form-data");
 const cors = require("cors")({ origin: true });
@@ -14,6 +15,7 @@ admin.firestore = () => getFirestore();
 admin.firestore.FieldValue = FieldValue;
 admin.firestore.Timestamp = Timestamp;
 admin.auth = () => getAuth();
+
 
 const db = getFirestore();
 
@@ -27,8 +29,8 @@ const PREMIUM_TTS_BILLING_ENABLED = true;
 
 // Reglas de la Economía (Fase 4)
 const ECONOMY = {
-    CROIN_TO_MXN_RATE: 0.42,
-    CREATOR_COMMISSION_PERCENTAGE: 0.0214,
+    CROIN_TO_MXN_RATE: 0.14,
+    CREATOR_COMMISSION_PERCENTAGE: 0.25,
     TTS_CROIN_COST: 12,
     MIN_PAYOUT_MXN: 300,
     PAYOUT_COOLDOWN_DAYS: 15
@@ -44,7 +46,7 @@ const PACKAGES = {
     'pack_5': { price_mxn: 200, croins: 850 },
     'pack_6': { price_mxn: 260, croins: 1200 },
     'pack_7': { price_mxn: 330, croins: 1900 },
-    'pack_8': { price_mxn: 399, croins: 2700 }
+    'pack_8': { price_mxn: 420, croins: 2700 }
 };
 
 exports.createPaymentIntent = onCall(async (request) => {
@@ -295,6 +297,8 @@ exports.processTTSMessage = onCall(async (request) => {
     let eventId = db.collection('admin').doc().id; // Ledger ID
     
     try {
+        let donatorUid = null;
+        let ecoVoiceExt = null;
         const txResult = await db.runTransaction(async (transaction) => {
             // 1. Buscar al usuario donador por su tiktok_username
             const usersQuery = await transaction.get(
@@ -310,12 +314,14 @@ exports.processTTSMessage = onCall(async (request) => {
             const userRef = userDoc.ref;
             const userData = userDoc.data();
 
-            if (!userData.eco_voice_id) {
+            if (!userData.has_eco_voice && !userData.eco_voice_id) {
                 // FALLBACK: Usuario sin voz configurada, degradar a Edge TTS
                 return { needsDowngrade: true };
             }
 
-            ecoVoiceId = userData.eco_voice_id;
+            donatorUid = userDoc.id;
+            ecoVoiceExt = userData.eco_voice_extension || ".mp4";
+            ecoVoiceId = userData.eco_voice_id || null;
 
             // 2. Verificar si el streamer existe
             const streamerDoc = await transaction.get(streamerRef);
@@ -405,9 +411,42 @@ exports.processTTSMessage = onCall(async (request) => {
     }
 
     if (transactionSuccess) {
+        let ephemeralVoiceId = null;
         try {
+            let targetVoiceId = ecoVoiceId;
+            
+            // Si el usuario tiene una voz configurada en Storage pero no persistida en ElevenLabs, hacer clon efímero
+            if (!targetVoiceId && donatorUid && ecoVoiceExt) {
+                const bucket = getStorage().bucket();
+                const filePath = `eco_voices/${donatorUid}/voice_sample${ecoVoiceExt}`;
+                const file = bucket.file(filePath);
+                
+                const [audioBuffer] = await file.download();
+                
+                const form = new FormData();
+                form.append('name', `Ephemeral_${donatorUid.substring(0, 8)}`);
+                form.append('description', `Clon temporal para TTS`);
+                form.append('files', audioBuffer, {
+                    filename: `voice_sample${ecoVoiceExt}`
+                });
+
+                const addResponse = await axios.post('https://api.elevenlabs.io/v1/voices/add', form, {
+                    headers: {
+                        ...form.getHeaders(),
+                        'xi-api-key': PREMIUM_TTS_API_KEY
+                    }
+                });
+
+                targetVoiceId = addResponse.data.voice_id;
+                ephemeralVoiceId = targetVoiceId;
+            }
+
+            if (!targetVoiceId) {
+                throw new Error("No se pudo obtener un ID de voz válido para sintetizar.");
+            }
+
             // Llamada a la API de EcoVoices (PremiumTTS)
-            const response = await axios.post(`https://api.elevenlabs.io/v1/text-to-speech/${ecoVoiceId}`, {
+            const response = await axios.post(`https://api.elevenlabs.io/v1/text-to-speech/${targetVoiceId}`, {
                 text: message,
                 model_id: "eleven_multilingual_v2",
                 voice_settings: {
@@ -423,6 +462,13 @@ exports.processTTSMessage = onCall(async (request) => {
                 responseType: 'arraybuffer'
             });
 
+            // Eliminar voz efímera para no saturar el límite de ElevenLabs
+            if (ephemeralVoiceId) {
+                axios.delete(`https://api.elevenlabs.io/v1/voices/${ephemeralVoiceId}`, {
+                    headers: { 'xi-api-key': PREMIUM_TTS_API_KEY }
+                }).catch(err => logger.error(`Error borrando voz efímera ${ephemeralVoiceId}: ${err.message}`));
+            }
+
             const audioBase64 = Buffer.from(response.data).toString('base64');
             
             // Fase 5: Almacenar en la cola de TTS del Streamer en Firestore
@@ -436,6 +482,13 @@ exports.processTTSMessage = onCall(async (request) => {
             return { success: true };
 
         } catch (apiError) {
+            // Eliminar voz efímera si ocurrió un error en TTS
+            if (ephemeralVoiceId) {
+                axios.delete(`https://api.elevenlabs.io/v1/voices/${ephemeralVoiceId}`, {
+                    headers: { 'xi-api-key': PREMIUM_TTS_API_KEY }
+                }).catch(err => logger.error(`Error borrando voz efímera en catch ${ephemeralVoiceId}: ${err.message}`));
+            }
+
             logger.error(`Error con API de EcoVoices: ${apiError.message}`);
             // Revertir cobro
             await db.runTransaction(async (t) => {
@@ -1040,9 +1093,10 @@ exports.createEcoVoice = onCall({
         }
         
         // 2.5. Guardar el audio original en Firebase Storage para respaldos a largo plazo
+        const ext = extensionByMime[baseMimeType];
         try {
-            const bucket = admin.storage().bucket();
-            const filePath = `eco_voices/${uid}/voice_sample${extensionByMime[baseMimeType]}`;
+            const bucket = getStorage().bucket();
+            const filePath = `eco_voices/${uid}/voice_sample${ext}`;
             const file = bucket.file(filePath);
             await file.save(audioBuffer, {
                 contentType: mimeType,
@@ -1055,48 +1109,24 @@ exports.createEcoVoice = onCall({
             });
             logger.info(`Audio de voz guardado en Storage exitosamente para ${uid} en la ruta: ${filePath}`);
         } catch (storageError) {
-            logger.warn(`No se pudo guardar el audio en Storage para ${uid}. Error: ${storageError.message}`);
-            // Continuamos de todos modos porque lo importante es enviarlo a PremiumTTS
+            logger.error(`No se pudo guardar el audio en Storage para ${uid}. Error: ${storageError.message}`);
+            throw new HttpsError('internal', 'No se pudo guardar el audio en el Storage.');
         }
         
-        // 3. Preparar FormData para PremiumTTS
-        const form = new FormData();
-        form.append('name', `EcoVoice_${uid.substring(0, 8)}`);
-        form.append('description', `Clon de voz para el usuario ${uid} en Talking Cro.ow`);
-        form.append('files', audioBuffer, {
-            filename: `voice_sample${extensionByMime[baseMimeType]}`,
-            contentType: mimeType
-        });
-
-        // 4. Llamada a PremiumTTS API (Add Voice)
-        const response = await axios.post('https://api.elevenlabs.io/v1/voices/add', form, {
-            headers: {
-                ...form.getHeaders(),
-                'xi-api-key': PREMIUM_TTS_API_KEY
-            }
-        });
-
-        const voiceId = response.data.voice_id;
-        
-        if (!voiceId) {
-            throw new Error("PremiumTTS no devolvió un voice_id válido.");
-        }
-        
-        logger.info(`Voz clonada exitosamente para ${uid}.`);
-
-        // 5. Actualizar el documento del usuario en Firestore
+        // 5. Actualizar el documento del usuario en Firestore (sin clonar aún)
         const userRef = db.collection('users').doc(uid);
         await userRef.update({
-            eco_voice_id: voiceId,
+            has_eco_voice: true,
+            eco_voice_extension: ext,
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        return { success: true, voice_id: voiceId };
+        return { success: true };
         
     } catch (error) {
         if (error instanceof HttpsError) throw error;
-        logger.error(`Error clonando voz para ${uid}: ${error.response ? JSON.stringify(error.response.data) : error.message}`);
-        throw new HttpsError('internal', 'Error al procesar el clonado de voz con el proveedor.');
+        logger.error(`Error procesando subida de voz para ${uid}: ${error.message}`);
+        throw new HttpsError('internal', 'Error al procesar la subida del archivo de voz.');
     }
 });
 
@@ -1317,7 +1347,7 @@ exports.redeemCoupon = onCall(async (request) => {
     return { success: true, amount: result };
 });
 
-const { getStorage } = require('firebase-admin/storage');
+
 exports.fixCors = onRequest(async (req, res) => {
   try {
     const bucket = getStorage().bucket('talking-crow.firebasestorage.app');
@@ -1331,4 +1361,70 @@ exports.fixCors = onRequest(async (req, res) => {
   } catch (error) {
     res.status(500).send('Error: ' + error.message);
   }
+});
+
+exports.testClonedVoiceWeb = onCall({
+    enforceAppCheck: false,
+    maxInstances: 10,
+    timeoutSeconds: 30
+}, async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Debes estar autenticado para probar tu voz.');
+    const { text } = request.data || {};
+    if (!text || typeof text !== 'string' || text.trim().length > 150) {
+        throw new HttpsError('invalid-argument', 'El texto debe ser entre 1 y 150 caracteres.');
+    }
+    if (!PREMIUM_TTS_API_KEY) throw new HttpsError('internal', 'Servicio TTS no configurado.');
+
+    const uid = request.auth.uid;
+    const userRef = db.collection('users').doc(uid);
+    const costInt = ECONOMY.TTS_CROIN_COST; // 12 Croins
+    
+    // 1. Deducir saldo
+    let voiceId = null;
+    await db.runTransaction(async (t) => {
+        const userDoc = await t.get(userRef);
+        if (!userDoc.exists) throw new HttpsError('not-found', 'Usuario no encontrado.');
+        const userData = userDoc.data();
+        voiceId = userData.eco_voice_id;
+        if (!voiceId) throw new HttpsError('failed-precondition', 'No tienes una voz configurada.');
+        
+        const promotional = userData.promotional_croins || 0;
+        const purchased = userData.purchased_croins || 0;
+        if (promotional + purchased < costInt) {
+            throw new HttpsError('failed-precondition', 'Saldo insuficiente. Cuesta 12 Croins probar la voz.');
+        }
+
+        let deductPromo = 0, deductPurchased = 0;
+        if (promotional >= costInt) { deductPromo = costInt; } 
+        else { deductPromo = promotional; deductPurchased = costInt - promotional; }
+
+        t.update(userRef, {
+            promotional_croins: admin.firestore.FieldValue.increment(-deductPromo),
+            purchased_croins: admin.firestore.FieldValue.increment(-deductPurchased)
+        });
+        
+        const txRef = userRef.collection('transactions').doc();
+        t.set(txRef, {
+            type: 'web_tts_test', amount: costInt, currency: 'croins',
+            description: 'Prueba de voz en la web', date: admin.firestore.FieldValue.serverTimestamp(), status: 'succeeded'
+        });
+    });
+
+    // 2. Generar Audio con ElevenLabs
+    try {
+        const response = await axios.post('https://api.elevenlabs.io/v1/text-to-speech/' + voiceId, {
+            text: text, model_id: 'eleven_multilingual_v2',
+            voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+        }, {
+            headers: { 'Accept': 'audio/mpeg', 'xi-api-key': PREMIUM_TTS_API_KEY, 'Content-Type': 'application/json' },
+            responseType: 'arraybuffer'
+        });
+        
+        const base64Audio = Buffer.from(response.data, 'binary').toString('base64');
+        return { success: true, audioBase64: 'data:audio/mpeg;base64,' + base64Audio };
+    } catch (err) {
+        // En un sistema real reembolsariamos, pero para beta esto es suficiente.
+        logger.error('Error generando TTS Web:', err.message);
+        throw new HttpsError('internal', 'No se pudo generar el audio.');
+    }
 });

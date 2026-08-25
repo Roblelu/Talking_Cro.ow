@@ -378,6 +378,7 @@ async def connect_tiktok(req: TikTokConnectRequest):
                     await broadcast_event(LiveEvent(
                         type="eco_command", 
                         username=event.user.nickname, 
+                        uniqueId=getattr(event.user, 'unique_id', getattr(event.user, 'display_id', getattr(event.user, 'uniqueId', event.user.nickname))),
                         message=eco_message,
                         avatar=getattr(event.user, 'avatar_url', None)
                     ))

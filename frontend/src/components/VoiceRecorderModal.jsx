@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../firebase';
+import WebAudioPlayer from './WebAudioPlayer';
 import NeonSelect from './NeonSelect';
 
 const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
@@ -207,7 +208,7 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
         {audioURL && (
           <div style={{ marginTop: '20px', marginBottom: '20px' }}>
             <p style={{ margin: '0 0 10px 0', color: 'var(--text-secondary)' }}>Escucha tu grabación antes de enviarla:</p>
-            <audio controls src={audioURL} style={{ width: '100%' }} />
+            <WebAudioPlayer blob={audioBlob} style={{ width: '100%', justifyContent: 'center' }} />
           </div>
         )}
 
@@ -222,6 +223,12 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
           >
             {isUploading ? 'Creando EcoVoice...' : 'Subir y Crear Voz'}
           </button>
+        </div>
+
+        <div style={{ marginTop: '25px', padding: '15px', background: 'rgba(255, 0, 60, 0.05)', border: '1px dashed rgba(255, 0, 60, 0.3)', borderRadius: '8px' }}>
+            <p style={{ margin: 0, fontSize: '0.75rem', color: '#ff8888', textAlign: 'justify', lineHeight: '1.4' }}>
+            ⚠️ <strong>Aviso de Privacidad y Consentimiento:</strong> Al subir este audio, confirmas y aceptas que esta voz es tuya y no de una tercera persona, y otorgas permiso para su uso exclusivo dentro del sistema de Talking Cro.ow. Nos comprometemos a que tu voz no será compartida, distribuida, ni utilizada para clonarse en ninguna otra plataforma externa.
+            </p>
         </div>
       </div>
     </div>
