@@ -295,7 +295,7 @@ async def connect_tiktok(req: TikTokConnectRequest):
     Los eventos recibidos son procesados, limpiados (anti-spam/profanidad) y transmitidos 
     al cliente web mediante eventos SSE.
     """
-    global active_tiktok_client, tiktok_task
+    global active_tiktok_client, tiktok_task, live_start_time
     
     if active_tiktok_client:
         try:
@@ -329,7 +329,6 @@ async def connect_tiktok(req: TikTokConnectRequest):
             return None
 
         import time
-        global active_tiktok_client, tiktok_task, live_start_time
         live_start_time = 0
         
         @client.on(ConnectEvent)
