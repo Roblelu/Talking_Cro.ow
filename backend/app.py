@@ -25,15 +25,18 @@ import database
 import tts_engine
 import secrets
 
+def is_compiled():
+    return getattr(sys, 'frozen', False) or '__compiled__' in globals()
+
 def get_base_dir():
     # El directorio base para herramientas (ffmpeg, cloudflared)
-    if getattr(sys, 'frozen', False):
+    if is_compiled():
         return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.abspath(__file__))
 
 def get_data_dir():
     # El directorio para datos que requieren permisos de escritura (config, audios)
-    if getattr(sys, 'frozen', False):
+    if is_compiled():
         app_data = os.path.join(os.environ.get('APPDATA', ''), 'TalkingCrow')
         os.makedirs(app_data, exist_ok=True)
         return app_data

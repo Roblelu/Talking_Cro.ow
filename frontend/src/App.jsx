@@ -1694,10 +1694,10 @@ function App() {
                       
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 75px)', justifyContent: 'center', gap: '20px' }}>
                          {[
-                           { id: 'es-MX-DaliaNeural', img: '/IAvATARFem (1).png', name: 'Dalia (MX)' },
-                           { id: 'es-MX-JorgeNeural', img: '/IAvATARMasc (1).png', name: 'Jorge (MX)' },
-                           { id: 'es-ES-ElviraNeural', img: '/IAvATARFem (2).png', name: 'Elvira (ES)' },
-                           { id: 'es-ES-AlvaroNeural', img: '/IAvATARMasc (2).png', name: 'Álvaro (ES)' }
+                           { id: 'es-MX-DaliaNeural', img: './IAvATARFem (1).png', name: 'Dalia (MX)' },
+                           { id: 'es-MX-JorgeNeural', img: './IAvATARMasc (1).png', name: 'Jorge (MX)' },
+                           { id: 'es-ES-ElviraNeural', img: './IAvATARFem (2).png', name: 'Elvira (ES)' },
+                           { id: 'es-ES-AlvaroNeural', img: './IAvATARMasc (2).png', name: 'Álvaro (ES)' }
                          ].map(voice => (
                             <div 
                               key={voice.id}
