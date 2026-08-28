@@ -1,20 +1,30 @@
-import React, { useEffect, useState } from 'react';
-import { auth, functions } from '../firebase';
-import { httpsCallable } from 'firebase/functions';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { useEffect, useState } from 'react';
+import { auth, db } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
+import { logAuthFlowError } from '../services/googleRegistration';
 
 export default function DesktopAuth() {
   const [status, setStatus] = useState("Iniciando...");
-  const [needsLogin, setNeedsLogin] = useState(false);
   const [manualToken, setManualToken] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        setStatus("Generando pase de acceso seguro para la app...");
         try {
+          setStatus("Comprobando tu perfil...");
+          const profileSnapshot = await getDoc(doc(db, "users", user.uid));
+
+          // No se entrega un custom token a Electron hasta que el perfil exista.
+          // Así la app nunca entra autenticada con balances/username ausentes.
+          if (!profileSnapshot.exists()) {
+            navigate('/register?resume=true&desktop=true', { replace: true });
+            return;
+          }
+
+          setStatus("Generando pase de acceso seguro para la app...");
           const idToken = await user.getIdToken();
           const response = await fetch('/api/getDesktopToken', {
             method: 'POST',
@@ -40,7 +50,7 @@ export default function DesktopAuth() {
           
           // Eliminado el window.close() para dar tiempo al usuario de hacer clic en "Permitir"
         } catch (err) {
-          console.error(err);
+          logAuthFlowError("desktop_handoff", err);
           setStatus("Error al generar el token de acceso. Vuelve a intentarlo.");
         }
       } else {

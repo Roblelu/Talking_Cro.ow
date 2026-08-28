@@ -173,7 +173,7 @@ function App() {
 
   const [hashRoute, setHashRoute] = useState(window.location.hash);
   
-  const { currentUser, userData } = useAuth();
+  const { currentUser, userData, profileStatus } = useAuth();
   const [gifts, setGifts] = useState([]);
   
   const [isWalletOpen, setIsWalletOpen] = useState(false);
@@ -181,6 +181,14 @@ function App() {
   
   const isMissingFields = currentUser && (!userData?.username || !(userData?.email || currentUser?.email) || !(userData?.tiktok || userData?.tiktok_username));
   const hasEverBeenPro = userData?.isPro || userData?.last_subscription_payment || userData?.stripe_account_id || (userData?.creator_earnings || 0) > 0;
+
+  useEffect(() => {
+    // El custom token confirma identidad, no que Firestore tenga perfil. Si una
+    // cuenta quedó incompleta, la app dirige al flujo web que puede repararla.
+    if (currentUser && profileStatus === 'missing' && activeView !== 'register') {
+      setActiveView('register');
+    }
+  }, [activeView, currentUser, profileStatus]);
   
   // TC: Asignar créditos gratuitos de manera segura (Backend)
   useEffect(() => {
@@ -576,6 +584,15 @@ function App() {
 
             // --- LÓGICA DE CROINS PARA TTS (ECO COMMAND) ---
             if (data.type === 'eco_command' && currentUser) {
+                /**
+                 * @security [VULNERABILIDAD CONFIRMADA] Bypass SANGUIJUELA (Robo de Croins).
+                 * El frontend realiza una validación del lado del cliente para asegurar que el 
+                 * evento provenga de la sala del streamer (`isMyLive`). Sin embargo, debido a que:
+                 * 1) Un atacante puede saltarse esta validación en el cliente.
+                 * 2) Las reglas de Firestore permiten cambiar `tiktok_username` libremente sin usar la Cloud Function de verificación.
+                 * 3) `processTTSMessage` en el backend NO verifica la procedencia del comando ni pide firma del donador.
+                 * Un atacante puede vaciar los Croins de cualquier usuario registrado pasando su username, y adjudicarse las ganancias.
+                 */
                 // SANGUIJUELA PROTECT: Solo permitir cobrar si la sala de TikTok coincide con la sala vinculada a su cuenta
                 let isMyLive = false;
                 if (userData && (userData.tiktok || userData.tiktok_username)) {
@@ -1939,7 +1956,7 @@ function App() {
       {activeView === 'account' && <AccountPage onBack={() => setActiveView('main')} />}
       {activeView === 'subscription' && <SubscriptionPage onBack={() => setActiveView('main')} />}
       {activeView === 'login' && <Login onNavigate={(view) => setActiveView(view)} />}
-      {activeView === 'register' && <Register onNavigate={(view) => setActiveView(view)} />}
+      {activeView === 'register' && <Register isRecovery={profileStatus === 'missing'} onNavigate={(view) => setActiveView(view)} />}
       {activeView === 'port' && <PortConfigPage onBack={() => setActiveView('main')} />}
       {activeView === 'support' && <SupportPage onBack={() => setActiveView('main')} />}
       {activeView === 'terms' && <TermsPage onBack={() => setActiveView('main')} />}

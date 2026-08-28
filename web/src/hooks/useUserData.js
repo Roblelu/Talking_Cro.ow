@@ -3,6 +3,22 @@ import { useAuth } from '../context/AuthContext';
 import { updateUserProfile } from '../services/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
+/**
+ * Hook personalizado para manejar el perfil y los datos del usuario.
+ * ¿POR QUÉ EXISTE?
+ * - Extrae el estado global (`useAuth`) y ofrece una función específica (`saveProfile`) para actualizar
+ *   la información personal (incluyendo el cambio de username, que tiene reglas estrictas).
+ * 
+ * ECONOMÍA Y COSTOS ASOCIADOS:
+ * - `saveProfile` hace hasta dos escrituras Firestore locales y una llamada a Cloud Function (`updateUsername`)
+ *   si el username cambia, generando costos combinados de Firestore (Escritura) + Functions (Invocación).
+ * 
+ * SEGURIDAD:
+ * - Las actualizaciones de perfil a través de `updateUserProfile` son seguras porque 
+ *   las Reglas de Firestore bloquean exitosamente cualquier intento de inyección de campos o escalamiento de privilegios.
+ * 
+ * @returns {{currentUser: object, userData: object, loading: boolean, error: string, saveProfile: Function}}
+ */
 export function useUserData() {
   const { currentUser, userData, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);

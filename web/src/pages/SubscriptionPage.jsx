@@ -43,7 +43,7 @@ const SubscriptionPage = () => {
       
       <div style={{ padding: '20px' }}>
         {/* Paquetes */}
-        <h1 className="neon-text-green" style={{ fontSize: '2.5rem', marginBottom: '10px', marginTop: '0' }}>Tienda y Suscripciones</h1>
+        <h1 className="neon-text-green" style={{ fontSize: '2.5rem', marginBottom: '10px', marginTop: '0' }}>Tienda</h1>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>Adquiere Croins para usar tu voz clonada y se lea en vivo con los streamers afiliados.</p>
 
         
@@ -51,49 +51,57 @@ const SubscriptionPage = () => {
           
           <div className="panel" style={{ border: '1px solid rgba(0,255,204,0.3)', textAlign: 'center' }}>
             <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>28 Croins</h2>
-            <h3 style={{ marginBottom: '20px' }}>$12 MXN</h3>
+            <h3 style={{ marginBottom: '5px', color: '#a0aec0' }}>$12 MXN</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>Equivale a ~2 mensajes Eco</p>
             <button className="btn-neon" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_1')}>Comprar</button>
           </div>
 
           <div className="panel" style={{ border: '1px solid rgba(0,255,204,0.3)', textAlign: 'center' }}>
             <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>110 Croins</h2>
-            <h3 style={{ marginBottom: '20px' }}>$35 MXN</h3>
+            <h3 style={{ marginBottom: '5px', color: '#a0aec0' }}>$35 MXN</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>Equivale a ~9 mensajes Eco</p>
             <button className="btn-neon" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_2')}>Comprar</button>
           </div>
 
           <div className="panel" style={{ border: '1px solid rgba(0,255,204,0.3)', textAlign: 'center' }}>
             <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>270 Croins</h2>
-            <h3 style={{ marginBottom: '20px' }}>$80 MXN</h3>
+            <h3 style={{ marginBottom: '5px', color: '#a0aec0' }}>$80 MXN</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>Equivale a ~22 mensajes Eco</p>
             <button className="btn-neon" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_3')}>Comprar</button>
           </div>
 
           <div className="panel" style={{ border: '1px solid rgba(0,255,204,0.3)', textAlign: 'center' }}>
             <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>500 Croins</h2>
-            <h3 style={{ marginBottom: '20px' }}>$140 MXN</h3>
+            <h3 style={{ marginBottom: '5px', color: '#a0aec0' }}>$140 MXN</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>Equivale a ~41 mensajes Eco</p>
             <button className="btn-neon" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_4')}>Comprar</button>
           </div>
 
           <div className="panel" style={{ border: '1px solid rgba(157,0,255,0.5)', textAlign: 'center', boxShadow: '0 0 15px rgba(157,0,255,0.2)' }}>
             <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>850 Croins</h2>
-            <h3 style={{ marginBottom: '20px' }}>$200 MXN</h3>
+            <h3 style={{ marginBottom: '5px', color: '#a0aec0' }}>$200 MXN</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>Equivale a ~70 mensajes Eco</p>
             <button className="btn-neon" style={{ width: '100%', borderColor: 'var(--neon-purple)', color: 'var(--neon-purple)' }} onClick={() => navigate('/store?packageId=pack_5')}>Comprar</button>
           </div>
 
           <div className="panel" style={{ border: '1px solid rgba(157,0,255,0.5)', textAlign: 'center', boxShadow: '0 0 15px rgba(157,0,255,0.2)' }}>
             <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>1200 Croins</h2>
-            <h3 style={{ marginBottom: '20px' }}>$260 MXN</h3>
+            <h3 style={{ marginBottom: '5px', color: '#a0aec0' }}>$260 MXN</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>Equivale a ~100 mensajes Eco</p>
             <button className="btn-neon" style={{ width: '100%', borderColor: 'var(--neon-purple)', color: 'var(--neon-purple)' }} onClick={() => navigate('/store?packageId=pack_6')}>Comprar</button>
           </div>
 
           <div className="panel" style={{ border: '1px solid var(--neon-orange)', textAlign: 'center', boxShadow: '0 0 15px rgba(255,117,24,0.2)' }}>
             <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>1900 Croins</h2>
-            <h3 style={{ marginBottom: '20px' }}>$330 MXN</h3>
+            <h3 style={{ marginBottom: '5px', color: '#a0aec0' }}>$350 MXN</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>Equivale a ~158 mensajes Eco</p>
             <button className="btn-neon btn-neon-orange" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_7')}>Comprar</button>
           </div>
 
           <div className="panel" style={{ border: '1px solid var(--neon-orange)', textAlign: 'center', boxShadow: '0 0 15px rgba(255,117,24,0.2)' }}>
             <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>2700 Croins</h2>
-            <h3 style={{ marginBottom: '20px' }}>$399 MXN</h3>
+            <h3 style={{ marginBottom: '5px', color: '#a0aec0' }}>$399 MXN</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>Equivale a ~225 mensajes Eco</p>
             <button className="btn-neon btn-neon-orange" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_8')}>Comprar</button>
           </div>
         </div>

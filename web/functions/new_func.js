@@ -1,4 +1,22 @@
-﻿exports.testClonedVoiceWeb = onCall({
+/**
+ * Cloud Function para probar la voz clonada del usuario.
+ * @function testClonedVoiceWeb
+ * @param {Object} request - Objeto de solicitud de Firebase Functions.
+ * @param {Object} request.data - Datos de la solicitud.
+ * @param {string} request.data.text - Texto a sintetizar.
+ * @throws {HttpsError} Si el usuario no está autenticado, no tiene voz clonada, o saldo insuficiente.
+ * 
+ * @description
+ * **Validaciones de Seguridad:**
+ * - Requiere autenticación (`request.auth`) para asegurar que solo el dueño de la cuenta consuma sus Croins.
+ * - Validación estricta del tamaño del texto (max 150 caracteres) para evitar abusos en el consumo de la API TTS.
+ * 
+ * **Sistema de Economía y Costos:**
+ * - Deduce 12 Croins del saldo del usuario por cada prueba.
+ * - Prioriza el descuento de `promotional_croins` antes que `purchased_croins`.
+ * - Genera un costo por uso de la API de ElevenLabs (Premium TTS) que asume el sistema.
+ */
+exports.testClonedVoiceWeb = onCall({
     enforceAppCheck: false,
     maxInstances: 10,
     timeoutSeconds: 30

@@ -1,6 +1,7 @@
 import React from 'react';
 import './Creators.css';
 import TutorialSection from '../components/TutorialSection';
+import RevenueShareSection from '../components/RevenueShareSection';
 
 const CreatorsPage = () => {
   const handleScrollToTutorial = () => {
@@ -56,6 +57,7 @@ const CreatorsPage = () => {
       </div>
 
       <TutorialSection />
+      <RevenueShareSection />
     </div>
   );
 };

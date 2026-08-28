@@ -1,5 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+/**
+ * @component WebAudioPlayer
+ * @description Reproductor de audio basado en Web Audio API para asegurar compatibilidad y baja latencia. 
+ * Existe para reproducir blobs locales o URLs, principalmente usado en la vista previa de grabaciones de voz.
+ * 
+ * @risk Riesgo de fuga de memoria: Si `audioContext` no se suspende correctamente o quedan nodos de fuente huérfanos sin garbage collection tras la destrucción del componente.
+ * @risk Limitaciones del navegador: Algunos navegadores bloquean la creación de AudioContext sin interacción del usuario previa.
+ *
+ * @param {Object} props
+ * @param {string} [props.src] - URL del audio a reproducir.
+ * @param {Blob} [props.blob] - Objeto Blob de audio a reproducir (prioridad sobre src).
+ * @param {Object} [props.style] - Estilos inline adicionales para el contenedor.
+ */
 const WebAudioPlayer = ({ src, blob, style }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);

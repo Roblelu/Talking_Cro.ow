@@ -1,6 +1,23 @@
 import { useState } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
+/**
+ * Hook personalizado para manejar transacciones y economía del usuario.
+ * ¿POR QUÉ EXISTE?
+ * - Encapsula las llamadas a Cloud Functions relacionadas con pagos (Stripe), retiros y compras de paquetes.
+ * - Evita que los componentes de UI manejen directamente referencias a funciones de Firebase.
+ * 
+ * ECONOMÍA Y COSTOS ASOCIADOS:
+ * - Cada función exportada invoca un Cloud Function (`requestPayout`, `createPaymentIntent`, etc.),
+ *   lo que incrementa el cómputo facturable.
+ * - Estas funciones interactúan con la API de Stripe, la cual cobra una comisión por cada transacción exitosa.
+ * 
+ * SEGURIDAD:
+ * - La validación de montos y operaciones está completamente asegurada en el backend mediante 
+ *   Cloud Functions que verifican la autenticación (context.auth) y previenen manipulaciones.
+ * 
+ * @returns {{loading: boolean, error: string, requestPayout: Function, buyPackage: Function, subscribePro: Function, createConnectAccount: Function, checkStripeStatus: Function}}
+ */
 export function useEconomy() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

@@ -3,10 +3,11 @@ import { auth, db } from "../firebase";
 import { updateProfile, GoogleAuthProvider, signInWithPopup, signInWithCustomToken, signOut } from "firebase/auth";
 import { doc, getDoc, writeBatch, serverTimestamp } from "firebase/firestore";
 
-export default function Register({ onNavigate }) {
+export default function Register({ onNavigate, isRecovery = false }) {
   const [username, setUsername] = useState("");
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [error, setError] = useState("");
+  const usesExternalBrowser = Boolean(window.electron && window.electron.openExternal);
 
   useEffect(() => {
     if (window.electron && window.electron.onAuthToken) {
@@ -33,6 +34,17 @@ export default function Register({ onNavigate }) {
 
   const handleGoogleRegister = async () => {
     setError("");
+
+    // Electron no puede compartir directamente la sesión OAuth del navegador.
+    // El formulario y consentimiento se completan una sola vez en la web, que
+    // luego devuelve un custom token mediante el protocolo talkingcrow://.
+    if (usesExternalBrowser) {
+      const recoveryQuery = isRecovery ? '&resume=true' : '';
+      window.electron.openExternal(`https://talking-crow.web.app/register?desktop=true${recoveryQuery}`);
+      setError("Se abrió tu navegador para completar el registro de forma segura.");
+      return;
+    }
+
     const cleanUsername = username.trim().toLowerCase();
     
     if (!/^[a-z0-9_ ]{3,20}$/.test(cleanUsername)) {
@@ -49,12 +61,6 @@ export default function Register({ onNavigate }) {
       
       if (usernameSnap.exists()) {
          return setError("El nombre de usuario ya está ocupado. Elige otro.");
-      }
-
-      if (window.electron && window.electron.openExternal) {
-        window.electron.openExternal('https://talking-crow.web.app/register?desktop=true');
-        setError("Se abrirá tu navegador Chrome/Edge para registrarte de forma segura.");
-        return;
       }
 
       // 2. Open Google Auth
@@ -108,16 +114,18 @@ export default function Register({ onNavigate }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', padding: '20px', boxSizing: 'border-box' }}>
       <div className="panel" style={{ width: '100%', maxWidth: '400px', maxHeight: '80vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>Crear Cuenta</h2>
-        {error && <div style={{ color: 'var(--neon-orange)', textAlign: 'center', marginBottom: '10px' }}>{error}</div>}
+        <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>{isRecovery ? 'Completar registro' : 'Crear Cuenta'}</h2>
+        {error && <div role="alert" style={{ color: 'var(--neon-orange)', textAlign: 'center', marginBottom: '10px' }}>{error}</div>}
         
         <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '20px' }}>
-          Elige un nombre de usuario, acepta los términos y regístrate rápido con Google.
+          {usesExternalBrowser
+            ? 'El registro se completará en tu navegador y volverá automáticamente a Talking Crow.'
+            : 'Elige un nombre de usuario, acepta los términos y regístrate rápido con Google.'}
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {!usesExternalBrowser && <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <label style={{ color: 'var(--text-secondary)', textAlign: 'left' }}>Nombre de Usuario</label>
             <input 
               type="text" 
@@ -127,14 +135,14 @@ export default function Register({ onNavigate }) {
               placeholder="Ej. User_Name"
               style={{ margin: 0, padding: '12px', borderRadius: '8px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(157, 0, 255, 0.3)', color: '#fff', fontSize: '1rem' }}
             />
-          </div>
+          </div>}
 
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginTop: '5px' }}>
+          {!usesExternalBrowser && <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginTop: '5px' }}>
             <input type="checkbox" required id="privacy_consent" checked={consentAccepted} onChange={(e) => setConsentAccepted(e.target.checked)} style={{ marginTop: '3px', flexShrink: 0 }} />
             <label htmlFor="privacy_consent" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'left', lineHeight: '1.4', flex: 1 }}>
               Acepto los <span onClick={() => onNavigate('terms')} style={{ color: 'var(--neon-green)', textDecoration: 'underline', cursor: 'pointer' }}>Términos y Condiciones</span> y que mis mensajes y nombre de usuario pueden ser procesados temporalmente por modelos de Inteligencia Artificial (TTS) para la generación de audio.
             </label>
-          </div>
+          </div>}
 
           <button 
             onClick={handleGoogleRegister} 
@@ -152,7 +160,7 @@ export default function Register({ onNavigate }) {
               <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
               <path fill="none" d="M0 0h48v48H0z"/>
             </svg>
-            Continuar con Google
+            {usesExternalBrowser ? 'Continuar en el navegador' : 'Continuar con Google'}
           </button>
         </div>
 

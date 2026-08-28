@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import './TutorialSection.css';
 import tutorialImg from '../assets/tutorial-dashboard.png';
 
+/**
+ * Sección de tutorial interactivo (hotspots) para el dashboard.
+ * ¿POR QUÉ EXISTE?
+ * - Ayuda a los usuarios a entender la interfaz del dashboard sin sacarlos de la página actual.
+ * @returns {JSX.Element}
+ */
 const TutorialSection = () => {
   const [activeHotspot, setActiveHotspot] = useState(null);
 

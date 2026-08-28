@@ -1,5 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+/**
+ * Reproductor de audio personalizado utilizando la Web Audio API.
+ * ¿POR QUÉ EXISTE?
+ * - Para reproducir blobs de audio locales o URLs sin depender del elemento <audio> nativo,
+ *   permitiendo mayor control (aunque aquí se usa para reproducción simple).
+ * @param {Object} props
+ * @param {string} [props.src] URL del audio.
+ * @param {Blob} [props.blob] Blob del audio local.
+ * @param {Object} [props.style] Estilos adicionales.
+ * @returns {JSX.Element}
+ */
 const WebAudioPlayer = ({ src, blob, style }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);

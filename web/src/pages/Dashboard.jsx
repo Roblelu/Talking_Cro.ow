@@ -23,7 +23,9 @@ export default function Dashboard() {
 
       {/* Vistas */}
       <div className="panel" style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', flexDirection: 'column', width: '100%' }}>
-        
+          
+
+
           <div className="donador-view">
             <div style={{ marginBottom: '20px', textAlign: 'center' }}>
               <div 
@@ -65,62 +67,32 @@ export default function Dashboard() {
               )}
             </div>
 
-            <h3 className="neon-text-purple" style={{ marginBottom: '15px' }}>Comprar Croins 🪙</h3>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '25px' }}>
-              Usa tus Croins para enviar mensajes de voz en tiempo real al chat de tus streamers favoritos.
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '40px' }}>
-              
-              <div className="panel" style={{ border: '1px solid rgba(0,255,204,0.3)', textAlign: 'center' }}>
-                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>28 Croins</h2>
-                <h3 style={{ marginBottom: '20px' }}>$12 MXN</h3>
-                <button className="btn-neon" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_1')}>Comprar</button>
+            {userData?.tiktok_username && (
+              <div style={{ marginBottom: '30px', padding: '20px', border: '1px solid var(--neon-purple)', borderRadius: '8px', background: 'rgba(157,0,255,0.05)' }}>
+                 <h3 className="neon-text-purple" style={{ marginTop: 0, marginBottom: '15px' }}>Progreso de Creador (Nivel {userData.creator_level || 1})</h3>
+                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>El progreso se reinicia el día 1 de cada mes. Nivel 2 requiere 500 audios y 8 días de stream.</p>
+                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginTop: '20px' }}>
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                        <span>Audios Monetizados</span>
+                        <span className="neon-text-green">{userData.audios_mes_actual || 0}</span>
+                      </div>
+                      <div style={{ width: '100%', background: '#333', borderRadius: '4px', height: '10px', overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.min(((userData.audios_mes_actual || 0) / 500) * 100, 100)}%`, background: 'var(--neon-green)', height: '100%' }}></div>
+                      </div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                        <span>Días de Stream (+40m)</span>
+                        <span className="neon-text-green">{userData.dias_mes_actual || 0}</span>
+                      </div>
+                      <div style={{ width: '100%', background: '#333', borderRadius: '4px', height: '10px', overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.min(((userData.dias_mes_actual || 0) / 8) * 100, 100)}%`, background: 'var(--neon-green)', height: '100%' }}></div>
+                      </div>
+                    </div>
+                 </div>
               </div>
-
-              <div className="panel" style={{ border: '1px solid rgba(0,255,204,0.3)', textAlign: 'center' }}>
-                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>110 Croins</h2>
-                <h3 style={{ marginBottom: '20px' }}>$35 MXN</h3>
-                <button className="btn-neon" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_2')}>Comprar</button>
-              </div>
-
-              <div className="panel" style={{ border: '1px solid rgba(0,255,204,0.3)', textAlign: 'center' }}>
-                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>270 Croins</h2>
-                <h3 style={{ marginBottom: '20px' }}>$80 MXN</h3>
-                <button className="btn-neon" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_3')}>Comprar</button>
-              </div>
-
-              <div className="panel" style={{ border: '1px solid rgba(0,255,204,0.3)', textAlign: 'center' }}>
-                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>500 Croins</h2>
-                <h3 style={{ marginBottom: '20px' }}>$140 MXN</h3>
-                <button className="btn-neon" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_4')}>Comprar</button>
-              </div>
-
-              <div className="panel" style={{ border: '1px solid rgba(157,0,255,0.5)', textAlign: 'center', boxShadow: '0 0 15px rgba(157,0,255,0.2)' }}>
-                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>850 Croins</h2>
-                <h3 style={{ marginBottom: '20px' }}>$200 MXN</h3>
-                <button className="btn-neon" style={{ width: '100%', borderColor: 'var(--neon-purple)', color: 'var(--neon-purple)' }} onClick={() => navigate('/store?packageId=pack_5')}>Comprar</button>
-              </div>
-
-              <div className="panel" style={{ border: '1px solid rgba(157,0,255,0.5)', textAlign: 'center', boxShadow: '0 0 15px rgba(157,0,255,0.2)' }}>
-                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>1200 Croins</h2>
-                <h3 style={{ marginBottom: '20px' }}>$260 MXN</h3>
-                <button className="btn-neon" style={{ width: '100%', borderColor: 'var(--neon-purple)', color: 'var(--neon-purple)' }} onClick={() => navigate('/store?packageId=pack_6')}>Comprar</button>
-              </div>
-
-              <div className="panel" style={{ border: '1px solid var(--neon-orange)', textAlign: 'center', boxShadow: '0 0 15px rgba(255,117,24,0.2)' }}>
-                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>1900 Croins</h2>
-                <h3 style={{ marginBottom: '20px' }}>$330 MXN</h3>
-                <button className="btn-neon btn-neon-orange" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_7')}>Comprar</button>
-              </div>
-
-              <div className="panel" style={{ border: '1px solid var(--neon-orange)', textAlign: 'center', boxShadow: '0 0 15px rgba(255,117,24,0.2)' }}>
-                <h2 className="neon-text-green" style={{ marginBottom: '10px' }}>2700 Croins</h2>
-                <h3 style={{ marginBottom: '20px' }}>$399 MXN</h3>
-                <button className="btn-neon btn-neon-orange" style={{ width: '100%' }} onClick={() => navigate('/store?packageId=pack_8')}>Comprar</button>
-              </div>
-
-            </div>
+            )}
           </div>
 
 

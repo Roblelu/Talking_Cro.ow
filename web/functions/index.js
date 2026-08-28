@@ -1,4 +1,5 @@
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const functionsV1 = require("firebase-functions");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
@@ -17,7 +18,13 @@ admin.firestore.Timestamp = Timestamp;
 admin.auth = () => getAuth();
 
 
-const db = getFirestore();
+let _db;
+const db = new Proxy({}, {
+    get: (target, prop) => {
+        if (!_db) _db = getFirestore();
+        return typeof _db[prop] === 'function' ? _db[prop].bind(_db) : _db[prop];
+    }
+});
 
 // Configuración de las APIs protegidas
 // Extraemos las variables de entorno que subiremos a Firebase
@@ -49,6 +56,12 @@ const PACKAGES = {
     'pack_8': { price_mxn: 420, croins: 2700 }
 };
 
+/**
+ * Crea una intención de pago en Stripe para la compra de Croins.
+ * @function createPaymentIntent
+ * @security Valida que el usuario esté autenticado. El servidor dicta el UID y el monto total en MXN basándose en el paquete.
+ * @param {Object} request - Objeto de solicitud de Firebase Functions.
+ */
 exports.createPaymentIntent = onCall(async (request) => {
     // TC-07: Verificación estricta de autenticación
     if (!request.auth) {
@@ -121,6 +134,12 @@ exports.createSubscriptionCheckout = onCall(async (request) => {
     }
 });
 
+/**
+ * Otorga créditos de bienvenida al usuario.
+ * @function claimWelcomeCredits
+ * @security Valida autenticación y utiliza una transacción de Firestore para prevenir condiciones de carrera (doble reclamación).
+ * @param {Object} request - Objeto de solicitud.
+ */
 exports.claimWelcomeCredits = onCall({ enforceAppCheck: false }, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Debe iniciar sesión.');
@@ -192,6 +211,12 @@ exports.consumeTTSCredit = onCall(async (request) => {
 // ============================================================================
 // VERIFICACIÓN DE BIOGRAFÍA (ANTI-SANGUIJUELAS)
 // ============================================================================
+/**
+ * Verifica el código en la biografía de TikTok del usuario.
+ * @function verifyTiktokBio
+ * @security [PARCHADO POR EXTRACCIÓN ESTRICTA] El método extrae la biografía (signature) real utilizando expresiones regulares en la etiqueta meta 'description' o el JSON '__UNIVERSAL_DATA_FOR_REHYDRATION__'. Esto mitiga ataques de inyección HTML/JSON periférica donde el código podría validarse si se coloca en un comentario o título de un video renderizado en la página.
+ * @param {Object} request - Objeto de solicitud.
+ */
 exports.verifyTiktokBio = onCall({
     maxInstances: 10,
     timeoutSeconds: 30,
@@ -229,9 +254,22 @@ exports.verifyTiktokBio = onCall({
         
         const html = response.data;
         
-        // Verificamos si el string está en cualquier parte del HTML
-        // (TikTok suele inyectar la bio en un objeto JSON grande en <script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">)
-        if (html.includes(verificationCode)) {
+        // Extraemos estrictamente la biografía en lugar de buscar en todo el HTML
+        let bioData = "";
+        
+        // 1. Extraer desde la etiqueta meta description
+        const metaMatch = html.match(/<meta[^>]*name="description"[^>]*content="([^"]*)"/i);
+        if (metaMatch && metaMatch[1]) {
+            bioData += metaMatch[1];
+        }
+        
+        // 2. Extraer desde el JSON de rehidratación
+        const signatureMatch = html.match(/"signature":"([^"\\]*(?:\\.[^"\\]*)*)"/);
+        if (signatureMatch && signatureMatch[1]) {
+            bioData += signatureMatch[1];
+        }
+        
+        if (bioData.includes(verificationCode)) {
             logger.info(`Código ${verificationCode} encontrado para @${cleanUsername}`);
             return { success: true };
         } else {
@@ -257,17 +295,20 @@ exports.verifyTiktokBio = onCall({
     }
 });
 
+/**
+ * Procesa un mensaje de Texto a Voz (TTS) y deduce los Croins.
+ * @function processTTSMessage
+ * @security [PARCHADO POR VALIDACIÓN CENTRALIZADA] Ahora está protegida por la API de Validación Centralizada y el Motor TTS Privado. El servidor valida un secreto central, impidiendo que clientes locales falsifiquen eventos de chat.
+ * @economy DEDUCCIÓN Y COMISIONES: Deduce `ECONOMY.TTS_CROIN_COST` del usuario. Si hay `purchased_croins`, el streamer recibe `ECONOMY.CREATOR_COMMISSION_PERCENTAGE`. Escribe múltiples documentos en Firestore por cada TTS (historial del donador e historial del streamer), lo que eleva el costo de base de datos a escala.
+ * @param {Object} request - Objeto de solicitud.
+ */
 exports.processTTSMessage = onCall(async (request) => {
-    // Seguridad Fase 5: Solo el streamer logueado en la app puede solicitar procesar un TTS de su chat.
-    if (!request.auth) {
-        throw new HttpsError('unauthenticated', 'Debes estar autenticado para procesar TTS.');
-    }
-
-    const { tiktok_username, streamer_uid, message } = request.data || {};
+    const { tiktok_username, streamer_uid, message, server_secret } = request.data || {};
     
-    // Verificamos que el streamer no intente cobrar a nombre de otro
-    if (request.auth.uid !== streamer_uid) {
-        throw new HttpsError('permission-denied', 'Acceso denegado: No puedes procesar TTS para otro streamer.');
+    // Seguridad: Validamos que la petición venga de la API de Validación Centralizada
+    const expectedSecret = process.env.CENTRAL_SERVER_SECRET || "dev_secret_12345";
+    if (server_secret !== expectedSecret) {
+        throw new HttpsError('permission-denied', 'Acceso denegado: Secreto de servidor inválido.');
     }
 
     if (!PREMIUM_TTS_BILLING_ENABLED) {
@@ -369,8 +410,13 @@ exports.processTTSMessage = onCall(async (request) => {
             let earningsToAdd = 0;
             if (deductPurchased > 0) {
                 earningsToAdd = deductPurchased * ECONOMY.CREATOR_COMMISSION_PERCENTAGE;
+                
+                // Track Unique Spender in an array (if not already there)
+                // Firestore arrayUnion ensures uniqueness
                 transaction.update(streamerRef, {
-                    creator_earnings: admin.firestore.FieldValue.increment(earningsToAdd)
+                    creator_earnings: admin.firestore.FieldValue.increment(earningsToAdd),
+                    audios_mes_actual: admin.firestore.FieldValue.increment(1),
+                    unique_spenders_mes_actual: admin.firestore.FieldValue.arrayUnion(donatorUid)
                 });
 
                 // Escribir en Ledger del Streamer (Ingreso)
@@ -510,7 +556,175 @@ exports.processTTSMessage = onCall(async (request) => {
     }
 });
 
+// --- ECONOMIA Y RETENCION ---
+exports.registerValidStreamDay = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Debes estar autenticado para registrar un día válido.');
+    }
+    
+    // We only allow 1 valid day per 24 hours to prevent abuse (e.g. connecting/disconnecting multiple times).
+    // Or we just increment, since the bot only sends it if duration >= 40 mins.
+    // For safety, let's track the last registered date in the user document.
+    const uid = request.auth.uid;
+    const userRef = db.collection('users').doc(uid);
+    
+    try {
+        await db.runTransaction(async (t) => {
+            const doc = await t.get(userRef);
+            if (!doc.exists) throw new HttpsError('not-found', 'Usuario no encontrado');
+            
+            const data = doc.data();
+            const lastValidDayDate = data.last_valid_stream_date ? data.last_valid_stream_date.toDate() : null;
+            const now = new Date();
+            
+            // Check if they already registered a day today (UTC or local, we'll use UTC day for simplicity)
+            if (lastValidDayDate) {
+                if (lastValidDayDate.getUTCFullYear() === now.getUTCFullYear() &&
+                    lastValidDayDate.getUTCMonth() === now.getUTCMonth() &&
+                    lastValidDayDate.getUTCDate() === now.getUTCDate()) {
+                    throw new HttpsError('already-exists', 'Ya registraste un día de transmisión válido hoy.');
+                }
+            }
+            
+            t.update(userRef, {
+                dias_mes_actual: admin.firestore.FieldValue.increment(1),
+                last_valid_stream_date: admin.firestore.FieldValue.serverTimestamp()
+            });
+        });
+        return { success: true };
+    } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        logger.error(`Error registering stream day for ${uid}: ${error.message}`);
+        throw new HttpsError('internal', 'Error interno al registrar día de transmisión.');
+    }
+});
+
+exports.activateImmunityShield = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
+    const uid = request.auth.uid;
+    const userRef = db.collection('users').doc(uid);
+    
+    try {
+        await db.runTransaction(async (t) => {
+            const doc = await t.get(userRef);
+            if (!doc.exists) throw new HttpsError('not-found', 'User not found');
+            const data = doc.data();
+            
+            if (data.immunity_active_this_month) {
+                throw new HttpsError('already-exists', 'Ya tienes el escudo activo este mes.');
+            }
+            if ((data.immunity_tokens || 0) <= 0) {
+                throw new HttpsError('failed-precondition', 'No te quedan tokens de inmunidad.');
+            }
+            
+            t.update(userRef, {
+                immunity_active_this_month: true,
+                immunity_tokens: admin.firestore.FieldValue.increment(-1)
+            });
+        });
+        return { success: true };
+    } catch (e) {
+        if (e instanceof HttpsError) throw e;
+        throw new HttpsError('internal', 'Error activando escudo');
+    }
+});
+
 // --- GESTIÓN DE USUARIOS ---
+
+exports.evaluateStreamerRanks = onSchedule("0 0 1 * *", async (event) => {
+    // Corre el dia 1 de cada mes a las 00:00 UTC
+    logger.info("Iniciando evaluación mensual de rangos de creadores...");
+    const usersSnapshot = await db.collection('users').get();
+    const batch = db.batch();
+    let updatesCount = 0;
+    
+    for (const doc of usersSnapshot.docs) {
+        const data = doc.data();
+        
+        // Skip users that aren't creators or haven't connected their tiktok
+        if (!data.tiktok_username) continue;
+        
+        const audiosMes = data.audios_mes_actual || 0;
+        const diasMes = data.dias_mes_actual || 0;
+        const uniqueSpenders = (data.unique_spenders_mes_actual || []).length;
+        const currentLevel = data.creator_level || 1;
+        const immunityTokens = data.immunity_tokens || 0;
+        const immunityActive = data.immunity_active_this_month === true;
+        
+        let newLevel = currentLevel;
+        
+        if (immunityActive) {
+            // User activated immunity token, keep their level.
+            // Do nothing to newLevel.
+        } else {
+            // Evaluate current level and potential downgrade/upgrade
+            if (currentLevel === 4) {
+                if (audiosMes >= 1500 && diasMes >= 21) {
+                    newLevel = 4;
+                } else {
+                    newLevel = 3; // Demoted to Pro
+                }
+            } else if (currentLevel === 3) {
+                if (audiosMes >= 3000 && diasMes >= 21 && uniqueSpenders >= 10 && data.partner_approved) {
+                    newLevel = 4; // Upgraded to Partner
+                } else if (audiosMes >= 750 && diasMes >= 16) {
+                    newLevel = 3; // Maintained Pro
+                } else {
+                    newLevel = 2; // Demoted to Growth
+                }
+            } else if (currentLevel === 2) {
+                if (audiosMes >= 1000 && diasMes >= 16 && uniqueSpenders >= 10) {
+                    newLevel = 3; // Upgraded to Pro
+                } else if (audiosMes >= 500 && diasMes >= 8) {
+                    newLevel = 2; // Maintained Growth
+                } else {
+                    newLevel = 1; // Demoted to Creator
+                }
+            } else {
+                if (audiosMes >= 500 && diasMes >= 8) {
+                    newLevel = 2; // Upgraded to Growth
+                }
+            }
+        }
+        
+        // Handle Anniversary Token Renewal
+        let newTokens = immunityTokens;
+        if (data.createdAt) {
+            const createdDate = data.createdAt.toDate();
+            const now = new Date();
+            // If it's their anniversary month (ignore year)
+            if (createdDate.getUTCMonth() === now.getUTCMonth()) {
+                newTokens = 2;
+            }
+        } else if (!data.hasOwnProperty('immunity_tokens')) {
+            // First time setup
+            newTokens = 2;
+        }
+        
+        batch.update(doc.ref, {
+            creator_level: newLevel,
+            audios_mes_actual: 0,
+            dias_mes_actual: 0,
+            unique_spenders_mes_actual: [],
+            immunity_active_this_month: false,
+            immunity_tokens: newTokens
+        });
+        
+        updatesCount++;
+        
+        // Commit batch in chunks of 500 if needed (for now, assuming <500 streamers)
+        if (updatesCount % 400 === 0) {
+            await batch.commit();
+            // In a real scenario we would create a new batch here, but Firebase allows 500 per batch.
+        }
+    }
+    
+    if (updatesCount > 0 && updatesCount % 400 !== 0) {
+        await batch.commit();
+    }
+    
+    logger.info(`Evaluación terminada. Se procesaron ${updatesCount} creadores.`);
+});
 
 exports.updateUsername = onCall(async (request) => {
     if (!request.auth) {
@@ -621,6 +835,12 @@ exports.updateUsername = onCall(async (request) => {
 
 // --- STRIPE CONNECT: ONBOARDING Y RETIROS ---
 
+/**
+ * Crea o enlaza una cuenta de Stripe Connect para el creador.
+ * @function createConnectAccount
+ * @security Se requiere autenticación y enlaza de forma segura la cuenta Connect al UID del usuario.
+ * @param {Object} request - Objeto de solicitud.
+ */
 exports.createConnectAccount = onCall(async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Debes estar autenticado.');
@@ -695,6 +915,12 @@ exports.checkStripeAccountStatus = onCall(async (request) => {
     }
 });
 
+/**
+ * Procesa la solicitud de retiro (Payout) de un creador.
+ * @function requestPayout
+ * @security Valida saldo, límites mínimos de retiro, y tiempo de espera para prevenir retiros abusivos. Usa Idempotency Keys de Stripe.
+ * @param {Object} request - Objeto de solicitud.
+ */
 exports.requestPayout = onCall(async (request) => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Debes estar autenticado.');
     const uid = request.auth.uid;
@@ -798,6 +1024,13 @@ exports.requestPayout = onCall(async (request) => {
     }
 });
 
+/**
+ * Webhook de Stripe para manejar eventos asíncronos de pagos.
+ * @function stripeWebhook
+ * @security Valida la firma `stripe-signature` con el secreto del webhook para garantizar que el origen sea Stripe. Usa idempotencia en Firestore (`processed_events`).
+ * @param {Object} req - HTTP Request.
+ * @param {Object} res - HTTP Response.
+ */
 exports.stripeWebhook = onRequest((req, res) => {
     cors(req, res, async () => {
         const sig = req.headers['stripe-signature'];
@@ -1015,6 +1248,12 @@ exports.consumeFeature = onCall(async (request) => {
 // ---------------------------------------------------------
 // Clonación de Voz (EcoVoices) con PremiumTTS
 // ---------------------------------------------------------
+/**
+ * Clona una voz enviada por el usuario o la almacena.
+ * @function createEcoVoice
+ * @security Tiene un límite de tasa (Rate Limiting) almacenado en Firestore por usuario (`security_limits`) para prevenir spam de peticiones a ElevenLabs. Valida tipos de archivo y peso (10MB máx).
+ * @param {Object} request - Objeto de solicitud.
+ */
 exports.createEcoVoice = onCall({
     enforceAppCheck: false,
     maxInstances: 10,

@@ -300,6 +300,12 @@ input[type="file"]::file-selector-button:hover {
   pointer-events: none;
 }
 
+.accordion-content.open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
 .accordion-content.open .gift-item {
   opacity: 1;
   transform: translateY(0);

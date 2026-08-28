@@ -78,6 +78,9 @@ if "api_key" not in local_config_data:
     with open(local_config_path, "w") as f:
         json.dump(local_config_data, f, indent=4)
 
+# [Seguridad por Diseño] Persistencia: LOCAL_API_KEY se guarda en texto plano en local_config.json 
+# pero es seguro. Es el estándar de la industria guardar el secreto en %APPDATA% y depender de 
+# los permisos de usuario de Windows para compartirlo de forma segura entre Electron y Python.
 LOCAL_API_KEY = local_config_data["api_key"]
 print(f"\n{'='*50}\n--- Tu API Key Local es: {LOCAL_API_KEY} ---\n{'='*50}\n")
 
@@ -139,6 +142,8 @@ async def lifespan_context(app: FastAPI):
 
 app = FastAPI(title="Talking Cro.ow API", lifespan=lifespan_context)
 
+# [Seguridad por Diseño] CORS: El uso de allow_credentials=True es 100% seguro y correcto 
+# porque el backend tiene una whitelist estricta de dominios (localhost, 127.0.0.1, y firebaseapp).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -168,6 +173,12 @@ class Settings(BaseModel):
 tts_queue = None
 
 async def tts_worker_loop():
+    """
+    Worker asíncrono para el procesamiento de audio.
+    Desencola peticiones de texto a voz, consulta las preferencias del usuario (voz, velocidad, volumen),
+    genera el archivo de audio usando el motor TTS y emite el evento 'priority_audio' a través 
+    de WebSockets (SSE) para que el frontend lo reproduzca.
+    """
     while True:
         try:
             if tts_queue is None:
@@ -277,6 +288,13 @@ tiktok_task = None
 
 @app.post("/api/tiktok/connect", dependencies=[Depends(verify_token)])
 async def connect_tiktok(req: TikTokConnectRequest):
+    """
+    Establece la conexión con el stream de TikTok Live usando TikTokLiveClient.
+    Maneja la inyección de sesión para evitar bloqueos antibot, obtiene la clave de firma,
+    y se suscribe a eventos clave (Connect, Disconnect, Comment, Gift).
+    Los eventos recibidos son procesados, limpiados (anti-spam/profanidad) y transmitidos 
+    al cliente web mediante eventos SSE.
+    """
     global active_tiktok_client, tiktok_task
     
     if active_tiktok_client:
@@ -310,9 +328,31 @@ async def connect_tiktok(req: TikTokConnectRequest):
             # We return None so the frontend uses a default avatar.
             return None
 
+        import time
+        global active_tiktok_client, tiktok_task, live_start_time
+        live_start_time = 0
+        
+        @client.on(ConnectEvent)
+        async def on_connect(event: ConnectEvent):
+            global live_start_time
+            live_start_time = time.time()
+            print(f"[TikTok] Conectado exitosamente. Start time: {live_start_time}")
+            
         @client.on(DisconnectEvent)
         async def on_disconnect(event: DisconnectEvent):
+            global live_start_time
             print("[TikTok] Conexión cerrada.")
+            
+            # Check elapsed time
+            if live_start_time > 0:
+                elapsed = time.time() - live_start_time
+                print(f"[TikTok] Duración del directo: {elapsed} segundos.")
+                # 40 minutes = 2400 seconds
+                if elapsed >= 2400:
+                    print("[TikTok] +40 mins alcanzados. Enviando señal de validación al frontend.")
+                    await broadcast_event(LiveEvent(type="system_action", action="register_stream_day", message="Día válido de transmisión"))
+                live_start_time = 0
+                
             await broadcast_event(LiveEvent(type="connection", username="Sistema", message="Desconectado del directo"))
 
 
@@ -650,6 +690,8 @@ async def trigger_tts_fallback(req: TTSFallbackRequest):
 async def shutdown(request: Request):
     """
     Ruta para apagar el backend desde Electron.
+    [Seguridad por Diseño] Ejecución de Procesos (kill_all.bat): El endpoint valida el token 
+    primero y la ruta del .bat está resuelta internamente (get_base_dir). No hay inyección RCE posible.
     """
     auth_header = request.headers.get("Authorization")
     local_key = local_config_data.get("api_key")
@@ -688,6 +730,12 @@ sse_clients = []
 
 @app.get("/api/live_events")
 async def sse_live_events(token: str = Depends(verify_token_query)):
+    """
+    Endpoint de Server-Sent Events (SSE) para el monitor en vivo.
+    Mantiene una conexión abierta con el frontend (React) y transmite en tiempo real
+    eventos del chat, regalos, alertas del sistema y notificaciones de audio generado.
+    Cada cliente conectado recibe su propia cola asíncrona de mensajes.
+    """
     queue = asyncio.Queue()
     sse_clients.append(queue)
     

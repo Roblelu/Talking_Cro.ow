@@ -3,6 +3,14 @@ import { functions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '../context/AuthContext';
 
+/**
+ * @component SubscriptionPage
+ * @description Vista para la gestión de suscripciones de los usuarios. Permite actualizar al "Plan Pro".
+ * 
+ * @economy Llama a la Cloud Function `createSubscriptionCheckout`, que se integra con Stripe.
+ * Las transacciones a través de Stripe están sujetas a comisiones de pasarela de pago y tasas de suscripción.
+ * El cobro es de $150 MXN mensuales, lo que genera ingresos recurrentes pero también cuotas fijas por procesamiento de Stripe.
+ */
 const SubscriptionPage = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const { currentUser } = useAuth();

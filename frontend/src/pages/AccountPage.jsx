@@ -7,6 +7,17 @@ import { EmailAuthProvider, reauthenticateWithCredential, updatePassword, update
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import VoiceRecorderModal from '../components/VoiceRecorderModal';
 
+/**
+ * @component AccountPage
+ * @description Vista para gestionar el perfil del usuario, credenciales, avatar, y la grabación/subida de EcoVoice.
+ * 
+ * @economy Llama a la Cloud Function `updateUsername` cuando el usuario cambia su nombre, y a `createEcoVoice` 
+ * cuando sube un archivo local de audio, generando costos por invocación y posible uso de APIs de clonación.
+ * Almacena avatares en Firebase Storage, lo que genera costos de almacenamiento y transferencia.
+ * 
+ * @risk Validaciones del lado del cliente: La verificación de biografía de TikTok ("Scraping simulado") es actualmente un dummy y debe ser implementada con seguridad en el backend para evitar vulnerabilidades de robo de identidad (suplantación de stream).
+ */
+
 // Iconos SVG simples para mostrar/ocultar contraseña
 const EyeIcon = () => (
   <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
@@ -183,6 +194,14 @@ const AccountPage = ({ onBack }) => {
     }
   };
 
+  /**
+   * @function verifyTiktokBio
+   * @description Simula la verificación de la biografía de TikTok con un retraso.
+   * @security [VULNERABILIDAD CONFIRMADA] Falsa Verificación TikTok. 
+   * Esta función es puramente un mock de lado cliente y no invoca a la Cloud Function `verifyTiktokBio`.
+   * Además, las reglas de Firestore permiten la escritura directa de `tiktok_username`, lo que 
+   * permite a un atacante saltarse esta validación y suplantar cualquier identidad.
+   */
   const verifyTiktokBio = async () => {
     setIsScraping(true);
     setTimeout(async () => {

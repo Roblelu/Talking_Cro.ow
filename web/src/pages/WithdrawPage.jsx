@@ -83,6 +83,39 @@ const WithdrawPage = () => {
           </p>
         </div>
 
+        <div className="panel" style={{ border: '1px solid var(--neon-purple)', textAlign: 'center', marginBottom: '20px', background: 'rgba(157,0,255,0.05)' }}>
+           <h3 className="neon-text-purple" style={{ marginBottom: '10px' }}>🛡️ Escudo de Inmunidad</h3>
+           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '15px' }}>
+              Protege tu rango actual durante este mes si no cumples los requisitos mínimos. Tienes <strong>{userData?.immunity_tokens || 0} tokens</strong> disponibles.
+           </p>
+           {userData?.immunity_active_this_month ? (
+              <div style={{ color: 'var(--neon-green)', fontWeight: 'bold', border: '1px solid var(--neon-green)', padding: '10px', borderRadius: '5px' }}>
+                ¡Escudo Activado este mes!
+              </div>
+           ) : (
+              <button 
+                className="btn-neon neon-purple" 
+                onClick={async () => {
+                  if(!window.confirm('¿Deseas gastar 1 Token de Inmunidad para proteger tu rango este mes?')) return;
+                  try {
+                    const { httpsCallable } = require('firebase/functions');
+                    const { functions } = require('../firebase');
+                    const activate = httpsCallable(functions, 'activateImmunityShield');
+                    await activate();
+                    alert("¡Escudo activado exitosamente!");
+                    window.location.reload();
+                  } catch (e) {
+                    alert(e.message || "Error al activar escudo.");
+                  }
+                }}
+                disabled={(userData?.immunity_tokens || 0) <= 0}
+                style={{ opacity: (userData?.immunity_tokens || 0) <= 0 ? 0.5 : 1 }}
+              >
+                Activar Escudo (Gastar 1 Token)
+              </button>
+           )}
+        </div>
+
         {!isStripeConfigured ? (
           <div className="panel" style={{ border: '1px solid var(--neon-orange)', textAlign: 'center' }}>
             <h3 className="neon-text-orange" style={{ marginBottom: '15px' }}>Requiere Configuración Bancaria</h3>

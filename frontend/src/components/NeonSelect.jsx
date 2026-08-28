@@ -1,5 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+/**
+ * @component NeonSelect
+ * @description Componente de selección personalizado con estilo neón. Reemplaza el <select> nativo para mantener coherencia de diseño.
+ * Muestra las opciones en un menú desplegable y soporta scroll interno.
+ * 
+ * @risk Problemas de accesibilidad (A11y): Al ser un select custom, puede que no sea completamente accesible para lectores de pantalla si no incluye atributos ARIA.
+ */
 const NeonSelect = ({ options, value, onChange, disabled = false, color = 'purple', placeholder = 'Seleccionar...' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);

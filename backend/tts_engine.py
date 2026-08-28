@@ -1,9 +1,26 @@
+"""
+Módulo: tts_engine.py
+
+Gestiona la síntesis de voz (Text-to-Speech) usando Edge-TTS.
+Decisión Arquitectónica y Procesamiento de Cola Local:
+- La cola de TTS se alimenta desde los eventos del chat de TikTok.
+- El procesamiento se delega a este motor de forma aislada para evitar que la red
+  bloquee la captura de eventos en tiempo real.
+- Economía: Se utiliza `edge-tts` (Microsoft Edge Speech) porque provee voces neuronales
+  de alta calidad de manera GRATUITA sin necesidad de API Keys comerciales de Azure/Google.
+  Esto reduce el costo de operación del servicio a $0 (cero costos fijos o comisiones por síntesis).
+"""
 import os
 import asyncio
 import uuid
 import edge_tts
 
 class TTSEngine:
+    """
+    Clase que encapsula la generación de audio TTS.
+    Por qué: Facilita mantener un estado persistente (configuraciones por defecto) y
+    abstrae la ruta de almacenamiento (appdata) de la lógica de generación asíncrona.
+    """
     def __init__(self):
         self.is_loaded = False
         # Voz natural en español por defecto de Edge-TTS
@@ -18,6 +35,13 @@ class TTSEngine:
             self.is_loaded = True
 
     async def generate_file(self, text, reference_audio_path=None, voice="es-MX-DaliaNeural", rate="+0%", volume="+0%"):
+        """
+        Sintetiza un texto y lo guarda como .mp3 de forma asíncrona.
+        Por qué asíncrono: Asegura que el hilo principal (donde se reciben eventos de TikTok Live
+        y se emiten SSE) nunca se congele mientras se espera la respuesta HTTP de Microsoft Edge.
+        Utiliza UUIDs para que múltiples mensajes puedan ser procesados concurrentemente sin
+        sobreescribir archivos temporales.
+        """
         if not self.is_loaded:
             self.load()
             
@@ -52,7 +76,12 @@ class TTSEngine:
         return os.path.join(base_dir, "audio_queue")
 
     def cleanup_old_files(self, max_age_seconds=7200, max_total_mb=500):
-        """Elimina archivos de audio antiguos y controla el tamaño total del directorio."""
+        """
+        Elimina archivos de audio antiguos y controla el tamaño total del directorio de salida local.
+        Por qué: En transmisiones largas, la generación constante de audios de TTS llenaría
+        rápidamente el almacenamiento del usuario. Actúa como un recolector de basura (Garbage Collector)
+        que previene crashes por falta de espacio en disco (OOM Storage).
+        """
         import time
         audio_dir = self.get_audio_dir()
         if not os.path.exists(audio_dir):

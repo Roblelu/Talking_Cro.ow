@@ -4,6 +4,22 @@ import { functions } from '../firebase';
 import fixWebmDuration from 'fix-webm-duration';
 import WebAudioPlayer from './WebAudioPlayer';
 
+/**
+ * Modal para grabar el sample de voz (EcoVoice) usando MediaRecorder API.
+ * ¿POR QUÉ EXISTE?
+ * - Permite capturar la voz del creador en el formato adecuado (webm/mp4).
+ * - Sube el archivo capturado convirtiéndolo a Base64 e invoca la Cloud Function `createEcoVoice`.
+ * 
+ * ECONOMÍA Y COSTOS ASOCIADOS:
+ * - Invoca la Cloud Function `createEcoVoice` (costo de invocación de función + cómputo).
+ * - Transferencia de red saliente si el audio es grande.
+ * 
+ * @param {Object} props
+ * @param {boolean} props.isOpen Controla la visibilidad del modal.
+ * @param {Function} props.onClose Callback al cerrar.
+ * @param {Function} props.onSuccess Callback al subir la voz con éxito.
+ * @returns {JSX.Element|null}
+ */
 const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioURL, setAudioURL] = useState(null);

@@ -1,14 +1,34 @@
+"""
+Módulo: database.py
+
+Gestiona la conexión y la estructura de la base de datos local (SQLite).
+Decisión Arquitectónica: Se usa SQLite de forma local para garantizar que la aplicación pueda
+funcionar sin requerir bases de datos externas (como MySQL o Postgres), manteniendo la
+portabilidad (Desktop app) y evitando costos fijos de bases de datos en la nube.
+"""
 import sqlite3
 import os
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "database.db")
 
 def get_db_connection():
+    """
+    Establece y retorna una conexión a la base de datos SQLite local.
+    Por qué: Se utiliza row_factory = sqlite3.Row para acceder a los resultados
+    como diccionarios, lo que facilita enormemente la serialización a JSON en las rutas de la API.
+    """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
+    """
+    Inicializa la estructura de la base de datos de manera idempotent (segura de llamar múltiples veces).
+    Crea las tablas necesarias (settings, gifts) si no existen y maneja migraciones de columnas
+    (como las de TTS) usando excepciones de SQLite.
+    Por qué: Al ser una aplicación local (Desktop app), las migraciones deben ser robustas y auto-ejecutadas
+    al iniciar, sin requerir herramientas externas (como Alembic), reduciendo así la complejidad y las dependencias.
+    """
     conn = get_db_connection()
     c = conn.cursor()
     

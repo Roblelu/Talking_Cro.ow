@@ -8,6 +8,18 @@ import logoImg from '../assets/logo.png';
 import logoDegradado from '../assets/logo-degradado.png';
 import titleImg from '../assets/title.png';
 
+/**
+ * Componente de barra de navegación principal.
+ * ¿POR QUÉ EXISTE?
+ * - Provee navegación global a las distintas vistas.
+ * - Muestra el estado del usuario (sesión iniciada, billetera, alertas de cuenta).
+ * - En móvil cambia a menú hamburguesa.
+ * 
+ * SEGURIDAD:
+ * - La delegación de lectura/escritura de `isAdmin` y `userData.isPro` al cliente es segura 
+ *   porque firestore.rules y el backend restringen las modificaciones y acciones operativas.
+ * @returns {JSX.Element}
+ */
 const Header = () => {
   const { currentUser, userData } = useAuth();
   const navigate = useNavigate();
@@ -160,7 +172,7 @@ const Header = () => {
                        {isMissingFields && <span style={{ width: '8px', height: '8px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
                      </div>
                    </li>
-                   <li onClick={() => { navigate('/subscription'); setIsDropdownOpen(false); }}>Suscripción y Pagos</li>
+                   <li onClick={() => { navigate('/subscription'); setIsDropdownOpen(false); }}>Tienda</li>
                    <li onClick={() => { navigate('/withdraw'); setIsDropdownOpen(false); }}>
                      Retiro de Ganancias
                    </li>

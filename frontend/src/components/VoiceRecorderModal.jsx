@@ -4,6 +4,18 @@ import { functions } from '../firebase';
 import WebAudioPlayer from './WebAudioPlayer';
 import NeonSelect from './NeonSelect';
 
+/**
+ * @component VoiceRecorderModal
+ * @description Interfaz modal para grabar, previsualizar y subir la muestra de voz del usuario.
+ * Utiliza MediaRecorder para capturar el audio localmente y se comunica con Firebase Functions 
+ * (`createEcoVoice`) para procesar y crear el modelo de EcoVoice.
+ * 
+ * @economy Se llama a `createEcoVoice` (Firebase Function), lo cual genera costos de invocación y ancho de banda. 
+ * Probablemente el backend de esta función llame a APIs externas de clonación de voz (ej. ElevenLabs) que tienen costo por uso.
+ * 
+ * @risk Riesgo de privacidad: El audio del usuario y la clonación generada deben ser manejados con consentimiento (cumplimiento legal/GDPR).
+ * @risk Calidad de audio: Si el usuario usa un mal micrófono o un entorno ruidoso, la voz clonada será deficiente.
+ */
 const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioURL, setAudioURL] = useState(null);
