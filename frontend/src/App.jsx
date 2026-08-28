@@ -617,7 +617,8 @@ function App() {
                     processTTS({ 
                         tiktok_username: data.uniqueId || cleanUsername, 
                         streamer_uid: currentUser.uid, 
-                        message: cleanMessage
+                        message: cleanMessage,
+                        server_secret: "dev_secret_12345"
                     }).then(result => {
                         console.log("[TTS] Respuesta de Firebase processTTS:", result.data);
                     }).catch(err => {
