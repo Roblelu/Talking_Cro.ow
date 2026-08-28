@@ -13,42 +13,23 @@ if not exist venv (
 )
 call venv\Scripts\activate.bat
 
-echo [2/3] Instalando PyInstaller...
-pip install pyinstaller
+echo [2/3] Instalando Nuitka...
+pip install nuitka
 
-echo [3/3] Instalando PyArmor...
-pip install pyarmor
-
-echo [4/4] Ofuscando y Compilando app.py con PyArmor...
-:: Pyarmor 8.0+ syntax
-pyarmor gen -O pyarmor_dist app.py
-if %errorlevel% neq 0 (
-    echo Error durante la ofuscacion con PyArmor.
-    pause
-    exit /b %errorlevel%
-)
-
-:: Compilar con PyInstaller usando el codigo ofuscado
-pyinstaller --noconfirm --log-level=WARN ^
-    --onefile ^
-    --name app ^
-    --collect-submodules "fastapi" ^
-    --collect-submodules "TikTokLive" ^
-    --collect-submodules "pydantic" ^
-    --hidden-import "edge_tts" ^
-    --hidden-import "httpx" ^
-    --hidden-import "requests" ^
-    --hidden-import "sqlite3" ^
-    --hidden-import "uvicorn" ^
-    --hidden-import "asyncio" ^
-    --hidden-import "database" ^
-    --hidden-import "tts_engine" ^
-    --paths "pyarmor_dist" ^
-    --paths "." ^
-    pyarmor_dist\app.py
+echo [3/3] Compilando app.py a ejecutable nativo con Nuitka...
+:: Usamos Nuitka para compilar a codigo maquina C, brindando maxima ofuscacion y rendimiento
+nuitka --onefile --assume-yes-for-downloads ^
+    --output-dir=dist ^
+    --output-filename=app.exe ^
+    --include-package=fastapi ^
+    --include-package=TikTokLive ^
+    --include-package=pydantic ^
+    --include-package=edge_tts ^
+    --include-package=uvicorn ^
+    app.py
 
 if %errorlevel% neq 0 (
-    echo Error durante la compilacion.
+    echo Error durante la compilacion con Nuitka.
     pause
     exit /b %errorlevel%
 )
