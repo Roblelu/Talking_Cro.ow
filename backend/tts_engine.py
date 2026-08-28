@@ -34,6 +34,10 @@ class TTSEngine:
             print("[Motor de Voz] Motor cargado y listo (Instantáneo).")
             self.is_loaded = True
 
+    def _is_compiled(self):
+        import sys
+        return getattr(sys, 'frozen', False) or '__compiled__' in globals()
+
     async def generate_file(self, text, reference_audio_path=None, voice="es-MX-DaliaNeural", rate="+0%", volume="+0%"):
         """
         Sintetiza un texto y lo guarda como .mp3 de forma asíncrona.
@@ -47,7 +51,7 @@ class TTSEngine:
             
         token = str(uuid.uuid4())
         import sys
-        if getattr(sys, 'frozen', False):
+        if self._is_compiled():
             base_dir = os.path.join(os.environ.get('APPDATA', ''), 'TalkingCrow')
         else:
             base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -69,7 +73,7 @@ class TTSEngine:
     def get_audio_dir(self):
         """Retorna el directorio de audio_queue."""
         import sys
-        if getattr(sys, 'frozen', False):
+        if self._is_compiled():
             base_dir = os.path.join(os.environ.get('APPDATA', ''), 'TalkingCrow')
         else:
             base_dir = os.path.dirname(os.path.abspath(__file__))
