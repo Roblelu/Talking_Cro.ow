@@ -437,6 +437,16 @@ function App() {
     if (saved) return saved.startsWith('@') ? saved : '@' + saved;
     return '@';
   });
+
+  // Solución al Stale Closure: Referencias actualizadas para el SSE
+  const currentUserRef = useRef(currentUser);
+  useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
+  
+  const userDataRef = useRef(userData);
+  useEffect(() => { userDataRef.current = userData; }, [userData]);
+  
+  const tiktokUsernameRef = useRef(tiktokUsername);
+  useEffect(() => { tiktokUsernameRef.current = tiktokUsername; }, [tiktokUsername]);
   
   const avatarFallback = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2300f0ff"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>';
   const [hostAvatar, setHostAvatar] = useState(null);
@@ -594,30 +604,21 @@ function App() {
             } else {
                 const newEvent = { ...data, timestamp: new Date() };
                 
-                if (data.type === 'eco_command' && currentUser) {
-                    /*
-                     * [VULNERABILIDAD/BUG DETECTADO - STALE CLOSURE]
-                     * Este bloque de código está fallando silenciosamente.
-                     * Debido a que el listener SSE (sse.onmessage) se registra en el montaje del componente
-                     * (dependency array [] en el useEffect de la línea 658), las variables del state 
-                     * `currentUser`, `userData` y `tiktokUsername` SIEMPRE mantienen su valor inicial (null/vacío).
-                     *
-                     * Como resultado, Sanguijuela Protect evalúa `isMyLive = false` de forma incorrecta,
-                     * porque `userData` es null y `tiktokUsername` está vacío en este closure.
-                     * Esta es la razón por la que el frontend ignora todos los comandos de Voz Base 
-                     * y nunca invoca la Cloud Function `processTTSMessage`.
-                     */
+                if (data.type === 'eco_command' && currentUserRef.current) {
                     let isMyLive = false;
-                    if (userData && (userData.tiktok || userData.tiktok_username)) {
-                        let myVerifiedTiktok = (userData.tiktok || userData.tiktok_username).replace('@', '').toLowerCase().trim();
-                        let monitoredTiktok = tiktokUsername.replace('@', '').toLowerCase().trim();
+                    const currentData = userDataRef.current;
+                    const currentTiktokUser = tiktokUsernameRef.current;
+
+                    if (currentData && (currentData.tiktok || currentData.tiktok_username)) {
+                        let myVerifiedTiktok = (currentData.tiktok || currentData.tiktok_username).replace('@', '').toLowerCase().trim();
+                        let monitoredTiktok = (currentTiktokUser || '').replace('@', '').toLowerCase().trim();
                         if (myVerifiedTiktok === monitoredTiktok) {
                             isMyLive = true;
                         }
                     }
                     
                     if (!isMyLive) {
-                        console.log('[Sanguijuela Protect] Ignorando evento de Voz Base porque estas monitoreando un Live que no es el tuyo.');
+                        console.log('[Sanguijuela Protect] Ignorando evento de Voz Inteligente porque estas monitoreando un Live que no es el tuyo.');
                         return;
                     }
 
@@ -625,16 +626,22 @@ function App() {
                     let cleanMessage = data.message;
                     
                     if (cleanMessage !== '') {
-                        const processTTS = httpsCallable(functions, 'processTTSMessage');
-                        processTTS({ 
-                            tiktok_username: data.uniqueId || cleanUsername, 
-                            streamer_uid: currentUser.uid, 
-                            message: cleanMessage,
-                            server_secret: "dev_secret_12345"
-                        }).then(result => {
-                            console.log("[TTS] Respuesta de Firebase processTTS:", result.data);
+                        // TC-14: Obtenemos el token de autenticación.
+                        // Nota: Al usar httpsCallable, Firebase Web SDK envía automáticamente
+                        // el token en el header HTTP 'Authorization: Bearer <token>'.
+                        // Lo obtenemos explícitamente y lo encadenamos para cumplir con las directrices de seguridad.
+                        currentUserRef.current.getIdToken().then(token => {
+                            const processTTS = httpsCallable(functions, 'processTTSMessage');
+                            processTTS({ 
+                                tiktok_username: data.uniqueId || cleanUsername, 
+                                message: cleanMessage
+                            }).then(result => {
+                                console.log("[Voz Inteligente] Respuesta procesada con éxito:", result.data);
+                            }).catch(err => {
+                                console.error("[Voz Inteligente] Error llamando a Voz Inteligente:", err);
+                            });
                         }).catch(err => {
-                            console.error("[TTS] Error llamando a processTTSMessage:", err);
+                            console.error("Error obteniendo el token de autenticación:", err);
                         });
                     }
                 }

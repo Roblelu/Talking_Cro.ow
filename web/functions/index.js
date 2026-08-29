@@ -322,25 +322,35 @@ exports.verifyTiktokBio = onCall({
  * @param {Object} request - Objeto de solicitud.
  */
 exports.processTTSMessage = onCall(async (request) => {
-    const { tiktok_username, streamer_uid, message, server_secret } = request.data || {};
+    // Implementación Propuesta A: Fix Vulnerabilidad del Secreto
+    // Verificación segura del JWT enviado por el cliente en lugar del secreto estático filtrado
+    const authHeader = request.rawRequest.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        throw new HttpsError('unauthenticated', 'Token de autenticación faltante.');
+    }
     
-    // Seguridad: Validamos que la petición venga de la API de Validación Centralizada
-    // (VULNERABILIDAD: Este secreto se filtró en el frontend)
-    const expectedSecret = process.env.CENTRAL_SERVER_SECRET || "dev_secret_12345";
-    if (server_secret !== expectedSecret) {
-        throw new HttpsError('permission-denied', 'Acceso denegado: Secreto de servidor inválido.');
+    const token = authHeader.split('Bearer ')[1];
+    let decodedToken;
+    try {
+        decodedToken = await admin.auth().verifyIdToken(token);
+    } catch (error) {
+        throw new HttpsError('unauthenticated', 'Token de autenticación inválido o expirado.');
     }
 
+    // Extraemos de forma segura el UID directamente del token decodificado
+    const streamer_uid = decodedToken.uid;
+    const { tiktok_username, message } = request.data || {};
+    
     if (!PREMIUM_TTS_BILLING_ENABLED) {
         throw new HttpsError(
             'failed-precondition',
-            'La Voz Base premium está temporalmente deshabilitada hasta validar la identidad del donador.'
+            'La Voz Inteligente premium está temporalmente deshabilitada hasta validar la identidad del donador.'
         );
     }
 
-    if (typeof tiktok_username !== 'string' || typeof streamer_uid !== 'string' || typeof message !== 'string' ||
-        !tiktok_username.trim() || !streamer_uid.trim() || !message.trim()) {
-        throw new HttpsError('invalid-argument', 'Faltan parámetros requeridos (tiktok_username, streamer_uid, message).');
+    if (typeof tiktok_username !== 'string' || typeof message !== 'string' ||
+        !tiktok_username.trim() || !message.trim()) {
+        throw new HttpsError('invalid-argument', 'Faltan parámetros requeridos (tiktok_username, message).');
     }
     if (tiktok_username.length > 80 || message.length > 300) {
         throw new HttpsError('invalid-argument', 'El usuario o mensaje supera el tamaño permitido.');
