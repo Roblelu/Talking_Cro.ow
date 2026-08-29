@@ -560,100 +560,115 @@ function App() {
     document.addEventListener("mousedown", handleClickOutside);
     
     const API_BASE = 'http://127.0.0.1:8763';
-    // Conexión SSE con token de seguridad
     const token = window.API_KEY || sessionStorage.getItem('local_api_key') || '';
-    const sse = new EventSource(`${API_BASE}/api/live_events?token=${token}`);
-    sse.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.type === 'room_info') {
-            if (data.message === null || data.message === "") {
-               setIsTiktokConnected(false);
-               setHostAvatar(null);
-            } else {
-               setHostAvatar(data.message);
-            }
-        } else if (data.type === 'priority_audio') {
-            const newAudio = { ...data, timestamp: new Date(), id: Date.now().toString() };
-            setAudioQueue(prev => [...prev, newAudio]);
-            setLiveEvents(prev => [...prev.slice(-399), newAudio]);
-        } else {
-            const newEvent = { ...data, timestamp: new Date() };
-            
-            // Removed undefined setOnlineUsers
+    
+    let sse = null;
+    let isCancelled = false;
 
-            // --- LÓGICA DE CROINS PARA TTS (ECO COMMAND) ---
-            if (data.type === 'eco_command' && currentUser) {
-                /**
-                 * @security [VULNERABILIDAD CONFIRMADA] Bypass SANGUIJUELA (Robo de Croins).
-                 * El frontend realiza una validación del lado del cliente para asegurar que el 
-                 * evento provenga de la sala del streamer (`isMyLive`). Sin embargo, debido a que:
-                 * 1) Un atacante puede saltarse esta validación en el cliente.
-                 * 2) Las reglas de Firestore permiten cambiar `tiktok_username` libremente sin usar la Cloud Function de verificación.
-                 * 3) `processTTSMessage` en el backend NO verifica la procedencia del comando ni pide firma del donador.
-                 * Un atacante puede vaciar los Croins de cualquier usuario registrado pasando su username, y adjudicarse las ganancias.
-                 */
-                // SANGUIJUELA PROTECT: Solo permitir cobrar si la sala de TikTok coincide con la sala vinculada a su cuenta
-                let isMyLive = false;
-                if (userData && (userData.tiktok || userData.tiktok_username)) {
-                    let myVerifiedTiktok = (userData.tiktok || userData.tiktok_username).replace('@', '').toLowerCase().trim();
-                    let monitoredTiktok = tiktokUsername.replace('@', '').toLowerCase().trim();
-                    if (myVerifiedTiktok === monitoredTiktok) {
-                        isMyLive = true;
+    const initSSE = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/ticket`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Error al obtener ticket SSE');
+        const d = await res.json();
+        
+        if (isCancelled) return;
+
+        sse = new EventSource(`${API_BASE}/api/live_events?ticket=${d.ticket}`);
+        sse.onmessage = (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (data.type === 'room_info') {
+                if (data.message === null || data.message === "") {
+                   setIsTiktokConnected(false);
+                   setHostAvatar(null);
+                } else {
+                   setHostAvatar(data.message);
+                }
+            } else if (data.type === 'priority_audio') {
+                const newAudio = { ...data, timestamp: new Date(), id: Date.now().toString() };
+                setAudioQueue(prev => [...prev, newAudio]);
+                setLiveEvents(prev => [...prev.slice(-399), newAudio]);
+            } else {
+                const newEvent = { ...data, timestamp: new Date() };
+                
+                if (data.type === 'eco_command' && currentUser) {
+                    /*
+                     * [VULNERABILIDAD/BUG DETECTADO - STALE CLOSURE]
+                     * Este bloque de código está fallando silenciosamente.
+                     * Debido a que el listener SSE (sse.onmessage) se registra en el montaje del componente
+                     * (dependency array [] en el useEffect de la línea 658), las variables del state 
+                     * `currentUser`, `userData` y `tiktokUsername` SIEMPRE mantienen su valor inicial (null/vacío).
+                     *
+                     * Como resultado, Sanguijuela Protect evalúa `isMyLive = false` de forma incorrecta,
+                     * porque `userData` es null y `tiktokUsername` está vacío en este closure.
+                     * Esta es la razón por la que el frontend ignora todos los comandos de Voz Base 
+                     * y nunca invoca la Cloud Function `processTTSMessage`.
+                     */
+                    let isMyLive = false;
+                    if (userData && (userData.tiktok || userData.tiktok_username)) {
+                        let myVerifiedTiktok = (userData.tiktok || userData.tiktok_username).replace('@', '').toLowerCase().trim();
+                        let monitoredTiktok = tiktokUsername.replace('@', '').toLowerCase().trim();
+                        if (myVerifiedTiktok === monitoredTiktok) {
+                            isMyLive = true;
+                        }
+                    }
+                    
+                    if (!isMyLive) {
+                        console.log('[Sanguijuela Protect] Ignorando evento de Voz Base porque estas monitoreando un Live que no es el tuyo.');
+                        return;
+                    }
+
+                    let cleanUsername = data.username;
+                    let cleanMessage = data.message;
+                    
+                    if (cleanMessage !== '') {
+                        const processTTS = httpsCallable(functions, 'processTTSMessage');
+                        processTTS({ 
+                            tiktok_username: data.uniqueId || cleanUsername, 
+                            streamer_uid: currentUser.uid, 
+                            message: cleanMessage,
+                            server_secret: "dev_secret_12345"
+                        }).then(result => {
+                            console.log("[TTS] Respuesta de Firebase processTTS:", result.data);
+                        }).catch(err => {
+                            console.error("[TTS] Error llamando a processTTSMessage:", err);
+                        });
                     }
                 }
                 
-                if (!isMyLive) {
-                    console.log('[Sanguijuela Protect] Ignorando evento EcoVoice porque estas monitoreando un Live que no es el tuyo.');
-                    return;
-                }
+                setDonators(prev => {
+                     if (!prev.find(d => d.username === data.username)) {
+                        return [{ id: Date.now().toString() + Math.random(), username: data.username, isNew: true }, ...prev];
+                     }
+                     return prev;
+                });
 
-                let cleanUsername = data.username;
-                let cleanMessage = data.message;
-                
-                if (cleanMessage !== '') {
-                    // Intentar cobrar 12 Croins al usuario
-                    const processTTS = httpsCallable(functions, 'processTTSMessage');
-                    processTTS({ 
-                        tiktok_username: data.uniqueId || cleanUsername, 
-                        streamer_uid: currentUser.uid, 
-                        message: cleanMessage,
-                        server_secret: "dev_secret_12345"
-                    }).then(result => {
-                        console.log("[TTS] Respuesta de Firebase processTTS:", result.data);
-                    }).catch(err => {
-                        console.error("[TTS] Error llamando a processTTSMessage:", err);
-                        // Si falla (ej. no está en DB o no tiene saldo), ignoramos silenciosamente
-                    });
-                }
+                setLiveEvents(prev => {
+                    const updated = [...prev, newEvent];
+                    return updated.length > 400 ? updated.slice(updated.length - 400) : updated;
+                });
             }
-            
-            setDonators(prev => {
-                 if (!prev.find(d => d.username === data.username)) {
-                    // Lo añadimos al inicio de la lista
-                    return [{ id: Date.now().toString() + Math.random(), username: data.username, isNew: true }, ...prev];
-                 }
-                 return prev;
-            });
-
-            // Añadir al FINAL para que con flexDirection: column los nuevos salgan abajo
-            setLiveEvents(prev => {
-                const updated = [...prev, newEvent];
-                return updated.length > 400 ? updated.slice(updated.length - 400) : updated;
-            });
-        }
-      } catch(err) {
-        console.error("SSE error", err);
+          } catch(err) {
+            console.error("SSE error", err);
+          }
+        };
+      } catch (error) {
+        console.error("Error inicializando SSE:", error);
       }
     };
 
+    initSSE();
+
     return () => {
+      isCancelled = true;
       document.removeEventListener("mousedown", handleClickOutside);
-      sse.close();
+      if (sse) sse.close();
     };
   }, []);
 
-  // Fase 5: Listener de la Cola Centralizada de TTS
   useEffect(() => {
     if (!currentUser || !isTiktokConnected) return;
 

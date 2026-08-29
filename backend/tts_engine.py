@@ -1,14 +1,22 @@
 """
 Módulo: tts_engine.py
 
-Gestiona la síntesis de voz (Text-to-Speech) usando Edge-TTS.
+Gestiona la síntesis de voz (Text-to-Speech) usando el Motor de Voz Inteligente.
 Decisión Arquitectónica y Procesamiento de Cola Local:
-- La cola de TTS se alimenta desde los eventos del chat de TikTok.
-- El procesamiento se delega a este motor de forma aislada para evitar que la red
-  bloquee la captura de eventos en tiempo real.
-- Economía: Se utiliza `edge-tts` (Microsoft Edge Speech) porque provee voces neuronales
-  de alta calidad de manera GRATUITA sin necesidad de API Keys comerciales de Azure/Google.
-  Esto reduce el costo de operación del servicio a $0 (cero costos fijos o comisiones por síntesis).
+- La cola de TTS se alimenta desde los eventos del chat en tiempo real.
+- El procesamiento se delega a este motor de Voz Inteligente de forma aislada para evitar que la red
+  bloquee la captura de eventos.
+- Economía: Se utiliza el Motor de Voz Inteligente porque provee voces neuronales
+  de alta calidad de manera GRATUITA sin necesidad de API Keys comerciales.
+  Esto reduce el costo de operación del servicio a 0 (cero costos fijos o comisiones por síntesis).
+
+Riesgos:
+- Dependencia de un servicio de Voz Inteligente en la nube sin autenticación formal, lo cual podría llevar a bloqueos por IP si se abusa (Rate limiting).
+- Fallos en la red pueden retrasar la cola de generación de audio.
+
+Formas de comprobarla:
+- Verificar que los archivos .mp3 se generen en la carpeta temporal.
+- Comprobar los logs del motor para confirmar inicialización instantánea.
 """
 import os
 import asyncio
@@ -23,15 +31,16 @@ class TTSEngine:
     """
     def __init__(self):
         self.is_loaded = False
-        # Voz natural en español por defecto de Edge-TTS
-        # Otras opciones: es-MX-JorgeNeural, es-ES-AlvaroNeural, es-ES-ElviraNeural
+        # Voz natural en español por defecto del Motor de Voz Inteligente
+        # Otras opciones disponibles según el proveedor subyacente
         self.voice = "es-MX-DaliaNeural" 
-        print(f"[Motor de Voz] Inicializando motor de voz en la nube... Voz: {self.voice}")
+        print(f"[Motor de Voz] Inicializando motor de Voz Inteligente en la nube... Voz: {self.voice}")
 
     def load(self):
-        # Edge TTS no requiere carga de modelos pesados en RAM
+        # El Motor de Voz Inteligente no requiere carga de modelos pesados en RAM, 
+        # su inicialización es prácticamente instantánea.
         if not self.is_loaded:
-            print("[Motor de Voz] Motor cargado y listo (Instantáneo).")
+            print("[Motor de Voz Inteligente] Motor cargado y listo (Instantáneo).")
             self.is_loaded = True
 
     def _is_compiled(self):
@@ -40,11 +49,21 @@ class TTSEngine:
 
     async def generate_file(self, text, reference_audio_path=None, voice="es-MX-DaliaNeural", rate="+0%", volume="+0%"):
         """
-        Sintetiza un texto y lo guarda como .mp3 de forma asíncrona.
-        Por qué asíncrono: Asegura que el hilo principal (donde se reciben eventos de TikTok Live
-        y se emiten SSE) nunca se congele mientras se espera la respuesta HTTP de Microsoft Edge.
-        Utiliza UUIDs para que múltiples mensajes puedan ser procesados concurrentemente sin
-        sobreescribir archivos temporales.
+        Sintetiza un texto usando el Motor de Voz Inteligente y lo guarda como .mp3 de forma asíncrona.
+        
+        ¿Por qué asíncrono? 
+        Asegura que el hilo principal (donde se reciben eventos del stream y se emiten SSE) 
+        nunca se congele mientras se espera la respuesta HTTP de la API de Voz Inteligente.
+        
+        ¿Por qué UUIDs?
+        Utiliza identificadores únicos (UUIDs) para que múltiples mensajes en la cola puedan ser 
+        procesados y generados concurrentemente sin sobreescribir archivos temporales de otros usuarios.
+        
+        Riesgos:
+        - Si la API externa responde lento, la cola de audio se acumulará.
+        
+        Formas de comprobarla:
+        - Mandar varios requests en ráfaga y verificar que todos devuelven un archivo con UUID distinto sin bloquear el event loop.
         """
         if not self.is_loaded:
             self.load()

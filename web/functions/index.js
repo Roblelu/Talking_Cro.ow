@@ -298,14 +298,34 @@ exports.verifyTiktokBio = onCall({
 /**
  * Procesa un mensaje de Texto a Voz (TTS) y deduce los Croins.
  * @function processTTSMessage
- * @security [PARCHADO POR VALIDACIÓN CENTRALIZADA] Ahora está protegida por la API de Validación Centralizada y el Motor TTS Privado. El servidor valida un secreto central, impidiendo que clientes locales falsifiquen eventos de chat.
- * @economy DEDUCCIÓN Y COMISIONES: Deduce `ECONOMY.TTS_CROIN_COST` del usuario. Si hay `purchased_croins`, el streamer recibe `ECONOMY.CREATOR_COMMISSION_PERCENTAGE`. Escribe múltiples documentos en Firestore por cada TTS (historial del donador e historial del streamer), lo que eleva el costo de base de datos a escala.
+ * @description
+ * ESTADO ACTUAL: Este endpoint procesa las "Voces Eco" (Voz Base). Se encarga de cobrar la transacción
+ * al usuario donador y asignar comisiones al creador. Si tiene éxito, manda a sintetizar el audio usando
+ * un proveedor externo de Voz Base y lo guarda en Firestore (colección `tts_queue`).
+ *
+ * VULNERABILIDAD CRÍTICA ENCONTRADA (SANGUIJUELA PROTECT):
+ * El frontend (React) en `App.jsx` llama a esta función Cloud Function cuando recibe el evento `eco_command`.
+ * Sin embargo, `App.jsx` usa un listener de SSE que se instancia EN EL MONTAJE DEL COMPONENTE (`[]` dependencies),
+ * lo que causa un "stale closure" (cierre obsoleto). Las variables de estado `userData` y `currentUser` 
+ * SIEMPRE valen `null` dentro del callback `sse.onmessage`.
+ * Por lo tanto, el sistema de protección Sanguijuela Protect siempre evalúa `isMyLive = false` y descarta
+ * silenciosamente el evento de Voz Base, impidiendo que el cliente invoque esta función.
+ * Esa es la verdadera razón por la que "Voces Eco" (Voz Base) ha dejado de funcionar de cara al usuario final.
+ * 
+ * VULNERABILIDAD ADICIONAL DE SEGURIDAD (EXPOSICIÓN DE SECRETO):
+ * El frontend envía el `server_secret: "dev_secret_12345"`. Este secreto se vuelve visible en el código
+ * compilado de React. Un usuario malicioso podría extraerlo e invocar directamente esta función para vaciar
+ * créditos a otros usuarios o generar gastos al servidor.
+ * 
+ * @security [PARCHADO PERO VULNERABLE] Protegida por la API de Validación Centralizada y el Motor de Voz Base.
+ * @economy DEDUCCIÓN Y COMISIONES: Deduce `ECONOMY.TTS_CROIN_COST` del usuario. Si hay `purchased_croins`, el streamer recibe `ECONOMY.CREATOR_COMMISSION_PERCENTAGE`.
  * @param {Object} request - Objeto de solicitud.
  */
 exports.processTTSMessage = onCall(async (request) => {
     const { tiktok_username, streamer_uid, message, server_secret } = request.data || {};
     
     // Seguridad: Validamos que la petición venga de la API de Validación Centralizada
+    // (VULNERABILIDAD: Este secreto se filtró en el frontend)
     const expectedSecret = process.env.CENTRAL_SERVER_SECRET || "dev_secret_12345";
     if (server_secret !== expectedSecret) {
         throw new HttpsError('permission-denied', 'Acceso denegado: Secreto de servidor inválido.');
@@ -314,7 +334,7 @@ exports.processTTSMessage = onCall(async (request) => {
     if (!PREMIUM_TTS_BILLING_ENABLED) {
         throw new HttpsError(
             'failed-precondition',
-            'El TTS premium está temporalmente deshabilitado hasta validar la identidad del donador.'
+            'La Voz Base premium está temporalmente deshabilitada hasta validar la identidad del donador.'
         );
     }
 
@@ -347,8 +367,10 @@ exports.processTTSMessage = onCall(async (request) => {
             );
 
             if (usersQuery.empty) {
-                // FALLBACK: Usuario no registrado, degradar a Edge TTS
-                return { needsDowngrade: true };
+                /**
+                 * @reason Eliminado el TTS gratuito anónimo para evitar ataques de denegación de servicio (Spam).
+                 */
+                throw new HttpsError('not-found', 'Debes registrarte en la plataforma para usar los comandos Eco.');
             }
 
             const userDoc = usersQuery.docs[0];
@@ -356,8 +378,10 @@ exports.processTTSMessage = onCall(async (request) => {
             const userData = userDoc.data();
 
             if (!userData.has_eco_voice && !userData.eco_voice_id) {
-                // FALLBACK: Usuario sin voz configurada, degradar a Edge TTS
-                return { needsDowngrade: true };
+                /**
+                 * @reason Servicio estrictamente premium para prevenir abuso. Requiere voz configurada.
+                 */
+                throw new HttpsError('failed-precondition', 'No tienes una voz configurada. Configúrala para usar los comandos Eco.');
             }
 
             donatorUid = userDoc.id;
@@ -414,9 +438,7 @@ exports.processTTSMessage = onCall(async (request) => {
                 // Track Unique Spender in an array (if not already there)
                 // Firestore arrayUnion ensures uniqueness
                 transaction.update(streamerRef, {
-                    creator_earnings: admin.firestore.FieldValue.increment(earningsToAdd),
-                    audios_mes_actual: admin.firestore.FieldValue.increment(1),
-                    unique_spenders_mes_actual: admin.firestore.FieldValue.arrayUnion(donatorUid)
+                    creator_earnings: admin.firestore.FieldValue.increment(earningsToAdd)
                 });
 
                 // Escribir en Ledger del Streamer (Ingreso)
@@ -435,19 +457,7 @@ exports.processTTSMessage = onCall(async (request) => {
             deductedPurchased = deductPurchased;
             earningsAdded = earningsToAdd;
 
-            return { needsDowngrade: false };
         });
-        
-        if (txResult && txResult.needsDowngrade) {
-            // Downgrade a Edge TTS (no llamamos a PremiumTTS ni descontamos Croins)
-            await db.collection('tts_queue').doc(streamer_uid).collection('requests').add({
-                tiktok_username: tiktok_username,
-                message: message,
-                use_edge: true,
-                timestamp: admin.firestore.FieldValue.serverTimestamp()
-            });
-            return { success: true, downgraded_to_edge: true };
-        }
         
         transactionSuccess = true;
     } catch (error) {
@@ -461,7 +471,7 @@ exports.processTTSMessage = onCall(async (request) => {
         try {
             let targetVoiceId = ecoVoiceId;
             
-            // Si el usuario tiene una voz configurada en Storage pero no persistida en ElevenLabs, hacer clon efímero
+            // Si el usuario tiene una voz configurada en Storage pero no persistida en la Voz Base, hacer clon efímero
             if (!targetVoiceId && donatorUid && ecoVoiceExt) {
                 const bucket = getStorage().bucket();
                 const filePath = `eco_voices/${donatorUid}/voice_sample${ecoVoiceExt}`;
@@ -491,7 +501,7 @@ exports.processTTSMessage = onCall(async (request) => {
                 throw new Error("No se pudo obtener un ID de voz válido para sintetizar.");
             }
 
-            // Llamada a la API de EcoVoices (PremiumTTS)
+            // Llamada a la API de EcoVoices (Motor de Voz Base)
             const response = await axios.post(`https://api.elevenlabs.io/v1/text-to-speech/${targetVoiceId}`, {
                 text: message,
                 model_id: "eleven_multilingual_v2",
@@ -508,7 +518,7 @@ exports.processTTSMessage = onCall(async (request) => {
                 responseType: 'arraybuffer'
             });
 
-            // Eliminar voz efímera para no saturar el límite de ElevenLabs
+            // Eliminar voz efímera para no saturar el límite de la Voz Base
             if (ephemeralVoiceId) {
                 axios.delete(`https://api.elevenlabs.io/v1/voices/${ephemeralVoiceId}`, {
                     headers: { 'xi-api-key': PREMIUM_TTS_API_KEY }
@@ -524,6 +534,17 @@ exports.processTTSMessage = onCall(async (request) => {
                 audioBase64: audioBase64,
                 timestamp: admin.firestore.FieldValue.serverTimestamp()
             });
+
+            /**
+             * @reason Se actualizan las métricas aquí, después de que el Motor TTS Privado 
+             * tuvo éxito, para prevenir el inflado gratuito de estadísticas.
+             */
+            if (deductedPurchased > 0) {
+                await streamerRef.update({
+                    audios_mes_actual: admin.firestore.FieldValue.increment(1),
+                    unique_spenders_mes_actual: admin.firestore.FieldValue.arrayUnion(donatorUid)
+                });
+            }
 
             return { success: true };
 
@@ -1484,18 +1505,45 @@ exports.checkUsernameAvailability = onCall({ enforceAppCheck: false }, async (re
 
 
 
+/**
+ * @function downloadApp
+ * @description Redirige al usuario a la última versión del instalador de la aplicación de escritorio.
+ * Propósito: Proveer una URL de descarga siempre actualizada consultando a GitHub.
+ * Razón: Facilitar la distribución de la app sin hardcodear URLs que expiran.
+ * Riesgos: La API de GitHub bloquea peticiones (60 req/hr). Se mitiga usando Firestore como caché por 60 minutos.
+ * @param {Object} request - Objeto de petición HTTP
+ * @param {Object} response - Objeto de respuesta HTTP
+ */
 exports.downloadApp = onRequest(async (request, response) => {
+    const fallbackUrl = 'https://github.com/Roblelu/Talking_Cro.ow/releases/latest';
     try {
+        const cacheRef = db.collection('admin').doc('github_cache');
+        const cacheSnap = await cacheRef.get();
+        const now = Date.now();
+
+        if (cacheSnap.exists) {
+            const cacheData = cacheSnap.data();
+            if (cacheData.url && cacheData.timestamp && (now - cacheData.timestamp < 3600000)) {
+                return response.redirect(302, cacheData.url);
+            }
+        }
+
         const fetchResponse = await fetch('https://api.github.com/repos/Roblelu/Talking_Cro.ow/releases/latest');
         const data = await fetchResponse.json();
-        const exeAsset = data.assets.find(a => a.name.endsWith('.exe') && !a.name.includes('uninstaller'));
-        if (exeAsset) {
-            response.redirect(302, exeAsset.browser_download_url);
-        } else {
-            response.redirect(302, 'https://github.com/Roblelu/Talking_Cro.ow/releases/latest');
+        let targetUrl = fallbackUrl;
+
+        if (data && data.assets) {
+            const exeAsset = data.assets.find(a => a.name.endsWith('.exe') && !a.name.includes('uninstaller'));
+            if (exeAsset) {
+                targetUrl = exeAsset.browser_download_url;
+                await cacheRef.set({ url: targetUrl, timestamp: now });
+            }
         }
+
+        response.redirect(302, targetUrl);
     } catch (e) {
-        response.redirect(302, 'https://github.com/Roblelu/Talking_Cro.ow/releases/latest');
+        logger.error('Error al obtener release de GitHub:', e);
+        response.redirect(302, fallbackUrl);
     }
 });
 
@@ -1590,8 +1638,13 @@ exports.redeemCoupon = onCall(async (request) => {
 exports.fixCors = onRequest(async (req, res) => {
   try {
     const bucket = getStorage().bucket('talking-crow.firebasestorage.app');
+    /**
+     * Parche CORS:
+     * Reemplaza el comodin '*' por una lista restrictiva de orígenes seguros.
+     * Evita acceso no autorizado mediante peticiones de orígenes ajenos.
+     */
     await bucket.setCorsConfiguration([{
-      origin: ['*'],
+      origin: ["http://localhost:5173", "http://localhost:5175", "http://127.0.0.1:8763", "https://talking-crow.web.app", "https://talking-crow.firebaseapp.com"],
       method: ['GET', 'PUT', 'POST', 'DELETE', 'HEAD', 'OPTIONS'],
       maxAgeSeconds: 3600,
       responseHeader: ['*']

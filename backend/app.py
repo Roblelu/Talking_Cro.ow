@@ -108,6 +108,42 @@ async def verify_token_query(req: Request, token: str = None):
     if not final_token or final_token != LOCAL_API_KEY:
         raise HTTPException(status_code=403, detail="Token inválido o ausente")
     return final_token
+
+import time
+
+"""
+ * Propósito: Almacenar tickets temporales de un solo uso para conexiones SSE.
+ * Razón: Evitar exponer el token permanente en la URL de EventSource.
+ * Riesgos: Posible acumulación de tickets huérfanos si el cliente los solicita y no los consume, 
+ * mitigado por la validación de tiempo de vida (30 segundos).
+"""
+sse_tickets = {}
+
+@app.post("/api/ticket", dependencies=[Depends(verify_token)])
+async def generate_ticket():
+    """
+     * Propósito: Genera un ticket de un solo uso de corta duración.
+     * Razón: Permite al cliente autenticarse en EventSource sin enviar el token maestro en la query string.
+     * Riesgos: Generación masiva, mitigado por endpoint protegido.
+    """
+    ticket_id = str(uuid.uuid4())
+    sse_tickets[ticket_id] = time.time()
+    return {"ticket": ticket_id}
+
+async def verify_ticket_query(req: Request, ticket: str = None):
+    """
+     * Propósito: Valida y quema (consume) un ticket de un solo uso.
+     * Razón: Autenticar la conexión SSE de forma segura, el ticket expira a los 30 segundos.
+     * Riesgos: Ataques de repetición mitigados al eliminar el ticket inmediatamente tras verificarlo.
+    """
+    if not ticket or ticket not in sse_tickets:
+        raise HTTPException(status_code=403, detail="Ticket inválido o ausente")
+    
+    creation_time = sse_tickets.pop(ticket)
+    if time.time() - creation_time > 30:
+        raise HTTPException(status_code=403, detail="Ticket expirado")
+        
+    return ticket
 import tts_engine
 from contextlib import asynccontextmanager
 import threading
@@ -669,16 +705,16 @@ class TTSFallbackRequest(BaseModel):
 @app.post("/api/tts/fallback", dependencies=[Depends(verify_token)])
 async def trigger_tts_fallback(req: TTSFallbackRequest):
     """
-    Ruta para manejar el downgrade de Eco Voice a Edge TTS.
+    Ruta para manejar el downgrade de Eco Voice (Voz Base) a Voz Inteligente local.
     El Frontend usa esta ruta para avisarle al Backend Local que procese
-    el TTS de Edge, y puede mostrarlo de color rojo.
+    la Voz Inteligente, y puede mostrarlo de color rojo.
     """
     global tts_queue
     clean_msg = is_valid_and_clean_message(req.message)
     clean_uname = is_valid_and_clean_message(req.username) or "Usuario"
     
     if clean_msg:
-        # Poner en la cola normal de Edge TTS local
+        # Poner en la cola normal de Voz Inteligente local
         text_to_speak = f"{clean_uname} dice: {clean_msg}"
         # We want it to be broadcasted with an error flag so the frontend can color it RED.
         # But wait, tts_queue only takes (username, text).
@@ -731,7 +767,7 @@ from fastapi.responses import StreamingResponse
 sse_clients = []
 
 @app.get("/api/live_events")
-async def sse_live_events(token: str = Depends(verify_token_query)):
+async def sse_live_events(ticket: str = Depends(verify_ticket_query)):
     """
     Endpoint de Server-Sent Events (SSE) para el monitor en vivo.
     Mantiene una conexión abierta con el frontend (React) y transmite en tiempo real
@@ -797,7 +833,8 @@ async def serve_frontend(full_path: str):
     requested_path = os.path.abspath(os.path.join(frontend_dist, full_path))
     
     # TC-07: Bloquear Path Traversal
-    if not requested_path.startswith(safe_dist):
+    # Usar os.path.commonpath evita que una ruta hermana (ej. 'dist_backup') pase la validación con startswith, mitigando el Path Traversal.
+    if os.path.commonpath([safe_dist, requested_path]) != safe_dist:
         raise HTTPException(status_code=403, detail="Forbidden: Path Traversal attempt")
     
     # Si el archivo existe directamente (ej. assets/algo.css), sírvelo.
