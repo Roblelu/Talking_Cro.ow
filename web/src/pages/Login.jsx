@@ -13,13 +13,35 @@ import {
 
 /**
  * Componente de inicio de sesión de usuarios.
- * ¿POR QUÉ EXISTE?
- * - Provee la UI para autenticarse usando Google Auth.
- * - Soporta tanto `signInWithPopup` (desktop) como `signInWithRedirect` (mobile) para mejor UX en todos los dispositivos.
  * 
- * SEGURIDAD:
- * - El "Open Redirect" interno está mitigado de manera efectiva limitando 
- *   los destinos únicamente a rutas controladas en la aplicación.
+ * AUDITORÍA Y DOCUMENTACIÓN EXTREMA:
+ * Este componente provee la interfaz y la lógica para la autenticación de usuarios mediante Google Auth.
+ * 
+ * 1. ¿Cómo funciona el inicio de sesión con Google en navegadores móviles?
+ *    - El entorno móvil de los navegadores (como Safari en iOS o Chrome en Android) suele tener políticas 
+ *      muy restrictivas con los popups (ventanas emergentes) debido a mecanismos anti-spam o manejo de pestañas.
+ *    - Para sortear esto y garantizar una experiencia fluida (UX), se determina si el dispositivo es móvil 
+ *      (`isMobileAuthClient`). Si lo es, se utiliza `signInWithRedirect` en lugar de `signInWithPopup`.
+ *    - Funcionamiento con Redirect: `signInWithRedirect` redirige toda la página actual hacia los servidores de Google. 
+ *      Una vez que el usuario ingresa sus credenciales, Google redirige de vuelta a nuestra aplicación.
+ *    - Uso de SessionStorage: Al redirigir, el estado de la aplicación en memoria se pierde. Por lo tanto, cualquier 
+ *      dato esencial del flujo de registro o inicio de sesión en progreso se debe guardar previamente en `sessionStorage` 
+ *      (ver `services/googleRegistration.js` y el uso en el componente `Register`). Al volver, `getRedirectResult` 
+ *      se dispara en el `useEffect` al montar la página, permitiendo recuperar el estado y finalizar el flujo exitosamente 
+ *      sin que el usuario note la transición disruptiva.
+ * 
+ * 2. Decisiones críticas de diseño UI/UX:
+ *    - Botón Claro y Directo: Se usa el botón oficial con el logo y los colores de Google, transmitiendo confianza y 
+ *      familiaridad, que es vital en procesos de autenticación.
+ *    - Feedback Visual Constante: Se bloquean las interacciones múltiples usando un estado `isSubmitting`, y se cambia 
+ *      el texto y la opacidad del botón para indicar que un proceso asíncrono está en curso.
+ *    - Prevención de "Callejones sin Salida": Se incluye un enlace directo al registro si el usuario no tiene cuenta,
+ *      manteniendo la retención del usuario alta.
+ * 
+ * SEGURIDAD Y POLÍTICAS:
+ * - Se previene activamente el "Open Redirect" limitando los destinos a rutas seguras controladas post-autenticación.
+ * - No existen menciones ni integraciones directas expuestas aquí hacia servicios TTS externos (las llamadas se delegan al backend).
+ * 
  * @returns {JSX.Element}
  */
 export default function Login() {

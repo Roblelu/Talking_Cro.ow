@@ -3,6 +3,31 @@ import './Creators.css';
 import TutorialSection from '../components/TutorialSection';
 import RevenueShareSection from '../components/RevenueShareSection';
 
+/**
+ * Página de aterrizaje para Creadores de Contenido (Streamers).
+ * 
+ * AUDITORÍA Y DOCUMENTACIÓN EXTREMA:
+ * Este componente actúa como un embudo de conversión (funnel) diseñado para persuadir a los 
+ * usuarios estándar o visitantes a convertirse en Streamers activos en la plataforma.
+ * 
+ * Decisiones críticas de diseño UI/UX:
+ * 1. Estructura de "Hero Section": Se coloca de inmediato el valor principal ("Multiplica tus Ingresos", 
+ *    "Convierte a tu audiencia en participantes activos") junto con un Call to Action (CTA) 
+ *    primario destacado para la descarga directa de la aplicación de escritorio (Windows).
+ * 2. Visuales Interactivos: El uso de un `dashboard-placeholder` visual y clickeable que 
+ *    hace "scroll-smooth" (desplazamiento suave) hacia la sección del tutorial. Esto incita 
+ *    a la exploración bajando la barrera de entrada técnica.
+ * 3. Iconografía y "Feature Cards": Se resume la propuesta de valor en 3 bloques digeribles 
+ *    (Ingresos, Integración, Soporte) con iconos de gran tamaño, facilitando el escaneo visual 
+ *    rápido sin abrumar con texto.
+ * 
+ * NOTA TÉCNICA: Se asegura la modularidad importando secciones complejas (`TutorialSection`, 
+ * `RevenueShareSection`) para mantener este archivo limpio y fácil de mantener.
+ * No se exponen menciones a APIs de TTS externas de IA en ningún punto público, manteniendo 
+ * la tecnología subyacente de síntesis de voz abstraída bajo la marca propia.
+ * 
+ * @returns {JSX.Element} La vista completa de la página de creadores.
+ */
 const CreatorsPage = () => {
   const handleScrollToTutorial = () => {
     const tutorialElement = document.getElementById('tutorial-section');

@@ -3,6 +3,35 @@ import { useAuth } from '../context/AuthContext';
 import { logoutUser } from '../services/auth';
 import { useNavigate } from 'react-router-dom';
 
+/**
+ * Componente principal del panel de control de usuario (Dashboard).
+ * 
+ * AUDITORÍA Y DOCUMENTACIÓN EXTREMA:
+ * Este componente actúa como el punto central de información para el usuario autenticado.
+ * Muestra el estado de su cuenta, saldo de Croins, créditos de streamer y su progreso como creador.
+ * 
+ * 1. ¿Por qué se removió la compra de paquetes de Croins del Dashboard y se movió a la Tienda?
+ *    - UI/UX y Separación de Preocupaciones: Se tomó la decisión crítica de separar la lógica 
+ *      transaccional (compra con dinero real) del resumen de estado de la cuenta. Esto reduce 
+ *      la sobrecarga cognitiva en el Dashboard, permitiendo al usuario ver de un vistazo sus 
+ *      métricas sin el ruido visual de los paquetes de compra. Además, centralizar las compras 
+ *      en la "Tienda" facilita futuras expansiones del catálogo sin afectar el layout del Dashboard.
+ * 
+ * 2. Decisiones críticas de diseño UI/UX:
+ *    - Modularidad Visual: Se utilizan tarjetas ("cards") con bordes y brillos neón temáticos 
+ *      (verde para dinero/croins, naranja para créditos de creador, morado para progreso de TikTok) 
+ *      para diferenciar claramente los tipos de recursos.
+ *    - Estados Vacíos / Llamados a la Acción (CTA): La alerta principal sobre la configuración 
+ *      de la voz (EcoVoice) cambia de rojo (requiere acción) a verde (lista para usarse), guiando 
+ *      al usuario instintivamente.
+ *    - Tema Oscuro: Se mantiene un fondo oscuro y alto contraste, ideal para el público objetivo 
+ *      (gamers y streamers), reduciendo la fatiga visual.
+ * 
+ * NOTA DE SEGURIDAD: Nunca se expone información sensible de pasarelas de pago ni claves de 
+ * proveedores TTS externos de IA. Todo se lee desde el estado local `userData` inyectado por `useAuth`.
+ * 
+ * @returns {JSX.Element} El panel de control del usuario.
+ */
 export default function Dashboard() {
   const { userData } = useAuth();
   const navigate = useNavigate();

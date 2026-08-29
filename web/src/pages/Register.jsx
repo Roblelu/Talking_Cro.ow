@@ -18,18 +18,39 @@ import {
 
 /**
  * Componente de registro de nuevos usuarios.
- * ¿POR QUÉ EXISTE?
- * - Permite crear la cuenta de Firebase Auth enlazada con un perfil de Firestore.
- * - Asegura que el usuario proporcione un nombre de usuario único y acepte explícitamente las políticas de privacidad.
- * - Recupera identidades de Google cuyo perfil no se creó en un intento anterior.
+ * 
+ * AUDITORÍA Y DOCUMENTACIÓN EXTREMA:
+ * Este componente orquesta el flujo inicial donde un visitante se convierte en usuario. 
+ * Permite la creación de una cuenta en Firebase Auth y enlaza su perfil inicial en Firestore.
+ * 
+ * 1. ¿Cómo funciona el inicio de sesión/registro con Google en navegadores móviles?
+ *    - Los navegadores móviles frecuentemente bloquean ventanas emergentes (popups), rompiendo 
+ *      el flujo `signInWithPopup`. Por ello, se detecta el cliente (`isMobileAuthClient`) y, de ser móvil, 
+ *      se usa `signInWithRedirect`. 
+ *    - El Desafío del Estado: Al hacer una redirección a Google, la aplicación web actual se "cierra" 
+ *      y pierde su memoria (por ejemplo, el nombre de usuario que la persona acababa de escribir).
+ *    - La Solución (SessionStorage): Antes de llamar a `signInWithRedirect`, se ejecuta 
+ *      `savePendingRegistration()`, que guarda temporalmente el nombre de usuario deseado en `sessionStorage`. 
+ *      Cuando el usuario vuelve exitosamente de Google, el `useEffect` detecta el resultado (`getRedirectResult`), 
+ *      lee el nombre de usuario pendiente desde `sessionStorage`, y completa la creación del documento del 
+ *      usuario en la base de datos sin obligarlo a escribir sus datos de nuevo.
+ * 
+ * 2. Decisiones críticas de diseño UI/UX:
+ *    - Modos Contextuales (Creación vs Recuperación): El componente adapta su texto y botones si 
+ *      detecta que Google ya autenticó la cuenta pero hubo una interrupción en el registro 
+ *      (modo `recoveryMode`). Esto evita frustrar al usuario o hacerlo sentir "atrapado".
+ *    - Interacciones Limpias y de Alta Densidad Visual: Se utilizan inputs amplios y botones 
+ *      resaltados para guiar el dedo del usuario (especialmente en móvil). 
+ *    - Consentimiento Explícito Integrado: El checkbox de privacidad está claramente visible, y 
+ *      es mandatorio para avanzar, cumpliendo normativas legales en pasos mínimos.
  * 
  * ECONOMÍA Y COSTOS ASOCIADOS:
- * - Realiza escrituras múltiples mediante una transacción (crea documento `usernames`, `users`, y subcolección `private`).
- *   Esto incrementa la cantidad de escrituras (al menos 3) por cada nuevo registro.
+ * - Se realiza una escritura transaccional (3+ documentos) por registro nuevo. 
  * 
- * SEGURIDAD:
- * - La validación de nombres de usuario y la inyección de saldos (ej. `purchased_croins`) están 
- *   exitosamente mitigadas porque las Reglas de Firestore bloquean escrituras inválidas o alteraciones de balances.
+ * POLÍTICAS Y SEGURIDAD:
+ * - El texto de consentimiento explica el procesamiento del nombre de usuario para TTS, sin mencionar en 
+ *   absoluto el nombre de ningún proveedor externo. Todo se mantiene bajo la marca de la aplicación.
+ * 
  * @returns {JSX.Element}
  */
 export default function Register() {
