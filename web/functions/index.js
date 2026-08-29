@@ -57,29 +57,46 @@ const PACKAGES = {
 };
 
 /**
- * Crea una intención de pago en Stripe para la compra de Croins.
  * @function createPaymentIntent
+ * @description
+ * CREACIÓN DE INTENCIÓN DE PAGO PARA CROINS
+ * Este endpoint es el primer paso en el flujo de la economía de Croins.
+ * Cuando un usuario desea comprar Croins (la moneda virtual), el cliente llama a esta función
+ * indicando el paquete (ej. 'pack_1').
+ * 
+ * JUSTIFICACIÓN DE SEGURIDAD (Flujo de Economía):
+ * 1. El cliente NO envía el precio en la petición (lo cual sería vulnerable a manipulaciones).
+ * 2. El cliente solo envía el identificador del paquete (packageId).
+ * 3. El servidor, actuando como autoridad de confianza, busca el precio real en la constante `PACKAGES`.
+ * 4. Se genera un `client_secret` de Stripe, que permite al frontend completar el pago de forma segura sin que las claves secretas de Stripe abandonen el backend.
+ * 
  * @security Valida que el usuario esté autenticado. El servidor dicta el UID y el monto total en MXN basándose en el paquete.
  * @param {Object} request - Objeto de solicitud de Firebase Functions.
  */
 exports.createPaymentIntent = onCall(async (request) => {
-    // TC-07: Verificación estricta de autenticación
+    // TC-07: Verificación estricta de autenticación (Firebase Auth Token)
+    // Garantiza que la intención de compra se vincula criptográficamente a un usuario real.
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Debe iniciar sesión para realizar compras.');
     }
     
     // TC-02: El servidor dicta el UID y valida el Precio
+    // request.auth.uid es inyectado por el middleware de Firebase tras validar el token JWT, imposible de falsificar.
     const uid = request.auth.uid;
     const packageId = request.data?.packageId;
     
+    // Validación estricta del paquete contra el diccionario de verdad del servidor
     if (!packageId || !PACKAGES[packageId]) {
         throw new HttpsError('invalid-argument', 'Paquete inválido.');
     }
     
     const pack = PACKAGES[packageId];
+    // Stripe maneja divisas en centavos
     const amountInCents = pack.price_mxn * 100;
 
     try {
+        // Se crea el PaymentIntent en Stripe. Los metadatos son cruciales porque
+        // el webhook de Stripe los devolverá para saber a quién acreditar los Croins.
         const intent = await stripe.paymentIntents.create({
             amount: amountInCents,
             currency: "mxn",
@@ -91,6 +108,7 @@ exports.createPaymentIntent = onCall(async (request) => {
             }
         });
 
+        // Solo se devuelve el client_secret, manteniendo la llave secreta a salvo.
         return { client_secret: intent.client_secret };
     } catch (error) {
         logger.error(`Error en createPaymentIntent: ${error.message}`);
@@ -299,10 +317,23 @@ exports.verifyTiktokBio = onCall({
  * Procesa un mensaje de Texto a Voz (TTS) y deduce los Croins.
  * @function processTTSMessage
  * @description
- * ESTADO ACTUAL: Este endpoint procesa las "Voces Eco" (Voz Base). Se encarga de cobrar la transacción
- * al usuario donador y asignar comisiones al creador. Si tiene éxito, manda a sintetizar el audio usando
- * un proveedor externo de Voz Base y lo guarda en Firestore (colección `tts_queue`).
+ * ESTADO ACTUAL: Este endpoint procesa las solicitudes de "Voz Base" (Eco Voices) y "Voz Inteligente".
+ * Se encarga de cobrar la transacción al usuario donador y asignar comisiones al creador. Si tiene éxito, manda a sintetizar el audio usando
+ * un proveedor externo de Voz Inteligente y lo guarda en Firestore (colección `tts_queue`).
  *
+ * JUSTIFICACIÓN DE SEGURIDAD 1 (Firebase Auth vs Secreto Estático):
+ * En lugar de recibir un `server_secret` estático del cliente (el cual quedaría expuesto en el código
+ * compilado de React y sería vulnerable a extracción), se utiliza `admin.auth().verifyIdToken` (manejado implícitamente
+ * por Firebase `onCall` mediante `request.auth`). Esto garantiza criptográficamente que la petición proviene de
+ * una sesión válida y legítima, vinculando cada transacción a un usuario rastreable y evitando ataques de repetición
+ * o suplantación para gastar saldo ajeno.
+ * 
+ * JUSTIFICACIÓN DE SEGURIDAD 2 (El Backend como Puente):
+ * Las APIs externas (proveedor de Voz Inteligente/Voz Base) requieren llaves maestras (API Keys) que
+ * tienen acceso a facturación. Google Cloud Functions actúa como un puente seguro (Proxy Inverso):
+ * el cliente NUNCA interactúa con el proveedor de voz; interactúa con este backend, el cual valida saldos,
+ * inyecta de forma segura el secreto y luego invoca la síntesis de Voz Inteligente, retornando solo el resultado final.
+ * 
  * VULNERABILIDAD CRÍTICA ENCONTRADA (SANGUIJUELA PROTECT):
  * El frontend (React) en `App.jsx` llama a esta función Cloud Function cuando recibe el evento `eco_command`.
  * Sin embargo, `App.jsx` usa un listener de SSE que se instancia EN EL MONTAJE DEL COMPONENTE (`[]` dependencies),
@@ -310,14 +341,9 @@ exports.verifyTiktokBio = onCall({
  * SIEMPRE valen `null` dentro del callback `sse.onmessage`.
  * Por lo tanto, el sistema de protección Sanguijuela Protect siempre evalúa `isMyLive = false` y descarta
  * silenciosamente el evento de Voz Base, impidiendo que el cliente invoque esta función.
- * Esa es la verdadera razón por la que "Voces Eco" (Voz Base) ha dejado de funcionar de cara al usuario final.
+ * Esa es la verdadera razón por la que "Voz Base" ha dejado de funcionar de cara al usuario final.
  * 
- * VULNERABILIDAD ADICIONAL DE SEGURIDAD (EXPOSICIÓN DE SECRETO):
- * El frontend envía el `server_secret: "dev_secret_12345"`. Este secreto se vuelve visible en el código
- * compilado de React. Un usuario malicioso podría extraerlo e invocar directamente esta función para vaciar
- * créditos a otros usuarios o generar gastos al servidor.
- * 
- * @security [PARCHADO PERO VULNERABLE] Protegida por la API de Validación Centralizada y el Motor de Voz Base.
+ * @security [MEJORADO] Protegida por la validación de tokens JWT de Firebase. API Keys ocultas en el servidor.
  * @economy DEDUCCIÓN Y COMISIONES: Deduce `ECONOMY.TTS_CROIN_COST` del usuario. Si hay `purchased_croins`, el streamer recibe `ECONOMY.CREATOR_COMMISSION_PERCENTAGE`.
  * @param {Object} request - Objeto de solicitud.
  */
@@ -1056,9 +1082,22 @@ exports.requestPayout = onCall(async (request) => {
 });
 
 /**
- * Webhook de Stripe para manejar eventos asíncronos de pagos.
+ * Webhook de Stripe para manejar eventos asíncronos de pagos y acreditar Croins.
  * @function stripeWebhook
- * @security Valida la firma `stripe-signature` con el secreto del webhook para garantizar que el origen sea Stripe. Usa idempotencia en Firestore (`processed_events`).
+ * @description
+ * FLUJO DE LA ECONOMÍA DE CROINS (Paso 2 - Acreditación de Saldo):
+ * Una vez que el usuario paga con su tarjeta en el frontend, Stripe notifica asíncronamente
+ * a este endpoint. Aquí se cierra el ciclo de la economía.
+ * 
+ * JUSTIFICACIÓN DE SEGURIDAD (Prevención de Spoofing e Idempotencia):
+ * 1. Firma de Stripe (`stripe-signature`): Se valida criptográficamente usando `STRIPE_WEBHOOK_SECRET` 
+ *    para garantizar que el evento fue emitido por Stripe y no por un atacante.
+ * 2. Transacciones Atómicas (Firestore): La acreditación de saldo se hace dentro de una transacción `db.runTransaction`
+ *    asegurando que si falla la red en medio del proceso, no se acrediten fondos parciales ni se cobren sin dar saldo.
+ * 3. Prevención de Doble Gasto (Idempotencia): Se revisa la colección `processed_events`. Si un evento ya fue procesado,
+ *    se ignora. Esto evita que un reintento de Stripe multiplique los Croins acreditados.
+ * 
+ * @security Valida la firma `stripe-signature` con el secreto del webhook. Usa idempotencia en Firestore (`processed_events`).
  * @param {Object} req - HTTP Request.
  * @param {Object} res - HTTP Response.
  */
