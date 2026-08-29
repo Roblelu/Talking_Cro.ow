@@ -84,6 +84,11 @@ let authHookRegistered = false;
 let cleanupStarted = false;
 
 function registerLocalAuthHook() {
+  // [DOCUMENTACIÓN EXTREMA: SEGURIDAD ARQUITECTÓNICA CRÍTICA]
+  // Este hook intercepta las peticiones HTTP del frontend (React) hacia el backend en Python (127.0.0.1:8763).
+  // Su propósito es inyectar de manera transparente el token de autorización (Bearer localApiKey).
+  // ¡NO MODIFICAR! Esto previene que el token sea expuesto en el frontend, manteniendo una capa
+  // de seguridad robusta. Excepciones: peticiones públicas GET a /api/audio/ para reproducir sonidos.
   if (authHookRegistered) return;
   authHookRegistered = true;
   session.defaultSession.webRequest.onBeforeSendHeaders(
@@ -104,6 +109,14 @@ let mainWindow = null;
 function createWindow() {
   registerLocalAuthHook();
 
+  // [DOCUMENTACIÓN EXTREMA: INTERACCIÓN REACT-ELECTRON Y SEGURIDAD]
+  // La creación de la ventana principal define cómo React interactúa con Electron de forma segura.
+  // 1. nodeIntegration: false -> Impide que el código de React use APIs de Node.js directamente (CRÍTICO para seguridad).
+  // 2. contextIsolation: true -> Aísla el contexto de ejecución de React del de Electron. React SOLO se 
+  //    comunica con Electron mediante canales definidos en preload.js usando contextBridge.
+  // 3. ipcMain / ipcRenderer -> A través del preload, React envía mensajes (ej. 'close-main-window', 'open-secondary-window') 
+  //    que son capturados y procesados aquí en main.cjs. NUNCA se debe exponer 
+equire('electron') directo al frontend.
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,

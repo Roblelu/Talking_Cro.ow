@@ -124,7 +124,7 @@ const AudioPlayItem = ({ audio, isFirst, inQueue, handlePlayAudio, handleRejectA
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
          <strong style={{ color: themeColor, textShadow: `0 0 5px ${themeColor}` }}>
             {audio.username} 
-            {audio.isDowngraded ? ' (Intento de Eco Voice)' : (audio.isEcoVoice ? ' Eco Voice' : ' Texto a Voz Local')}
+            {audio.isDowngraded ? ' (Intento de Eco Voice)' : (audio.isEcoVoice ? ' Eco Voice' : ' Voz Inteligente')}
          </strong>
          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{audio.timestamp.toLocaleTimeString()}</div>
       </div>
@@ -438,7 +438,12 @@ function App() {
     return '@';
   });
 
-  // Solución al Stale Closure: Referencias actualizadas para el SSE
+  // [DOCUMENTACIÓN EXTREMA: SOLUCIÓN A STALE CLOSURES EN EVENTOS SSE]
+  // Se usan Refs (currentUserRef, userDataRef, tiktokUsernameRef) porque la función de callback
+  // del EventSource (initSSE) se registra sólo una vez y crea un closure (clausura) sobre el estado inicial.
+  // Si usáramos el estado directamente (currentUser, etc.), la callback vería el valor obsoleto.
+  // Con useRef y useEffect, mantenemos una referencia mutable garantizando acceso al valor más reciente
+  // sin necesidad de reinicializar la conexión SSE en cada cambio de estado, lo cual cortaría la conexión del live.
   const currentUserRef = useRef(currentUser);
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
   
@@ -905,6 +910,13 @@ function App() {
   };
 
   const handlePlayAudio = (id, url) => {
+    // [DOCUMENTACIÓN EXTREMA: DECISIÓN ARQUITECTÓNICA CRÍTICA - FLUJO TTS]
+    // Esta función controla la reproducción del TTS.
+    // 1. Validación de créditos ANTES de reproducir (anti-abuso).
+    // 2. Si no hay créditos, se purga el archivo localmente llamando a DELETE /api/audio/.
+    // 3. Consumo de crédito asíncrono (consumeTTSCredit) al iniciar reproducción para optimizar latencia.
+    // 4. Retención de archivo por 5 segundos post-reproducción para evitar race conditions en OBS.
+    // ¡NO ALTERAR EL ORDEN DE ESTE FLUJO!
     if ((userData?.creator_credits || 0) <= 0) {
        showConfirm("Sin Créditos de Streamer", "Ya no tienes créditos para reproducir TTS. Adquiere más en la sección de Suscripciones.", () => {});
        setAudioQueue(prev => prev.filter(a => a.id !== id));
