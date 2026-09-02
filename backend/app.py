@@ -111,39 +111,6 @@ async def verify_token_query(req: Request, token: str = None):
 
 import time
 
-"""
- * Propósito: Almacenar tickets temporales de un solo uso para conexiones SSE.
- * Razón: Evitar exponer el token permanente en la URL de EventSource.
- * Riesgos: Posible acumulación de tickets huérfanos si el cliente los solicita y no los consume, 
- * mitigado por la validación de tiempo de vida (30 segundos).
-"""
-sse_tickets = {}
-
-@app.post("/api/ticket", dependencies=[Depends(verify_token)])
-async def generate_ticket():
-    """
-     * Propósito: Genera un ticket de un solo uso de corta duración.
-     * Razón: Permite al cliente autenticarse en EventSource sin enviar el token maestro en la query string.
-     * Riesgos: Generación masiva, mitigado por endpoint protegido.
-    """
-    ticket_id = str(uuid.uuid4())
-    sse_tickets[ticket_id] = time.time()
-    return {"ticket": ticket_id}
-
-async def verify_ticket_query(req: Request, ticket: str = None):
-    """
-     * Propósito: Valida y quema (consume) un ticket de un solo uso.
-     * Razón: Autenticar la conexión SSE de forma segura, el ticket expira a los 30 segundos.
-     * Riesgos: Ataques de repetición mitigados al eliminar el ticket inmediatamente tras verificarlo.
-    """
-    if not ticket or ticket not in sse_tickets:
-        raise HTTPException(status_code=403, detail="Ticket inválido o ausente")
-    
-    creation_time = sse_tickets.pop(ticket)
-    if time.time() - creation_time > 30:
-        raise HTTPException(status_code=403, detail="Ticket expirado")
-        
-    return ticket
 import tts_engine
 from contextlib import asynccontextmanager
 import threading
@@ -180,6 +147,39 @@ async def lifespan_context(app: FastAPI):
     cleanup_task.cancel()
 
 app = FastAPI(title="Talking Cro.ow API", lifespan=lifespan_context)
+"""
+ * Propósito: Almacenar tickets temporales de un solo uso para conexiones SSE.
+ * Razón: Evitar exponer el token permanente en la URL de EventSource.
+ * Riesgos: Posible acumulación de tickets huérfanos si el cliente los solicita y no los consume, 
+ * mitigado por la validación de tiempo de vida (30 segundos).
+"""
+sse_tickets = {}
+
+@app.post("/api/ticket", dependencies=[Depends(verify_token)])
+async def generate_ticket():
+    """
+     * Propósito: Genera un ticket de un solo uso de corta duración.
+     * Razón: Permite al cliente autenticarse en EventSource sin enviar el token maestro en la query string.
+     * Riesgos: Generación masiva, mitigado por endpoint protegido.
+    """
+    ticket_id = str(uuid.uuid4())
+    sse_tickets[ticket_id] = time.time()
+    return {"ticket": ticket_id}
+
+async def verify_ticket_query(req: Request, ticket: str = None):
+    """
+     * Propósito: Valida y quema (consume) un ticket de un solo uso.
+     * Razón: Autenticar la conexión SSE de forma segura, el ticket expira a los 30 segundos.
+     * Riesgos: Ataques de repetición mitigados al eliminar el ticket inmediatamente tras verificarlo.
+    """
+    if not ticket or ticket not in sse_tickets:
+        raise HTTPException(status_code=403, detail="Ticket inválido o ausente")
+    
+    creation_time = sse_tickets.pop(ticket)
+    if time.time() - creation_time > 30:
+        raise HTTPException(status_code=403, detail="Ticket expirado")
+        
+    return ticket
 
 # [Seguridad por Diseño] CORS: El uso de allow_credentials=True es 100% seguro y correcto 
 # porque el backend tiene una whitelist estricta de dominios (localhost, 127.0.0.1, y firebaseapp).
