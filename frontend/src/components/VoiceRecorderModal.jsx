@@ -11,7 +11,7 @@ import NeonSelect from './NeonSelect';
  * (`createEcoVoice`) para procesar y crear el modelo de EcoVoice.
  * 
  * @economy Se llama a `createEcoVoice` (Firebase Function), lo cual genera costos de invocación y ancho de banda. 
- * Probablemente el backend de esta función llame a APIs externas de clonación de voz (ej. ElevenLabs) que tienen costo por uso.
+ * Probablemente el backend de esta función llame a APIs externas de clonación de voz que tienen costo por uso.
  * 
  * @risk Riesgo de privacidad: El audio del usuario y la clonación generada deben ser manejados con consentimiento (cumplimiento legal/GDPR).
  * @risk Calidad de audio: Si el usuario usa un mal micrófono o un entorno ruidoso, la voz clonada será deficiente.
@@ -24,6 +24,7 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
   const [audioBlob, setAudioBlob] = useState(null);
   const [inputDevices, setInputDevices] = useState([]);
   const [selectedInputDevice, setSelectedInputDevice] = useState('default');
+  const [termsAccepted, setTermsAccepted] = useState(false);
   
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -231,16 +232,24 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
           <button 
             className="btn-neon btn-neon-green" 
             onClick={handleUpload} 
-            disabled={!audioURL || isUploading}
+            disabled={!audioURL || isUploading || !termsAccepted}
           >
             {isUploading ? 'Creando EcoVoice...' : 'Subir y Crear Voz'}
           </button>
         </div>
 
         <div style={{ marginTop: '25px', padding: '15px', background: 'rgba(255, 0, 60, 0.05)', border: '1px dashed rgba(255, 0, 60, 0.3)', borderRadius: '8px' }}>
-            <p style={{ margin: 0, fontSize: '0.75rem', color: '#ff8888', textAlign: 'justify', lineHeight: '1.4' }}>
-            ⚠️ <strong>Aviso de Privacidad y Consentimiento:</strong> Al subir este audio, confirmas y aceptas que esta voz es tuya y no de una tercera persona, y otorgas permiso para su uso exclusivo dentro del sistema de Talking Cro.ow. Nos comprometemos a que tu voz no será compartida, distribuida, ni utilizada para clonarse en ninguna otra plataforma externa.
-            </p>
+            <label style={{ display: 'flex', alignItems: 'flex-start', cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                style={{ marginTop: '4px', marginRight: '10px' }}
+              />
+              <span style={{ margin: 0, fontSize: '0.85rem', color: '#ff8888', textAlign: 'justify', lineHeight: '1.4' }}>
+                Confirmo que el audio grabado es mi propia voz y acepto los <a href="https://talking-crow.web.app/terms" target="_blank" rel="noreferrer" style={{ color: 'var(--neon-green)', textDecoration: 'underline' }}>Términos y Condiciones</a> de uso.
+              </span>
+            </label>
         </div>
       </div>
     </div>

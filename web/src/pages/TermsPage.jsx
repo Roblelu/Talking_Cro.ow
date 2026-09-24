@@ -24,35 +24,41 @@ const TermsPage = () => {
           <strong>IMPORTANTE:</strong> Estos términos están diseñados para proteger tanto al Creador de Contenido (Streamer) como a la Comunidad de usuarios. El incumplimiento de estas normas resultará en el rechazo de la donación (sin reembolso) y el baneo permanente de la plataforma.
         </div>
 
-        <h3 className="neon-text-orange" style={{ marginTop: '30px', marginBottom: '15px' }}>1. Consentimiento de Clonación de Voz</h3>
+        <h3 className="neon-text-orange" style={{ marginTop: '30px', marginBottom: '15px' }}>1. Clonación de Voz Estrictamente Personal</h3>
         <p>Al subir un archivo de audio o grabar tu voz a través de nuestra plataforma, <strong>garantizas bajo pena de perjurio que la voz proporcionada te pertenece única y exclusivamente a ti</strong>.</p>
         <ul style={{ paddingLeft: '20px', marginBottom: '20px' }}>
-          <li style={{ marginBottom: '10px' }}>Está <strong>estrictamente prohibido</strong> subir voces de celebridades, figuras públicas, políticos, personajes con derechos de autor, o de cualquier tercera persona sin su consentimiento explícito y demostrable.</li>
-          <li style={{ marginBottom: '10px' }}>Cedes a Talking Cro.ow el derecho temporal de procesar tu voz con el único fin de generar la síntesis para el mensaje de tu donación.</li>
-          <li style={{ marginBottom: '10px' }}><strong>Privacidad y Datos Efímeros:</strong> Tu huella vocal se utilizará mediante un modelo efímero (Instant Voice Cloning). La huella biométrica digital generada en la nube es destruida inmediatamente después de sintetizar el mensaje. Mantenemos el archivo de audio original en servidores locales por un máximo de 3 meses por motivos de seguridad, auditoría y resolución de disputas de pago.</li>
+          <li style={{ marginBottom: '10px' }}>Está <strong>estrictamente prohibido</strong> subir voces de terceras personas (incluyendo celebridades, políticos, amistades, o familiares). El sistema es de uso personal e intransferible. Cualquier intento de clonar a un tercero resultará en el baneo inmediato y reporte a las autoridades correspondientes.</li>
+          <li style={{ marginBottom: '10px' }}>Cedes a Talking Cro.ow el derecho temporal de procesar tu voz con el único fin de generar la síntesis para tus funciones dentro del sistema.</li>
+          <li style={{ marginBottom: '10px' }}><strong>Privacidad de Huella Vocal:</strong> Tu huella biométrica digital generada en la nube es de uso temporal. Mantenemos el archivo de audio original en servidores seguros por un máximo de 3 meses estrictamente por motivos de auditoría de seguridad y resolución de disputas de pago.</li>
         </ul>
 
-        <h3 className="neon-text-orange" style={{ marginTop: '30px', marginBottom: '15px' }}>2. Política de Uso Prohibido y Moderación</h3>
-        <p>Todo mensaje enviado a través de Talking Cro.ow está sujeto a moderación humana antes de ser emitido en el Stream.</p>
-        <p>Te comprometes a <strong>NO</strong> usar nuestra tecnología de IA para generar:</p>
+        <h3 className="neon-text-orange" style={{ marginTop: '30px', marginBottom: '15px' }}>2. Croins y Naturaleza de los Pagos</h3>
+        <ul style={{ paddingLeft: '20px', marginBottom: '20px' }}>
+          <li style={{ marginBottom: '10px' }}>Los "Croins" son una licencia de uso digital y bien consumible dentro de la plataforma. <strong>No son dinero real, no son una inversión y no tienen valor monetario fuera de la plataforma.</strong></li>
+          <li style={{ marginBottom: '10px' }}>Todas las compras de Croins son finales y <strong>no reembolsables</strong>, independientemente del uso que se les dé.</li>
+        </ul>
+
+        <h3 className="neon-text-orange" style={{ marginTop: '30px', marginBottom: '15px' }}>3. Política de Uso Prohibido, IA y Moderación</h3>
+        <p>Todo mensaje enviado a través de Talking Cro.ow está sujeto a moderación automatizada mediante Inteligencia Artificial antes de ser emitido en el Stream.</p>
+        <p>Te comprometes a <strong>NO</strong> usar nuestra tecnología de IA para emitir:</p>
         <ol style={{ paddingLeft: '20px', marginBottom: '20px' }}>
+          <li style={{ marginBottom: '10px' }}><strong>Discursos de Odio y Acoso:</strong> Insultos raciales, bullying excesivo, misoginia, homofobia, propaganda política directa, amenazas o ataques hacia el Streamer u otros miembros.</li>
           <li style={{ marginBottom: '10px' }}><strong>Contenido Ilegal o Dañino:</strong> Fraudes, extorsiones, deepfakes engañosos, o contenido que promueva actividades ilícitas.</li>
-          <li style={{ marginBottom: '10px' }}><strong>Discursos de Odio y Acoso:</strong> Insultos raciales, amenazas, doxing, bullying, o ataques personales hacia el Streamer, los moderadores u otros miembros del chat.</li>
-          <li style={{ marginBottom: '10px' }}><strong>Contenido para Adultos o Explotación:</strong> Lenguaje sexualmente explícito, violencia gráfica, o cualquier material que atente contra la seguridad infantil.</li>
+          <li style={{ marginBottom: '10px' }}><strong>Contenido para Adultos o Explotación:</strong> Lenguaje sexualmente explícito, violencia gráfica, o cualquier material inapropiado.</li>
         </ol>
 
         <div style={{ background: 'rgba(255,117,24,0.1)', borderLeft: '4px solid var(--neon-orange)', padding: '15px', margin: '20px 0', borderRadius: '0 8px 8px 0' }}>
-          <strong>ADVERTENCIA:</strong> Todo contenido pasa por una cola de moderación. El Streamer se reserva el derecho exclusivo de aprobar o rechazar tu mensaje. Si tu mensaje es rechazado por violar esta Política de Uso Prohibido, <strong>los fondos de la donación no serán reembolsados</strong> y tu cuenta será bloqueada.
+          <strong>ADVERTENCIA SOBRE LA IA DE MODERACIÓN:</strong> Nuestro sistema de Inteligencia Artificial analizará en tiempo real tu texto. Si la IA detecta infracciones graves a esta política (como acoso severo o discursos de odio), <strong>tu mensaje será bloqueado y censurado automáticamente. En este caso, SE TE COBRARÁN LOS CROINS CORRESPONDIENTES al intento de uso del sistema.</strong> No habrá reembolsos para usuarios que intenten romper estas reglas.
         </div>
 
-        <h3 className="neon-text-orange" style={{ marginTop: '30px', marginBottom: '15px' }}>3. Descargo de Responsabilidad (Disclaimer)</h3>
+        <h3 className="neon-text-orange" style={{ marginTop: '30px', marginBottom: '15px' }}>4. Descargo de Responsabilidad (Disclaimer)</h3>
         <ul style={{ paddingLeft: '20px', marginBottom: '20px' }}>
           <li style={{ marginBottom: '10px' }}>El Creador de Contenido no se hace responsable de las opiniones expresadas a través de la IA de Talking Cro.ow, ya que el contenido es originado por terceros (donadores).</li>
           <li style={{ marginBottom: '10px' }}>La tecnología de texto a voz (TTS) y clonación es proporcionada "tal cual" y puede estar sujeta a mantenimientos o fallas de red de proveedores externos (nube).</li>
           <li style={{ marginBottom: '10px' }}>Al aceptar estos términos, liberas a Talking Cro.ow y a sus operadores de cualquier responsabilidad legal derivada del mal uso que puedas darle a la plataforma.</li>
         </ul>
 
-        <h3 className="neon-text-orange" style={{ marginTop: '30px', marginBottom: '15px' }}>4. Cambios a los Términos</h3>
+        <h3 className="neon-text-orange" style={{ marginTop: '30px', marginBottom: '15px' }}>5. Cambios a los Términos</h3>
         <p style={{ marginBottom: '30px' }}>Nos reservamos el derecho de modificar o actualizar estos Términos de Servicio en cualquier momento para adaptarnos a las normativas vigentes. Tu uso continuo de la plataforma constituye la aceptación de dichas modificaciones.</p>
         
         <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.1)', margin: '30px 0' }} />

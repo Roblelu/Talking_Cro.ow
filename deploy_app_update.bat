@@ -4,7 +4,10 @@ echo ==========================================================
 echo Actualizador de Talking Crow (Auto-Updater)
 echo ==========================================================
 echo.
-set /p NEW_VERSION="Ingresa la nueva version (ejemplo: 1.0.1): "
+for /f "delims=" %%I in ('powershell -noprofile -command "(Get-Content frontend\package.json | ConvertFrom-Json).version"') do set CURRENT_VERSION=%%I
+echo [INFO] La version actual es: %CURRENT_VERSION%
+echo.
+set /p NEW_VERSION="Ingresa la nueva version (ejemplo: 1.1.4): "
 
 echo.
 echo ==========================================================

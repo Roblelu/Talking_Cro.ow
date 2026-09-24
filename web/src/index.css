@@ -835,3 +835,87 @@ input[type="file"]::file-selector-button:hover {
   padding: 8px 15px;
   max-width: 100%;
 }
+
+/* ==========================================================================
+   TUTORIAL INTERACTIVO (ONBOARDING)
+   ========================================================================== */
+body[data-tutorial] {
+    pointer-events: none;
+}
+
+body[data-tutorial],
+body[data-tutorial] .app-container,
+body[data-tutorial] .main-content,
+body[data-tutorial] .panel {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+}
+
+.tutorial-highlight {
+    position: relative !important;
+    z-index: 9999 !important;
+    pointer-events: auto !important;
+    animation: tutorialPulseShadow 2s infinite !important;
+    background: rgba(0, 255, 204, 0.1) !important;
+    border-radius: 8px;
+    overflow: visible !important;
+}
+
+body[data-tutorial] .panel:not(:has(.tutorial-highlight)),
+body[data-tutorial] .navbar:not(:has(.tutorial-highlight)),
+body[data-tutorial] .donadores-hero {
+    filter: blur(4px) brightness(0.6);
+    transition: filter 0.4s ease, brightness 0.4s ease;
+    pointer-events: none;
+}
+
+@keyframes tutorialPulseShadow {
+    0% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7), 0 0 0 0 rgba(0, 255, 204, 0.7);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7), 0 0 0 15px rgba(0, 255, 204, 0);
+        transform: scale(1.02);
+    }
+    100% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7), 0 0 0 0 rgba(0, 255, 204, 0);
+        transform: scale(1);
+    }
+}
+/* Efecto de ola oscura hacia adentro (inward wave) - Spotlight Circular */
+.tutorial-highlight::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 2000px !important;
+    height: 2000px !important;
+    margin-top: -1000px !important;
+    margin-left: -1000px !important;
+    border-radius: 50% !important;
+    border: 300px solid rgba(0, 0, 0, 0.7) !important;
+    filter: blur(40px) !important;
+    pointer-events: none !important;
+    z-index: -1 !important;
+}
+@keyframes inwardDarkWave {
+    0% {
+        border-width: 600px;
+        opacity: 0;
+    }
+    50% {
+        border-width: 300px;
+        opacity: 1;
+    }
+    100% {
+        border-width: 300px;
+        opacity: 0;
+    }
+}
+.tutorial-highlight::before {
+    animation: inwardDarkWave 2.5s cubic-bezier(0.25, 1, 0.5, 1) infinite !important;
+}

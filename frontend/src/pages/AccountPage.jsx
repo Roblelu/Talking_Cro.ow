@@ -102,7 +102,7 @@ const AccountPage = ({ onBack }) => {
       setPhone(userData.phone || '');
       setTiktok(userData.tiktok || '');
       setUsername(userData.username || '');
-      setEcoVoiceId(userData.eco_voice_id || '');
+      setEcoVoiceId(Boolean(userData.has_eco_voice || userData.eco_voice_id));
     }
   }, [userData]);
 
@@ -140,6 +140,26 @@ const AccountPage = ({ onBack }) => {
 
   const generateCode = () => {
     return 'TC-' + Math.floor(10000 + Math.random() * 90000);
+  };
+
+    const hasUnsavedChanges = (
+    email !== (userData?.email || '') ||
+    phone !== (userData?.phone || '') ||
+    tiktok !== (userData?.tiktok || '') ||
+    username !== (userData?.username || '') ||
+    profileImage !== (currentUser?.photoURL || './avatar_user.png')
+  );
+
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
+
+  const handleBack = () => {
+    if (hasUnsavedChanges) {
+      setPendingAction(() => onBack);
+      setShowUnsavedModal(true);
+    } else {
+      onBack();
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -215,7 +235,7 @@ const AccountPage = ({ onBack }) => {
     <div className="panel-layout-wrapper" style={{ '--panel-width': '800px' }}>
         <button 
           className="btn-neon back-btn-responsive" 
-          onClick={onBack} 
+          onClick={handleBack} 
           style={{ marginBottom: '20px' }}
         >
           &lt; Volver al Panel de Control Principal
@@ -379,8 +399,8 @@ const AccountPage = ({ onBack }) => {
                             });
                             
                             if (result.data.success) {
-                              alert('¡Tu EcoVoice se ha creado con éxito desde el archivo!');
-                              setEcoVoiceId(result.data.voice_id); 
+                              alert('¡Tu grabación Eco se guardó correctamente!');
+                              setEcoVoiceId(true); 
                             }
                           } catch (error) {
                             alert('Error al subir archivo: ' + error.message);
@@ -409,7 +429,8 @@ const AccountPage = ({ onBack }) => {
           isOpen={isRecorderOpen} 
           onClose={() => setIsRecorderOpen(false)} 
           onSuccess={() => {
-            alert("Voz actualizada. Recarga la página si no ves el cambio.");
+            setEcoVoiceId(true);
+            alert("Grabación de voz actualizada.");
           }} 
         />
             
@@ -477,7 +498,23 @@ const AccountPage = ({ onBack }) => {
             
           </div>
 
-          {/* Modal de Imagen de Perfil */}
+                  {/* Modal de Cambios sin Guardar */}
+        {showUnsavedModal && (
+          <div className="modal-overlay">
+            <div className="modal-content" style={{ border: '1px solid var(--neon-orange)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 117, 24, 0.2)' }}>
+              <h3 className="modal-title neon-text-orange" style={{ marginBottom: '15px' }}>¡Cambios sin Guardar!</h3>
+              <p style={{ color: 'var(--text-primary)', marginBottom: '20px' }}>
+                Tienes modificaciones en tu perfil que no han sido guardadas. Si continúas, perderás estos cambios.
+              </p>
+              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
+                <button className="btn-neon" style={{ borderColor: 'var(--text-secondary)', color: 'var(--text-secondary)' }} onClick={() => setShowUnsavedModal(false)}>Quedarme y Guardar</button>
+                <button className="btn-neon" style={{ borderColor: '#ff003c', color: '#ff003c' }} onClick={() => { setShowUnsavedModal(false); if (pendingAction) pendingAction(); }}>Salir sin Guardar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Imagen de Perfil */}
           {isImageModalOpen && (
             <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setIsImageModalOpen(false) }}>
               <div className="modal-content" style={{ border: '1px solid var(--neon-purple)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.8), 0 0 20px rgba(157, 0, 255, 0.2)' }}>
@@ -556,7 +593,7 @@ const AccountPage = ({ onBack }) => {
                 </p>
                 <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px dashed rgba(255,255,255,0.2)' }}>
                   <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#ccc' }}>1. Entra a TikTok y edita tu perfil.</p>
-                  <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#ccc' }}>2. Coloca este código temporal en tu <strong>biografía pública</strong>:</p>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#ccc' }}>2. Coloca este código temporal en tu cuenta de Tiktok en <strong>Editar Perfil &gt; Descripción corta</strong>:</p>
                   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }}>
                     <h2 style={{ color: 'var(--neon-green)', margin: '10px 0', letterSpacing: '2px' }}>{verificationCode}</h2>
                     <button 
@@ -586,3 +623,4 @@ const AccountPage = ({ onBack }) => {
 };
 
 export default AccountPage;
+

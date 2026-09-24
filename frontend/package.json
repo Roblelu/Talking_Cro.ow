@@ -1,7 +1,7 @@
 {
   "name": "talking-crow",
   "private": true,
-  "version": "1.1.3",
+  "version": "1.3.7",
   "description": "Talking Crow Desktop App",
   "author": "Roblelu <rooblelu@gmail.com>",
   "main": "main.cjs",
@@ -46,19 +46,23 @@
     ],
     "extraResources": [
       {
-        "from": "../backend/dist",
-        "to": "backend",
-        "filter": [
-          "app.exe"
-        ]
+        "from": "../backend/dist/portable_python",
+        "to": "backend/python"
       },
       {
         "from": "../backend",
         "to": "backend",
         "filter": [
-          "ffmpeg.exe",
-          "ffprobe.exe"
+          "*.py"
         ]
+      },
+      {
+        "from": "../backend/ffmpeg.exe",
+        "to": "backend/ffmpeg.exe"
+      },
+      {
+        "from": "../backend/ffprobe.exe",
+        "to": "backend/ffprobe.exe"
       }
     ],
     "publish": [

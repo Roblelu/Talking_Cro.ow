@@ -8,8 +8,9 @@ portabilidad (Desktop app) y evitando costos fijos de bases de datos en la nube.
 """
 import sqlite3
 import os
+from runtime_paths import get_data_dir
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "database.db")
+DB_PATH = os.path.join(get_data_dir(), "database.db")
 
 def get_db_connection():
     """

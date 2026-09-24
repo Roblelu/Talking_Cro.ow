@@ -35,6 +35,22 @@ const SubscriptionPage = ({ onBack }) => {
     }
   };
 
+  const handleFreeTier = async () => {
+    if (!currentUser) return;
+    
+    setLoading(true);
+    try {
+      const claim = httpsCallable(functions, 'claimFreeTier');
+      await claim();
+      alert("Plan Gratuito reclamado con éxito.");
+    } catch (error) {
+      console.error("Free tier error:", error);
+      alert("Error al reclamar el plan gratuito.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="panel-layout-wrapper" style={{ '--panel-width': '1000px' }}>
       <button 
@@ -55,9 +71,9 @@ const SubscriptionPage = ({ onBack }) => {
         <div style={{ display: 'flex', gap: '20px', marginBottom: '40px' }}>
           <div className="panel" style={{ flex: 1, border: '1px solid var(--text-secondary)' }}>
             <h4 style={{ color: 'var(--text-primary)', marginBottom: '10px' }}>Plan Gratuito</h4>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>35 créditos iniciales de prueba. Acceso básico a regalos y reacciones.</p>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>Incluye 10,000 créditos para convertir texto a voz. <em>No genera comisiones por mensajes Eco.</em></p>
             <h2 style={{ marginBottom: '15px' }}>$0 <span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>/ mes</span></h2>
-            <button className="btn-neon" style={{ width: '100%', borderColor: 'var(--text-secondary)', color: 'var(--text-secondary)' }} disabled>Plan Actual</button>
+            <button className="btn-neon" style={{ width: '100%', borderColor: 'var(--text-secondary)', color: 'var(--text-secondary)' }} onClick={handleFreeTier} disabled={loading}>{loading ? "Cargando..." : "Reclamar Plan"}</button>
           </div>
           <div className="panel" style={{ flex: 1, border: '1px solid var(--neon-orange)', boxShadow: '0 0 15px rgba(255,117,24,0.1)' }}>
             <h4 className="neon-text-orange" style={{ marginBottom: '10px' }}>Plan Pro</h4>

@@ -26,8 +26,17 @@ const Header = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(document.body ? document.body.dataset.tutorial : null);
   const dropdownRef = useRef(null);
   const walletRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setTutorialStep(document.body.dataset.tutorial);
+    });
+    observer.observe(document.body, { attributes: true, attributeFilter: ['data-tutorial'] });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -190,7 +199,7 @@ const Header = () => {
             </div>
           </div>
         ) : (
-          <button className="btn-neon" style={{ padding: '8px 15px' }} onClick={() => navigate('/login')}>
+          <button className={`btn-neon ${tutorialStep === 'step1' ? 'tutorial-highlight' : ''}`} style={{ padding: '8px 15px' }} onClick={() => navigate('/login')}>
             Iniciar Sesión
           </button>
         )}

@@ -142,13 +142,13 @@ export default function Store() {
   const displayName = streamerId ? streamerId.charAt(0).toUpperCase() + streamerId.slice(1) : 'Streamer';
 
   const PACKAGES = {
-    'pack_1': { price_mxn: 12, croins: 28 },
-    'pack_2': { price_mxn: 35, croins: 110 },
-    'pack_3': { price_mxn: 80, croins: 270 },
-    'pack_4': { price_mxn: 140, croins: 500 },
-    'pack_5': { price_mxn: 200, croins: 850 },
-    'pack_6': { price_mxn: 260, croins: 1200 },
-    'pack_7': { price_mxn: 330, croins: 1900 },
+    'pack_1': { price_mxn: 12, croins: 60 },
+    'pack_2': { price_mxn: 35, croins: 216 },
+    'pack_3': { price_mxn: 80, croins: 504 },
+    'pack_4': { price_mxn: 140, croins: 888 },
+    'pack_5': { price_mxn: 200, croins: 1272 },
+    'pack_6': { price_mxn: 260, croins: 1668 },
+    'pack_7': { price_mxn: 330, croins: 2124 },
     'pack_8': { price_mxn: 420, croins: 2700 }
   };
 

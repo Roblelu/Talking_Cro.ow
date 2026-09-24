@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+﻿import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useBlocker } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useUserData } from '../hooks/useUserData';
 import { db, functions, storage, auth } from '../firebase';
@@ -330,7 +330,7 @@ const AccountPage = () => {
                         return;
                       }
                       try {
-                        alert("Procesando y clonando tu voz. Por favor espera, esto puede tardar unos segundos...");
+                        alert("Guardando tu grabación de voz. Por favor espera...");
                         const dataUrl = await new Promise((resolve, reject) => {
                           const reader = new FileReader();
                           reader.onerror = () => reject(new Error('No se pudo leer el archivo de audio.'));
@@ -346,7 +346,7 @@ const AccountPage = () => {
                         });
                         if(result.data.success) {
                           setSampleAudioUrl(null);
-                          alert("¡Voz clonada y configurada con éxito!");
+                          alert("¡Grabación de voz guardada correctamente!");
                           window.location.reload();
                         }
                       } catch (error) {
@@ -536,3 +536,5 @@ const AccountPage = () => {
 };
 
 export default AccountPage;
+
+

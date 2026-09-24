@@ -26,6 +26,7 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [timer, setTimer] = useState(0);
   const [audioBlob, setAudioBlob] = useState(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -133,7 +134,8 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
       });
       
       if (result.data.success) {
-        onSuccess && onSuccess(result.data.voice_id);
+        onSuccess && onSuccess(result.data);
+        onClose();
       } else {
         throw new Error("Error desconocido al crear la voz.");
       }
@@ -192,6 +194,32 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
                 🔄 Grabar de nuevo
               </button>
             )}
+            
+            {!isRecording && (
+              <>
+                <input 
+                  type="file" 
+                  id="audio-upload"
+                  accept="audio/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      setAudioBlob(file);
+                      setAudioURL(URL.createObjectURL(file));
+                      setTimer(15); 
+                    }
+                  }}
+                />
+                <button 
+                  className="btn-neon" 
+                  style={{ marginLeft: '10px' }} 
+                  onClick={() => document.getElementById('audio-upload').click()}
+                >
+                  📁 Subir Archivo
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -202,6 +230,20 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
           </div>
         )}
 
+        <div style={{ marginTop: '25px', padding: '15px', background: 'rgba(255, 0, 60, 0.05)', border: '1px dashed rgba(255, 0, 60, 0.3)', borderRadius: '8px' }}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                style={{ marginTop: '4px', marginRight: '10px' }}
+              />
+              <span style={{ margin: 0, fontSize: '0.85rem', color: '#ff8888', textAlign: 'justify', lineHeight: '1.4' }}>
+                Confirmo que el audio grabado es mi propia voz y acepto los <a href="/terms" target="_blank" style={{ color: 'var(--neon-green)', textDecoration: 'underline' }}>Términos y Condiciones</a> de uso.
+              </span>
+            </label>
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '15px', marginTop: '30px' }}>
           <button className="btn-neon" style={{ borderColor: '#999', color: '#999' }} onClick={onClose} disabled={isUploading}>
             Cancelar
@@ -209,16 +251,10 @@ const VoiceRecorderModal = ({ isOpen, onClose, onSuccess }) => {
           <button 
             className="btn-neon btn-neon-green" 
             onClick={handleUpload} 
-            disabled={!audioURL || isUploading}
+            disabled={!audioURL || isUploading || !termsAccepted}
           >
             {isUploading ? 'Creando EcoVoice...' : 'Subir y Crear Voz'}
           </button>
-        </div>
-
-        <div style={{ marginTop: '25px', padding: '15px', background: 'rgba(255, 0, 60, 0.05)', border: '1px dashed rgba(255, 0, 60, 0.3)', borderRadius: '8px' }}>
-            <p style={{ margin: 0, fontSize: '0.75rem', color: '#ff8888', textAlign: 'justify', lineHeight: '1.4' }}>
-            ⚠️ <strong>Aviso de Privacidad y Consentimiento:</strong> Al subir este audio, confirmas y aceptas que esta voz es tuya y no de una tercera persona, y otorgas permiso para su uso exclusivo dentro del sistema de Talking Cro.ow. Nos comprometemos a que tu voz no será compartida, distribuida, ni utilizada para clonarse en ninguna otra plataforma externa.
-            </p>
         </div>
       </div>
     </div>

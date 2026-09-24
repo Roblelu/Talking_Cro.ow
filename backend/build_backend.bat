@@ -18,13 +18,12 @@ pip install nuitka
 
 echo [3/3] Compilando app.py a ejecutable nativo con Nuitka...
 :: Usamos Nuitka para compilar a codigo maquina C, brindando maxima ofuscacion y rendimiento
-nuitka --onefile --assume-yes-for-downloads ^
+nuitka --standalone --assume-yes-for-downloads ^
     --output-dir=dist ^
-    --output-filename=app.exe ^
     --include-package=fastapi ^
     --include-package=TikTokLive ^
     --include-package=pydantic ^
-    --include-package=edge_tts ^
+    --include-package=azure ^
     --include-package=uvicorn ^
     app.py
 

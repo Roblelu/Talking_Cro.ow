@@ -12,15 +12,16 @@ function getBackendDir() {
   return path.join(__dirname, '..', 'backend');
 }
 
+function getBackendDataDir() {
+  return app.isPackaged
+    ? path.join(app.getPath('appData'), 'TalkingCrow')
+    : getBackendDir();
+}
+
 function getLocalApiKey() {
   try {
-    let localConfigPath;
-    if (app.isPackaged) {
-      localConfigPath = path.join(process.env.APPDATA || (process.platform === 'darwin' ? process.env.HOME + '/Library/Application Support' : process.env.HOME + '/.config'), 'TalkingCrow', 'local_config.json');
-    } else {
-      localConfigPath = path.join(__dirname, '..', 'backend', 'local_config.json');
-    }
-    
+    const localConfigPath = path.join(getBackendDataDir(), 'local_config.json');
+
     if (!fs.existsSync(localConfigPath)) return "";
     const configData = JSON.parse(fs.readFileSync(localConfigPath, 'utf8'));
     return configData.api_key || "";
@@ -35,8 +36,8 @@ let backendProcess = null;
 const express = require('express');
 
 let localServer = null;
-function startLocalServer() {
-  if (isDev) return; // En dev, Vite ya está levantado
+async function startLocalServer() {
+  if (isDev) return; // En dev, Vite ya estÃ¡ levantado
 
   const serverApp = express();
   const distPath = path.join(__dirname, 'dist');
@@ -47,7 +48,7 @@ function startLocalServer() {
     next();
   });
 
-  // Servir archivos estáticos
+  // Servir archivos estÃ¡ticos
   serverApp.use(express.static(distPath));
 
   // Fallback para React Router
@@ -55,26 +56,42 @@ function startLocalServer() {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 
-  localServer = serverApp.listen(5173, '127.0.0.1', () => {
-    console.log('Micro-servidor para OBS activo en http://localhost:5173');
-  }).on('error', (err) => {
-    console.error('Error al iniciar micro-servidor:', err);
+  await new Promise((resolve, reject) => {
+    localServer = serverApp.listen(5173, '127.0.0.1', resolve);
+    localServer.once('error', reject);
   });
 }
 
 function spawnBackend() {
   if (app.isPackaged) {
-    const exePath = path.join(getBackendDir(), 'app.exe');
-    if (fs.existsSync(exePath)) {
-      backendProcess = spawn(exePath, [], {
+    const pythonExe = path.join(getBackendDir(), 'python', 'python.exe');
+    const scriptPath = path.join(getBackendDir(), 'app.py');
+    
+    if (fs.existsSync(pythonExe) && fs.existsSync(scriptPath)) {
+      backendProcess = spawn(pythonExe, [scriptPath], {
         cwd: getBackendDir(),
+        env: { ...process.env, TALKING_CROW_DATA_DIR: getBackendDataDir(), TALKING_CROW_PORT: '8763', PYTHONUNBUFFERED: '1' },
         detached: false, // We want it to be a child process
         windowsHide: true,
       });
+      let errorLog = "";
       backendProcess.stdout.on('data', (data) => console.log(`[Backend]: ${data}`));
-      backendProcess.stderr.on('data', (data) => console.error(`[Backend ERR]: ${data}`));
+      backendProcess.stderr.on('data', (data) => {
+          console.error(`[Backend ERR]: ${data}`);
+          errorLog += data.toString();
+      });
+      backendProcess.on('error', (err) => {
+          const { dialog } = require('electron');
+          dialog.showErrorBox('Error al Arrancar', 'No se pudo iniciar python.exe:\n' + err.message);
+      });
+      backendProcess.on('exit', (code) => {
+          if (!cleanupStarted && code !== 0 && code !== null) {
+              const { dialog } = require('electron');
+              dialog.showErrorBox('Error CrÃ­tico del Motor', 'El motor interno (app.py) se cerrÃ³ inesperadamente.\n\nCÃ³digo: ' + code + '\n\nReinicia la aplicaciÃ³n. Si el problema continÃºa, contacta a soporte.');
+          }
+      });
     } else {
-      console.error("No se encontrÃ³ el ejecutable del backend en:", exePath);
+      throw new Error(`No se encontrÃ³ el motor interno: ${pythonExe} o ${scriptPath}`);
     }
   }
 }
@@ -84,11 +101,11 @@ let authHookRegistered = false;
 let cleanupStarted = false;
 
 function registerLocalAuthHook() {
-  // [DOCUMENTACIÓN EXTREMA: SEGURIDAD ARQUITECTÓNICA CRÍTICA]
+  // [DOCUMENTACIÃ“N EXTREMA: SEGURIDAD ARQUITECTÃ“NICA CRÃTICA]
   // Este hook intercepta las peticiones HTTP del frontend (React) hacia el backend en Python (127.0.0.1:8763).
-  // Su propósito es inyectar de manera transparente el token de autorización (Bearer localApiKey).
-  // ¡NO MODIFICAR! Esto previene que el token sea expuesto en el frontend, manteniendo una capa
-  // de seguridad robusta. Excepciones: peticiones públicas GET a /api/audio/ para reproducir sonidos.
+  // Su propÃ³sito es inyectar de manera transparente el token de autorizaciÃ³n (Bearer localApiKey).
+  // Â¡NO MODIFICAR! Esto previene que el token sea expuesto en el frontend, manteniendo una capa
+  // de seguridad robusta. Excepciones: peticiones pÃºblicas GET a /api/audio/ para reproducir sonidos.
   if (authHookRegistered) return;
   authHookRegistered = true;
   session.defaultSession.webRequest.onBeforeSendHeaders(
@@ -109,14 +126,14 @@ let mainWindow = null;
 function createWindow() {
   registerLocalAuthHook();
 
-  // [DOCUMENTACIÓN EXTREMA: INTERACCIÓN REACT-ELECTRON Y SEGURIDAD]
-  // La creación de la ventana principal define cómo React interactúa con Electron de forma segura.
-  // 1. nodeIntegration: false -> Impide que el código de React use APIs de Node.js directamente (CRÍTICO para seguridad).
-  // 2. contextIsolation: true -> Aísla el contexto de ejecución de React del de Electron. React SOLO se 
+  // [DOCUMENTACIÃ“N EXTREMA: INTERACCIÃ“N REACT-ELECTRON Y SEGURIDAD]
+  // La creaciÃ³n de la ventana principal define cÃ³mo React interactÃºa con Electron de forma segura.
+  // 1. nodeIntegration: false -> Impide que el cÃ³digo de React use APIs de Node.js directamente (CRÃTICO para seguridad).
+  // 2. contextIsolation: true -> AÃ­sla el contexto de ejecuciÃ³n de React del de Electron. React SOLO se 
   //    comunica con Electron mediante canales definidos en preload.js usando contextBridge.
-  // 3. ipcMain / ipcRenderer -> A través del preload, React envía mensajes (ej. 'close-main-window', 'open-secondary-window') 
-  //    que son capturados y procesados aquí en main.cjs. NUNCA se debe exponer 
-equire('electron') directo al frontend.
+  // 3. ipcMain / ipcRenderer -> A travÃ©s del preload, React envÃ­a mensajes (ej. 'close-main-window', 'open-secondary-window') 
+  //    que son capturados y procesados aquÃ­ en main.cjs. NUNCA se debe exponer 
+// require('electron') directo al frontend.
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -135,7 +152,7 @@ equire('electron') directo al frontend.
   if (isDev) {
     mainWindow.loadURL('http://localhost:5175');
   } else {
-    mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
+    mainWindow.loadURL('http://127.0.0.1:5173');
   }
 
   let isQuitting = false;
@@ -151,7 +168,7 @@ equire('electron') directo al frontend.
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    // Permitir popups para la autenticaciÃ³n de Firebase y Google
+    // Permitir popups para la autenticaciÃƒÂ³n de Firebase y Google
     if (url.includes('firebaseapp.com') || url.includes('accounts.google.com')) {
       return {
         action: 'allow',
@@ -170,7 +187,7 @@ equire('electron') directo al frontend.
   });
 }
 
-// EngaÃ±ar a Google para que piense que somos un navegador Edge normal y no Electron
+// EngaÃƒÂ±ar a Google para que piense que somos un navegador Edge normal y no Electron
 app.userAgentFallback = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0";
 
 function handleDeepLink(urlStr) {
@@ -218,13 +235,16 @@ if (!gotTheLock) {
     }
   });
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
+    await startLocalServer();
     spawnBackend();
-    startLocalServer();
     createWindow();
     if (app.isPackaged) {
       autoUpdater.checkForUpdatesAndNotify();
     }
+  }).catch((error) => {
+    require('electron').dialog.showErrorBox('Error al iniciar Talking Crow', error.message);
+    app.exit(1);
   });
 }
 
@@ -301,7 +321,7 @@ ipcMain.on('open-secondary-window', (event, route) => {
   if (isDev) {
     secWindow.loadURL(`http://localhost:5175/#${route}`);
   } else {
-    secWindow.loadFile(path.join(__dirname, 'dist', 'index.html'), { hash: route });
+    secWindow.loadURL(`http://127.0.0.1:5173/#${route}`);
   }
 });
 
@@ -311,3 +331,10 @@ app.on('activate', () => {
   }
 });
 
+
+
+const { ipcMain: myIpcMain } = require("electron");
+myIpcMain.on("open-devtools", () => {
+  const win = require("electron").BrowserWindow.getAllWindows()[0];
+  if(win) win.webContents.openDevTools({mode:"detach"});
+});

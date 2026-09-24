@@ -1,6 +1,8 @@
 import os
 import json
 import sqlite3
+import re
+import unicodedata
 import asyncio
 from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +14,8 @@ import threading
 import shutil
 import uuid
 import sys
+# [ANTI-ISOLATION] Forzar a Python Embebido a leer los archivos de su misma carpeta
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import httpx
 import requests
 from TikTokLive import TikTokLiveClient
@@ -19,11 +23,12 @@ from TikTokLive.events import ConnectEvent, CommentEvent, GiftEvent, DisconnectE
 from TikTokLive.client.web.web_settings import WebDefaults
 
 # WebDefaults setting para API (Se inicializa dinámicamente)
-WebDefaults.sign_api_key = ""
+WebDefaults.tiktok_sign_api_key = None
 
 import database
 import tts_engine
 import secrets
+from runtime_paths import get_data_dir
 
 def is_compiled():
     return getattr(sys, 'frozen', False) or '__compiled__' in globals()
@@ -32,14 +37,6 @@ def get_base_dir():
     # El directorio base para herramientas (ffmpeg, cloudflared)
     if is_compiled():
         return os.path.dirname(sys.executable)
-    return os.path.dirname(os.path.abspath(__file__))
-
-def get_data_dir():
-    # El directorio para datos que requieren permisos de escritura (config, audios)
-    if is_compiled():
-        app_data = os.path.join(os.environ.get('APPDATA', ''), 'TalkingCrow')
-        os.makedirs(app_data, exist_ok=True)
-        return app_data
     return os.path.dirname(os.path.abspath(__file__))
 
 # Añadir base_dir al PATH para que herramientas como ffmpeg sean encontradas
@@ -85,7 +82,7 @@ if "api_key" not in local_config_data:
 # pero es seguro. Es el estándar de la industria guardar el secreto en %APPDATA% y depender de 
 # los permisos de usuario de Windows para compartirlo de forma segura entre Electron y Python.
 LOCAL_API_KEY = local_config_data["api_key"]
-print(f"\n{'='*50}\n--- Tu API Key Local es: {LOCAL_API_KEY} ---\n{'='*50}\n")
+print("[Sistema] Credencial local cargada.")
 
 from fastapi import Depends
 from fastapi.security import APIKeyHeader
@@ -319,6 +316,39 @@ def update_port(config: PortConfig):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+def is_valid_and_clean_message(text: str) -> str:
+    if not text:
+        return ""
+
+    # 0. Eliminar emojis personalizados de TikTok que vienen entre corchetes, ej: [rockyloveit]
+    text = re.sub(r'\[.*?\]', '', text)
+
+    # 1. Eliminar caracteres que no sean letras, números o puntuación básica (Excluimos 'So' que contiene los emojis)
+    text_cleaned = "".join(c for c in text if unicodedata.category(c).startswith(('L', 'N', 'P', 'Z')) or unicodedata.category(c) in ('Sm', 'Sc', 'Sk'))
+    text_cleaned = text_cleaned.strip()
+
+    # Ignorar si es demasiado corto o puro emoji (que fue filtrado)
+    if len(text_cleaned) < 2:
+        return ""
+
+    # 2. Normalización Anti-LeetSpeak y eco para comprobación
+    leet_map = {'4': 'a', '3': 'e', '1': 'i', '0': 'o', '5': 's', '@': 'a'}
+    text_leet = "".join(leet_map.get(c, c) for c in text_cleaned.lower())
+
+    # Reducir ecos ("gaaaaveeeer" -> "gaaveer")
+    text_reduced = re.sub(r'(.)\1{2,}', r'\1\1', text_leet)
+
+    # 3. Lista negra básica (ampliable)
+    blacklist = ['gaver', 'puto', 'pendej', 'mierd', 'perra', 'verga', 'vrga', 'mrd', 'puta', 'cabron', 'cabr0n', 'zorra', 'marica']
+    for word in blacklist:
+        if word in text_reduced:
+            return "" # Bloqueo inmediato
+
+    # Si pasa la muralla, regresamos el texto limpio de basura (con mayúsculas originales)
+    final_text = re.sub(r'(.)\1{2,}', r'\1\1', text_cleaned)
+    return final_text
+
+
 class TikTokConnectRequest(BaseModel):
     username: str
 
@@ -349,12 +379,14 @@ async def connect_tiktok(req: TikTokConnectRequest):
             # En lugar de hacer una petición insegura a la nube por una llave estática,
             # la leemos desde el config local o entorno.
             stream_key = config_data.get("stream_key", "")
-            WebDefaults.sign_api_key = stream_key
+            WebDefaults.tiktok_sign_api_key = stream_key or None
             print("[Sistema] Clave de firma obtenida de la nube exitosamente.")
         except Exception as e:
             print(f"[Sistema WARNING] Fallo obteniendo llave segura: {e}")
             
-        session_id = config_data.get("session_id", "")
+        # [HOTFIX] Ignoramos el session_id guardado porque si caduca bloquea toda la conexion.
+        # En TikTokLive v6 ya no es tan necesario para leer el chat a menos que haya un bloqueo masivo.
+        session_id = "" # config_data.get("session_id", "")
         if session_id:
             print("[Sistema] Inyectando Session ID local para evadir bloqueo Anti-Bot...")
             client = TikTokLiveClient(unique_id=req.username, web_kwargs={"session_id": session_id})
@@ -376,6 +408,30 @@ async def connect_tiktok(req: TikTokConnectRequest):
             live_start_time = time.time()
             print(f"[TikTok] Conectado exitosamente. Start time: {live_start_time}")
             
+            await broadcast_event(LiveEvent(type="connection", username="Sistema", message=f"Conectado a la sala de @{req.username}"))
+            
+            try:
+                avatar = None
+                if hasattr(client, 'room_info') and isinstance(client.room_info, dict):
+                    url_list = client.room_info.get('owner', {}).get('avatar_thumb', {}).get('url_list', [])
+                    if url_list and len(url_list) > 0:
+                        avatar = url_list[0]
+                if not avatar:
+                    avatar = await get_tiktok_avatar(req.username)
+                if not avatar and hasattr(client, 'get_avatar_url'):
+                    avatar = await client.get_avatar_url(req.username)
+                if avatar:
+                    await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=avatar))
+                else:
+                    clean_username = req.username.strip('@')
+                    fallback_avatar = f"https://ui-avatars.com/api/?name={clean_username}&background=random&color=fff&size=128&bold=true"
+                    await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=fallback_avatar))
+            except Exception as e:
+                print(f"[Sistema WARNING] Error al obtener avatar: {e}")
+                clean_username = req.username.strip('@')
+                fallback_avatar = f"https://ui-avatars.com/api/?name={clean_username}&background=random&color=fff&size=128&bold=true"
+                await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=fallback_avatar))
+            
         @client.on(DisconnectEvent)
         async def on_disconnect(event: DisconnectEvent):
             global live_start_time
@@ -393,41 +449,6 @@ async def connect_tiktok(req: TikTokConnectRequest):
                 
             await broadcast_event(LiveEvent(type="connection", username="Sistema", message="Desconectado del directo"))
 
-
-        import re
-        import unicodedata
-
-        def is_valid_and_clean_message(text: str) -> str:
-            if not text:
-                return ""
-            
-            # 0. Eliminar emojis personalizados de TikTok que vienen entre corchetes, ej: [rockyloveit]
-            text = re.sub(r'\[.*?\]', '', text)
-            
-            # 1. Eliminar caracteres que no sean letras, números o puntuación básica (Excluimos 'So' que contiene los emojis)
-            text_cleaned = "".join(c for c in text if unicodedata.category(c).startswith(('L', 'N', 'P', 'Z')) or unicodedata.category(c) in ('Sm', 'Sc', 'Sk'))
-            text_cleaned = text_cleaned.strip()
-            
-            # Ignorar si es demasiado corto o puro emoji (que fue filtrado)
-            if len(text_cleaned) < 2:
-                return ""
-                
-            # 2. Normalización Anti-LeetSpeak y eco para comprobación
-            leet_map = {'4': 'a', '3': 'e', '1': 'i', '0': 'o', '5': 's', '@': 'a'}
-            text_leet = "".join(leet_map.get(c, c) for c in text_cleaned.lower())
-            
-            # Reducir ecos ("gaaaaveeeer" -> "gaaveer")
-            text_reduced = re.sub(r'(.)\1{2,}', r'\1\1', text_leet)
-            
-            # 3. Lista negra básica (ampliable)
-            blacklist = ['gaver', 'puto', 'pendej', 'mierd', 'perra', 'verga', 'vrga', 'mrd', 'puta', 'cabron', 'cabr0n', 'zorra', 'marica']
-            for word in blacklist:
-                if word in text_reduced:
-                    return "" # Bloqueo inmediato
-                    
-            # Si pasa la muralla, regresamos el texto limpio de basura (con mayúsculas originales)
-            final_text = re.sub(r'(.)\1{2,}', r'\1\1', text_cleaned)
-            return final_text
 
         @client.on(CommentEvent)
         async def on_comment(event: CommentEvent):
@@ -533,33 +554,10 @@ async def connect_tiktok(req: TikTokConnectRequest):
         async def run_client_safe():
             try:
                 await client.start()
-                await broadcast_event(LiveEvent(type="connection", username="Sistema", message=f"Conectado a la sala de @{req.username}"))
-                try:
-                    avatar = None
-                    if hasattr(client, 'room_info') and isinstance(client.room_info, dict):
-                        url_list = client.room_info.get('owner', {}).get('avatar_thumb', {}).get('url_list', [])
-                        if url_list and len(url_list) > 0:
-                            avatar = url_list[0]
-                            print(f"[Sistema] Avatar obtenido de room_info: {avatar}")
-                    if not avatar:
-                        avatar = await get_tiktok_avatar(req.username)
-                    if not avatar and hasattr(client, 'get_avatar_url'):
-                        avatar = await client.get_avatar_url(req.username)
-                    if avatar:
-                        await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=avatar))
-                    else:
-                        clean_username = req.username.strip('@')
-                        fallback_avatar = f"https://ui-avatars.com/api/?name={clean_username}&background=random&color=fff&size=128&bold=true"
-                        await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=fallback_avatar))
-                except Exception as e:
-                    print(f"[Sistema WARNING] Error al obtener avatar: {e}")
-                    clean_username = req.username.strip('@')
-                    fallback_avatar = f"https://ui-avatars.com/api/?name={clean_username}&background=random&color=fff&size=128&bold=true"
-                    await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=fallback_avatar))
             except Exception as e:
                 print(f"[TikTok] Error conectando a {req.username}: {e}")
                 await broadcast_event(LiveEvent(type="room_info", username="Sistema", message=None))
-                await broadcast_event(LiveEvent(type="connection", username="Sistema", message=f"Error: {e}"))
+                await broadcast_event(LiveEvent(type="connection", username="Sistema", message="No se pudo enlazar el directo. Comprueba el usuario y que la transmisión esté activa."))
                 global active_tiktok_client
                 active_tiktok_client = None
 
@@ -567,7 +565,7 @@ async def connect_tiktok(req: TikTokConnectRequest):
         return {"status": "conectando", "username": req.username}
 
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": "No se pudo enlazar el directo. Inténtalo de nuevo."}
 
 @app.post("/api/tiktok/disconnect", dependencies=[Depends(verify_token)])
 async def disconnect_tiktok():
@@ -862,6 +860,8 @@ if __name__ == "__main__":
         except Exception as e:
             print("Error leyendo config.json:", e)
 
+    # Electron supplies the same port used by its auth hook and renderer.
+    port = int(os.environ.get("TALKING_CROW_PORT", port))
     print(f"Iniciando Servidor Unificado de Talking Cro.ow en el puerto: {port}")
     uvicorn.run(app, host="127.0.0.1", port=port)
 

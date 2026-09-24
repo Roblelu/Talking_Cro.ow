@@ -12,7 +12,7 @@ contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {
     send: (channel, ...args) => {
       // Lista de canales permitidos para evitar inyecciones
-      let validChannels = ['open-secondary-window', 'close-main-window'];
+      let validChannels = ['open-secondary-window', 'close-main-window', 'open-devtools'];
       if (validChannels.includes(channel)) {
           ipcRenderer.send(channel, ...args);
       }

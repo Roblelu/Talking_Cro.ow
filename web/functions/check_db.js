@@ -1,8 +1,21 @@
-/**
- * @file check_db.js
- * @description Script de una sola línea usado para testear la conectividad básica con Firestore.
- * @purpose Prueba de concepto o one-liner para verificar si un usuario específico (@roblelu) existe rápidamente.
- * @risk [BAJO] Únicamente de lectura y uso interno, asumiendo credenciales predeterminadas (GCP).
- */
-const admin = require('firebase-admin'); admin.initializeApp(); const db = admin.firestore(); async function run() { const snapshot = await db.collection('users').where('tiktok_username', '==', '@roblelu').get(); if(snapshot.empty) console.log('Empty'); else snapshot.forEach(doc => console.log(doc.data())); } run();
+const { getFirestore } = require('firebase-admin/firestore');
+const admin = require('firebase-admin');
+const serviceAccount = require('../serviceAccountKey.json');
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+}
+const db = getFirestore();
 
+async function check() {
+  const users = await db.collection('users').where('email', '==', 'spo.okycro.ow@gmail.com').get();
+  if (users.empty) {
+    console.log('No user found');
+    return;
+  }
+  users.forEach(doc => {
+    console.log('User:', doc.id, doc.data());
+  });
+}
+check().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); });

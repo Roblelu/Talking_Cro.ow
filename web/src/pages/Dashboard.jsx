@@ -1,3 +1,4 @@
+import CouponRedeemer from '../components/CouponRedeemer';
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { logoutUser } from '../services/auth';
@@ -95,6 +96,8 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+
+            <CouponRedeemer />
 
             {userData?.tiktok_username && (
               <div style={{ marginBottom: '30px', padding: '20px', border: '1px solid var(--neon-purple)', borderRadius: '8px', background: 'rgba(157,0,255,0.05)' }}>

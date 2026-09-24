@@ -19,6 +19,8 @@ import { signOut } from 'firebase/auth';
 import { doc, setDoc, deleteDoc, collection, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import NeonSelect from './components/NeonSelect';
+import { subscribeLiveEvents } from './services/liveEvents.mjs';
+import { ecoErrorMessage, parseEcoRequest } from './services/ecoFeedback.mjs';
 
 // Modal Component
 const Modal = ({ isOpen, title, message, type, onConfirm, onCancel, confirmText = 'Aceptar' }) => {
@@ -241,13 +243,20 @@ function App() {
   
   React.useEffect(() => {
     const API_BASE = 'http://127.0.0.1:8763';
+    const token = window.API_KEY || sessionStorage.getItem('local_api_key') || '';
     
     let isMounted = true;
+    let retryTimer;
+    const startedAt = Date.now();
     const checkBackend = () => {
-      fetch(API_BASE + '/api/settings')
+      if (!isMounted) return;
+      fetch(API_BASE + '/api/settings', {
+        signal: AbortSignal.timeout(5000),
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
         .then(res => {
           if (res.ok) {
-            if (isMounted) setIsBackendReady(true);
+            if (isMounted) { setIsBackendReady(true); setBackendError(''); }
             res.json().then(data => {
               if(data && isMounted) {
                  if (data.tiktok_username) setTiktokUsername(data.tiktok_username.startsWith('@') ? data.tiktok_username : '@' + data.tiktok_username);
@@ -259,12 +268,16 @@ function App() {
               }
             });
             
-            fetch(API_BASE + '/api/gifts')
+            fetch(API_BASE + '/api/gifts', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
               .then(r => r.json())
               .then(d => { if (isMounted) setGifts(d); })
               .catch(err => console.error(err));
               
-            fetch(API_BASE + '/api/tts/state')
+            fetch(API_BASE + '/api/tts/state', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
               .then(r => r.json())
               .then(d => { 
                 if (isMounted) {
@@ -273,18 +286,25 @@ function App() {
                 }
               })
               .catch(err => console.error(err));
+          } else {
+            if (isMounted) {
+              setIsBackendReady(false);
+              setBackendError(`El motor respondió HTTP ${res.status}. Reintentando conexión…`);
+              retryTimer = setTimeout(checkBackend, 2000);
+            }
           }
         })
         .catch(err => {
           if (isMounted) {
             setIsBackendReady(false);
-            setTimeout(checkBackend, 2000);
+            if (Date.now() - startedAt > 15000) setBackendError('No se puede comunicar con el motor local. Reintentando…');
+            retryTimer = setTimeout(checkBackend, 2000);
           }
         });
     };
     
     checkBackend();
-    return () => { isMounted = false; };
+    return () => { isMounted = false; clearTimeout(retryTimer); };
   }, []);
 
   React.useEffect(() => {
@@ -431,6 +451,9 @@ function App() {
   const [newGiftScript, setNewGiftScript] = useState('');
   const [isTiktokConnected, setIsTiktokConnected] = useState(false);
   const [isBackendReady, setIsBackendReady] = useState(false);
+  const [isChatReady, setIsChatReady] = useState(false);
+  const [backendError, setBackendError] = useState('');
+  const [chatError, setChatError] = useState('');
   
   const [tiktokUsername, setTiktokUsername] = useState(() => {
     const saved = localStorage.getItem('lastTiktokUsername');
@@ -466,6 +489,7 @@ function App() {
   const [isTtsGiftDropdownOpen, setIsTtsGiftDropdownOpen] = useState(false);
   const [isTtsDelayDropdownOpen, setIsTtsDelayDropdownOpen] = useState(false);
   const [audioQueue, setAudioQueue] = useState([]);
+  const receivedEcoRequests = useRef(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [isAutoScroll, setIsAutoScroll] = useState(true);
   const chatContainerRef = useRef(null);
@@ -574,25 +598,13 @@ function App() {
     }
     document.addEventListener("mousedown", handleClickOutside);
     
-    const API_BASE = 'http://127.0.0.1:8763';
-    const token = window.API_KEY || sessionStorage.getItem('local_api_key') || '';
-    
-    let sse = null;
-    let isCancelled = false;
-
-    const initSSE = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/ticket`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!res.ok) throw new Error('Error al obtener ticket SSE');
-        const d = await res.json();
-        
-        if (isCancelled) return;
-
-        sse = new EventSource(`${API_BASE}/api/live_events?ticket=${d.ticket}`);
-        sse.onmessage = (e) => {
+    const stopSSE = isBackendReady ? subscribeLiveEvents({
+      onReady: (ready) => {
+        setIsChatReady(ready);
+        if (ready) setChatError('');
+      },
+      onError: (error) => setChatError(error.message),
+      onMessage: (e) => {
           try {
             const data = JSON.parse(e.data);
             if (data.type === 'room_info') {
@@ -636,14 +648,14 @@ function App() {
                         // el token en el header HTTP 'Authorization: Bearer <token>'.
                         // Lo obtenemos explícitamente y lo encadenamos para cumplir con las directrices de seguridad.
                         currentUserRef.current.getIdToken().then(token => {
-                            const processTTS = httpsCallable(functions, 'processTTSMessage');
+                            const processTTS = httpsCallable(functions, 'processTTSMessage', { timeout: 150000 });
                             processTTS({ 
                                 tiktok_username: data.uniqueId || cleanUsername, 
                                 message: cleanMessage
                             }).then(result => {
-                                console.log("[Voz Inteligente] Respuesta procesada con éxito:", result.data);
+                                if (result.data.censored) setToastMessage(result.data.charged ? 'Mensaje Eco censurado por infracción grave. Se cobraron los Croins correspondientes.' : 'El mensaje Eco fue bloqueado por el filtro.');
                             }).catch(err => {
-                                console.error("[Voz Inteligente] Error llamando a Voz Inteligente:", err);
+                                setToastMessage(ecoErrorMessage(err));
                             });
                         }).catch(err => {
                             console.error("Error obteniendo el token de autenticación:", err);
@@ -666,20 +678,14 @@ function App() {
           } catch(err) {
             console.error("SSE error", err);
           }
-        };
-      } catch (error) {
-        console.error("Error inicializando SSE:", error);
-      }
-    };
-
-    initSSE();
+      },
+    }) : null;
 
     return () => {
-      isCancelled = true;
       document.removeEventListener("mousedown", handleClickOutside);
-      if (sse) sse.close();
+      stopSSE?.();
     };
-  }, []);
+  }, [isBackendReady]);
 
   useEffect(() => {
     if (!currentUser || !isTiktokConnected) return;
@@ -687,44 +693,35 @@ function App() {
     const ttsRef = collection(db, 'tts_queue', currentUser.uid, 'requests');
     const unsubscribe = onSnapshot(ttsRef, (snapshot) => {
       snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const data = change.doc.data();
-          
-          if (data.use_edge) {
-            // FALLBACK DOWNGRADE: Enviar al backend local para Edge TTS
-            const token = localStorage.getItem('localApiKey');
-            fetch('http://127.0.0.1:8763/api/tts/fallback', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    username: data.tiktok_username,
-                    message: data.message
-                })
-            }).catch(err => console.error("Error en fallback Edge TTS:", err));
-          } else {
-            // COMPORTAMIENTO NORMAL: Eco Voice pagado
-            const audioSource = `data:audio/mp3;base64,${data.audioBase64}`;
-            const newAudio = { 
-                type: 'priority_audio', 
-                username: data.tiktok_username, 
-                message: data.message,
-                audio_url: audioSource,
-                isEcoVoice: true,
-                timestamp: new Date(), 
-                id: change.doc.id 
-            };
-            setAudioQueue(prev => [...prev, newAudio]);
-            setLiveEvents(prev => [...prev.slice(-399), newAudio]);
+        if (change.type !== 'added' || receivedEcoRequests.current.has(change.doc.ref.path)) return;
+        const data = change.doc.data();
+        if (data.use_edge) {
+          // Legacy requests are acknowledged only after the local queue accepts them.
+          fetch('http://127.0.0.1:8763/api/tts/fallback', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: data.tiktok_username, message: data.message }),
+          }).then(response => {
+            if (!response.ok) throw new Error('No se pudo preparar la voz.');
+            return deleteDoc(change.doc.ref);
+          }).catch(() => setToastMessage('No se pudo preparar la voz recibida.'));
+          return;
+        }
+        try {
+          const audio = parseEcoRequest(data, change.doc.id, change.doc.ref);
+          if (audio.censored) {
+            setToastMessage('El mensaje Eco fue bloqueado por el filtro.');
+            deleteDoc(change.doc.ref).catch(() => {});
+            return;
           }
-          
-          // Eliminar el documento de Firestore para no saturar la BD
-          deleteDoc(doc(db, 'tts_queue', currentUser.uid, 'requests', change.doc.id)).catch(e => console.error(e));
+          receivedEcoRequests.current.add(change.doc.ref.path);
+          setAudioQueue(prev => [...prev, audio]);
+          setLiveEvents(prev => [...prev.slice(-399), audio]);
+          // Retain the remote request until playback completes or the user rejects it.
+        } catch {
+          setToastMessage('No se pudo leer el audio Eco recibido.');
         }
       });
-    });
+    }, () => setToastMessage('No se pudo recibir la cola de voces Eco. Revisa tu sesión y conexión.'));
 
     return () => unsubscribe();
   }, [currentUser, isTiktokConnected]);
@@ -837,6 +834,7 @@ function App() {
   };
   
   const handleConnect = async () => {
+    if (!isBackendReady || !isChatReady) return;
     if (!currentUser) {
        showConfirm("Acceso Denegado", "Debes iniciar sesión con tu cuenta de Talking Cro.ow antes de poder vincular tu canal de TikTok.", () => {});
        return;
@@ -853,6 +851,21 @@ function App() {
     
     const API_BASE = 'http://127.0.0.1:8763';
     const cleanUsername = tiktokUsername.replace('@', '').trim();
+    
+    // Validar que la cuenta coincida con la registrada en la BD
+    const currentData = userDataRef.current;
+    if (currentData && (currentData.tiktok || currentData.tiktok_username)) {
+      let myVerifiedTiktok = (currentData.tiktok || currentData.tiktok_username).replace('@', '').toLowerCase().trim();
+      if (myVerifiedTiktok !== cleanUsername.toLowerCase()) {
+        showAlert("Atención", `Solo puedes vincular el stream de tu propia cuenta verificada (@${myVerifiedTiktok}).`);
+        setIsTiktokConnected(false);
+        return;
+      }
+    } else {
+      showAlert("Atención", "No tienes una cuenta de TikTok verificada. Registra tu cuenta en la Configuración de Perfil primero.");
+      setIsTiktokConnected(false);
+      return;
+    }
     
     fetch(API_BASE + '/api/settings', {
       method: 'POST',
@@ -877,9 +890,9 @@ function App() {
           body: JSON.stringify({ username: cleanUsername })
       });
       const data = await res.json();
-      if(data.status !== "conectando") {
+      if (!res.ok || data.status !== "conectando") {
          setIsTiktokConnected(false);
-         showAlert("Error", "No se pudo conectar: " + data.message);
+         showAlert("Error", "No se pudo conectar: " + (data.detail || data.message || `HTTP ${res.status}`));
       }
     } catch(e) {
       setIsTiktokConnected(false);
@@ -917,7 +930,16 @@ function App() {
     // 3. Consumo de crédito asíncrono (consumeTTSCredit) al iniciar reproducción para optimizar latencia.
     // 4. Retención de archivo por 5 segundos post-reproducción para evitar race conditions en OBS.
     // ¡NO ALTERAR EL ORDEN DE ESTE FLUJO!
-    if ((userData?.creator_credits || 0) <= 0) {
+    let finalUrl = url;
+    let audioData = null;
+    if (!finalUrl) {
+      audioData = audioQueue.find(a => a.id === id);
+      finalUrl = audioData ? audioData.audio_url : null;
+    } else {
+      audioData = audioQueue.find(a => a.id === id);
+    }
+
+    if ((!audioData || !audioData.isEcoVoice) && (userData?.creator_credits || 0) <= 0) {
        showConfirm("Sin Créditos de Streamer", "Ya no tienes créditos para reproducir TTS. Adquiere más en la sección de Suscripciones.", () => {});
        setAudioQueue(prev => prev.filter(a => a.id !== id));
        if (id) {
@@ -927,15 +949,6 @@ function App() {
            }).catch(e=>console.log(e));
        }
        return;
-    }
-
-    let finalUrl = url;
-    let audioData = null;
-    if (!finalUrl) {
-      audioData = audioQueue.find(a => a.id === id);
-      finalUrl = audioData ? audioData.audio_url : null;
-    } else {
-      audioData = audioQueue.find(a => a.id === id);
     }
 
     if (finalUrl) {
@@ -951,13 +964,27 @@ function App() {
        if (snd.setSinkId && selectedAudioDeviceTTS !== 'default') {
          snd.setSinkId(selectedAudioDeviceTTS).catch(err => console.error("setSinkId error:", err));
        }
-       snd.play().catch(e => {
+       let playbackFailed = false;
+       const onPlaybackFailure = (e) => {
+           if (playbackFailed) return;
+           playbackFailed = true;
            console.error("Error al reproducir el audio HTML5:", e);
+           if (audioData?.ecoRequestRef) {
+             receivedEcoRequests.current.delete(audioData.ecoRequestRef.path);
+             setToastMessage('No se pudo reproducir la voz Eco. Se conserva para el siguiente enlace.');
+           }
            setAudioQueue(prev => prev.filter(a => a.id !== id));
-       });
+       };
+       snd.onerror = onPlaybackFailure;
+       snd.play().catch(onPlaybackFailure);
        snd.onended = () => {
+          if (audioData?.ecoRequestRef) {
+            deleteDoc(audioData.ecoRequestRef).then(() => {
+              receivedEcoRequests.current.delete(audioData.ecoRequestRef.path);
+            }).catch(() => setToastMessage('El audio se reprodujo, pero no se pudo confirmar su entrega.'));
+          }
           // Limpiar el audio del servidor 5 segundos después de ser escuchado
-          if (id) {
+          if (id && !audioData?.isEcoVoice) {
              setTimeout(() => {
                  fetch(`http://127.0.0.1:8763/api/audio/${id}`, { 
                    method: 'DELETE',
@@ -976,6 +1003,11 @@ function App() {
 
   const handleRejectAudio = (id) => {
     const audioData = audioQueue.find(a => a.id === id);
+    if (audioData?.ecoRequestRef) {
+      deleteDoc(audioData.ecoRequestRef).then(() => {
+        receivedEcoRequests.current.delete(audioData.ecoRequestRef.path);
+      }).catch(() => setToastMessage('No se pudo confirmar el descarte de la voz Eco.'));
+    }
     if (audioData && audioData.audio_id) {
       fetch(`http://127.0.0.1:8763/api/audio/${audioData.audio_id}`, { 
         method: 'DELETE',
@@ -1462,11 +1494,12 @@ function App() {
                       Desconectar
                     </button>
                  ) : (
-                    <button className="btn-neon btn-neon-orange" style={{ flex: 1, minWidth: '120px', padding: '8px 15px', fontSize: '0.9rem', margin: 0, opacity: isBackendReady ? 1 : 0.4, cursor: isBackendReady ? 'pointer' : 'not-allowed' }} disabled={!isBackendReady} onClick={handleConnect}>
-                      {isBackendReady ? 'Vincular' : <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Cargando Motores<span className="dot-1">.</span><span className="dot-2">.</span><span className="dot-3">.</span></span>}
+                    <button className="btn-neon btn-neon-orange" style={{ flex: 1, minWidth: '120px', padding: '8px 15px', fontSize: '0.9rem', margin: 0, opacity: isBackendReady && isChatReady ? 1 : 0.4, cursor: isBackendReady && isChatReady ? 'pointer' : 'not-allowed' }} disabled={!isBackendReady || !isChatReady} onClick={handleConnect}>
+                      {isBackendReady && isChatReady ? 'Vincular' : <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{isBackendReady ? 'Conectando chat' : 'Cargando Motores'}<span className="dot-1">.</span><span className="dot-2">.</span><span className="dot-3">.</span></span>}
                     </button>
                  )}
               </div>
+              {(backendError || chatError) && <span role="status" style={{ color: 'var(--neon-orange)', fontSize: '0.85rem' }}>{backendError || chatError}</span>}
               {isTiktokConnected && (
                  <span className={hostAvatar ? "neon-text-green" : "neon-text-orange"} style={{ fontWeight: 'bold', fontSize: '0.85rem', marginTop: '2px', textShadow: hostAvatar ? '0 0 8px var(--neon-green)' : '0 0 8px var(--neon-orange)' }}>
                     {hostAvatar ? 'Enlace Establecido' : <span style={{ display: 'flex', alignItems: 'center' }}>Estableciendo Enlace<span className="dot-1">.</span><span className="dot-2">.</span><span className="dot-3">.</span></span>}
@@ -1846,7 +1879,16 @@ function App() {
                 </div>
              </section>
 
-             <div style={{ display: 'flex', gap: '15px', height: '50px' }}>
+             {tiktokUsername === "Abrir Consola" && (
+              <button 
+                onClick={() => window.electron && window.electron.ipcRenderer.send('open-devtools')} 
+                style={{ marginTop: '10px', width: '100%', padding: '10px', background: '#330033', color: '#ff00ff', border: '1px solid #ff00ff', borderRadius: '5px', cursor: 'pointer', fontFamily: 'Orbitron' }}
+              >
+                🛠️ ABRIR CONSOLA DEVTOOLS
+              </button>
+          )}
+
+          <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
                 <button className="btn-neon btn-neon-cyan" style={{ flex: 1, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', lineHeight: '1.2' }} onClick={() => ipcRenderer?.send('open-secondary-window', 'sounds', 'Efectos de Sonido')}>
                    EFECTOS DE<br/>SONIDO
                 </button>
