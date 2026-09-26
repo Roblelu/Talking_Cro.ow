@@ -22,13 +22,30 @@ import os
 import asyncio
 import uuid
 from runtime_paths import get_data_dir
-import os
 import azure.cognitiveservices.speech as speechsdk
-AZURE_SPEECH_KEY = os.getenv("AZURE_SPEECH_KEY", "")
-AZURE_SPEECH_REGION = os.getenv("AZURE_SPEECH_REGION", "eastus")
+import time
+import threading
+
+_voice_session = None
+_voice_condition = threading.Condition()
+
+def set_voice_session(token, region, expires_in):
+    global _voice_session
+    with _voice_condition:
+        _voice_session = (token, region, time.monotonic() + min(expires_in, 540)) if token else None
+        _voice_condition.notify_all()
+
+def _voice_config():
+    with _voice_condition:
+        if not _voice_session or _voice_session[2] <= time.monotonic():
+            _voice_condition.wait_for(lambda: _voice_session and _voice_session[2] > time.monotonic(), timeout=20)
+        if not _voice_session or _voice_session[2] <= time.monotonic():
+            raise RuntimeError("La autorización de voz no está lista. Revisa tu sesión y tus créditos.")
+        token, region, _ = _voice_session
+    return speechsdk.SpeechConfig(auth_token=token, region=region)
 
 def _synthesize_sync(text, out_path, voice, rate, volume):
-    speech_config = speechsdk.SpeechConfig(subscription=AZURE_SPEECH_KEY, region=AZURE_SPEECH_REGION)
+    speech_config = _voice_config()
     # The SDK snapshots SpeechConfig when the synthesizer is constructed.
     # Set both voice and locale before constructing it, including default prosody.
     locale = '-'.join(voice.split('-')[:2])

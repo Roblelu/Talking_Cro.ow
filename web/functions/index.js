@@ -1845,3 +1845,7 @@ exports.filterTTSMessage = onCall(async (request) => {
     const clean_message = await _filterTextWithGemini(text);
     return { clean_message };
 });
+
+// Desktop receives an expiring authorization, never the master speech key.
+exports.getBaseVoiceToken = onCall({ secrets: ["BASE_TTS_API_KEY"], timeoutSeconds: 30 },
+    require("./baseVoice").createBaseVoiceHandler({ db, axios, HttpsError, getKey: () => process.env.BASE_TTS_API_KEY }));

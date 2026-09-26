@@ -56,7 +56,7 @@ function fixture() {
   };
 }
 
-test('admin creates 76 coupons per currency with matching fixed amounts and expiry', async () => {
+test('admin creates 76 coupons per currency with triple credit amounts and expiry', async () => {
   const f = fixture();
   const result = await f.generate({ includeCredits: true, creditAmounts: { multi: 500, large: 1000, small: 250 } });
   assert.equal(result.coupons.length, 152);
@@ -69,7 +69,7 @@ test('admin creates 76 coupons per currency with matching fixed amounts and expi
     assert.equal(coupon.maxUses, 25);
     assert.ok(coupon.expiresAt.toDate() - Date.now() > 86300000);
   }
-  assert.equal(result.coupons.filter(c => c.currency === 'credits' && c.amount === 96).length, 25);
+  assert.equal(result.coupons.filter(c => c.currency === 'credits' && c.amount === 288).length, 25);
 });
 
 test('unauthenticated and non-admin generation denied; amounts are fixed server-side', async () => {
@@ -78,9 +78,10 @@ test('unauthenticated and non-admin generation denied; amounts are fixed server-
   await assert.rejects(f.generateCoupons({ auth: { uid: 'user' } }), e => e.code === 'permission-denied');
   const result = await f.generate({ includeCredits: true, creditAmounts: { multi: 999999, large: -1, small: 0 } });
   for (const currency of ['croins', 'credits']) {
-    assert.equal(result.coupons.filter(c => c.currency === currency && c.amount === 48).length, 1);
-    assert.equal(result.coupons.filter(c => c.currency === currency && c.amount === 96).length, 25);
-    assert.equal(result.coupons.filter(c => c.currency === currency && c.amount === 24).length, 50);
+    const factor = currency === 'credits' ? 3 : 1;
+    assert.equal(result.coupons.filter(c => c.currency === currency && c.amount === 48 * factor).length, 1);
+    assert.equal(result.coupons.filter(c => c.currency === currency && c.amount === 96 * factor).length, 25);
+    assert.equal(result.coupons.filter(c => c.currency === currency && c.amount === 24 * factor).length, 50);
   }
 });
 

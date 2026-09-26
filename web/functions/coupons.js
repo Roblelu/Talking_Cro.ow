@@ -11,7 +11,7 @@ function createCouponHandlers({ db, HttpsError, FieldValue, Timestamp }) {
     const plans = [{ currency: 'croins', amounts: { multi: 48, large: 96, small: 24 } }];
     // Older clients still receive the original Croins-only batch.
     if (input.includeCredits === true) {
-      const amounts = { multi: 48, large: 96, small: 24 };
+      const amounts = { multi: 144, large: 288, small: 72 };
       plans.push({ currency: 'credits', amounts });
     }
     const batch = db.batch();

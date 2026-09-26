@@ -1,43 +1,68 @@
 @echo off
 setlocal
-echo ==========================================================
-echo Actualizador de Talking Crow (Auto-Updater)
-echo ==========================================================
-echo.
-for /f "delims=" %%I in ('powershell -noprofile -command "(Get-Content frontend\package.json | ConvertFrom-Json).version"') do set CURRENT_VERSION=%%I
-echo [INFO] La version actual es: %CURRENT_VERSION%
-echo.
-set /p NEW_VERSION="Ingresa la nueva version (ejemplo: 1.1.4): "
-
-echo.
-echo ==========================================================
-echo 1. Actualizando package.json con la version %NEW_VERSION%...
-echo ==========================================================
-cd frontend
-call npm version %NEW_VERSION% --no-git-tag-version
-cd ..
-
-echo.
-echo ==========================================================
-echo 2. Empaquetando nueva version...
-echo ==========================================================
-call package_app.bat
-if %errorlevel% neq 0 (
-    echo Error durante el empaquetado.
-    pause
-    exit /b %errorlevel%
+cd /d "%~dp0"
+set "NEW_VERSION=%~1"
+for /f "delims=" %%a in ('node -p "require('./frontend/package.json').version"') do set "OLD_VERSION=%%a"
+if not defined NEW_VERSION (
+    echo ==============================================
+    echo Version actual instalada: %OLD_VERSION%
+    echo ==============================================
+    set /p NEW_VERSION="Version a publicar (ej. 1.3.9): "
 )
 
 echo.
-echo ==========================================================
-echo 3. Creando Release en GitHub y subiendo archivos...
-echo ==========================================================
-echo (Asegurate de estar autenticado en GitHub CLI 'gh auth login' con la cuenta de Roblelu)
-gh release create v%NEW_VERSION% "frontend\dist_electron\Talking_Cro.ow_%NEW_VERSION%.exe" "frontend\dist_electron\Talking_Cro.ow_%NEW_VERSION%.exe.blockmap" "frontend\dist_electron\latest.yml" --title "Talking Crow v%NEW_VERSION%" --notes "Actualizacion menor."
-if %errorlevel% neq 0 (
-    echo Ocurrio un error al subir los archivos a GitHub.
+echo [1] Actualizando version interna...
+cd frontend
+call npm version %NEW_VERSION% --no-git-tag-version --allow-same-version
+if errorlevel 1 (
+    echo Error al actualizar package.json.
     pause
-    exit /b %errorlevel%
+    exit /b 1
+)
+cd ..
+
+echo.
+echo [2] Empaquetando la aplicacion...
+call package_app.bat
+if errorlevel 1 (
+    echo Error durante el empaquetado.
+    pause
+    exit /b 1
+)
+
+set "ARTIFACT_DIR=frontend\dist_electron\%NEW_VERSION%"
+if not exist "%ARTIFACT_DIR%\Talking_Cro.ow_%NEW_VERSION%.exe" (
+    echo No se encontro el instalador generado.
+    pause
+    exit /b 1
+)
+if not exist "%ARTIFACT_DIR%\latest.yml" (
+    echo No se encontro el archivo latest.yml.
+    pause
+    exit /b 1
+)
+
+echo.
+echo [3] Verificando seguridad del instalador...
+python verify_release.py "%ARTIFACT_DIR%" %NEW_VERSION%
+if errorlevel 1 (
+    echo La verificacion de seguridad fallo. Credenciales o archivos invalidos.
+    pause
+    exit /b 1
+)
+
+echo.
+echo [4] Subiendo actualizacion a GitHub...
+set "NOTES_ARG=--notes "Actualizacion menor.""
+if exist "references\release-%NEW_VERSION%.md" (
+    set "NOTES_ARG=--notes-file "references\release-%NEW_VERSION%.md""
+)
+
+gh release create v%NEW_VERSION% "%ARTIFACT_DIR%\Talking_Cro.ow_%NEW_VERSION%.exe" "%ARTIFACT_DIR%\Talking_Cro.ow_%NEW_VERSION%.exe.blockmap" "%ARTIFACT_DIR%\latest.yml" --repo Roblelu/Talking_Cro.ow --title "Talking Crow v%NEW_VERSION%" %NOTES_ARG% %2
+if errorlevel 1 (
+    echo Ocurrio un error al subir a GitHub. Comprueba tu conexion o tu sesion de gh.
+    pause
+    exit /b 1
 )
 
 echo.
@@ -46,3 +71,4 @@ echo EXITOSO! La actualizacion v%NEW_VERSION% esta en linea.
 echo Los usuarios la descargaran automaticamente.
 echo ==========================================================
 pause
+exit /b 0

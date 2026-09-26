@@ -235,14 +235,14 @@ export default function AdminLedger() {
 
         <div style={{ marginTop: '40px', padding: '20px', border: '1px solid rgba(0, 255, 255, 0.3)', borderRadius: '8px', background: 'rgba(0, 255, 255, 0.05)' }}>
           <h3 className="neon-text-blue" style={{ margin: '0 0 15px 0' }}>Generador de Cupones Promocionales</h3>
-          <p style={{ color: 'var(--text-secondary)' }}>Cada lote incluye 76 cupones de Croins (1 multi de 48, 25 de 96 y 50 de 24) y 76 cupones de créditos para TTS normal con las mismas cantidades. Todos vencen en 24 horas; cada multi permite 25 usuarios distintos.</p>
+          <p style={{ color: 'var(--text-secondary)' }}>Cada lote incluye 76 cupones de Croins (1 multi de 48, 25 de 96 y 50 de 24) y 76 cupones de créditos para TTS normal con el triple de saldo: 1 multi de 144, 25 de 288 y 50 de 72. Todos vencen en 24 horas; cada multi permite 25 usuarios distintos.</p>
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
             <button 
               className="btn-neon"
               disabled={generatingCoupons} 
               onClick={async () => {
                 if (generatingCoupons) return;
-                if (!window.confirm('Se crearán 152 cupones: para cada saldo, 1 multi de 48, 25 de 96 y 50 de 24. ¿Continuar?')) return;
+                if (!window.confirm('Se crearán 152 cupones: Croins: 1 multi de 48, 25 de 96 y 50 de 24. Créditos: 1 multi de 144, 25 de 288 y 50 de 72. ¿Continuar?')) return;
                 setGeneratingCoupons(true);
                 try {
                   const generateCoupons = httpsCallable(functions, 'generateCoupons');

@@ -28,6 +28,35 @@ WebDefaults.tiktok_sign_api_key = None
 import database
 import tts_engine
 import secrets
+from collections import deque
+import hashlib
+import time
+import asyncio
+
+processed_event_signatures = deque(maxlen=2000)
+last_tiktok_activity = time.time()
+
+def is_duplicate(event, evt_type: str) -> bool:
+    try:
+        evt_id = getattr(event, 'msgId', getattr(event, 'id', getattr(event, 'log_id', getattr(event, 'gift_id', None))))
+        if not evt_id:
+            user = getattr(event.user, 'unique_id', getattr(event.user, 'nickname', 'user'))
+            if evt_type == "comment":
+                content_str = getattr(event, 'comment', '')
+            elif evt_type == "gift":
+                content_str = getattr(event.gift, 'name', '') + str(getattr(event, 'repeat_count', 1))
+            else:
+                content_str = str(time.time())
+            evt_id = hashlib.md5(f"{user}_{content_str}".encode('utf-8')).hexdigest()
+        signature = f"{evt_type}_{evt_id}"
+        if signature in processed_event_signatures:
+            return True
+        processed_event_signatures.append(signature)
+        return False
+    except Exception as e:
+        print("[Anti-Dup] Error generando firma:", e)
+        return False
+
 from runtime_paths import get_data_dir
 
 def is_compiled():
@@ -355,8 +384,8 @@ class TikTokConnectRequest(BaseModel):
 active_tiktok_client = None
 tiktok_task = None
 
-@app.post("/api/tiktok/connect", dependencies=[Depends(verify_token)])
-async def connect_tiktok(req: TikTokConnectRequest):
+async def _internal_connect_tiktok(username: str):
+    req = TikTokConnectRequest(username=username)
     """
     Establece la conexión con el stream de TikTok Live usando TikTokLiveClient.
     Maneja la inyección de sesión para evitar bloqueos antibot, obtiene la clave de firma,
@@ -404,7 +433,8 @@ async def connect_tiktok(req: TikTokConnectRequest):
         
         @client.on(ConnectEvent)
         async def on_connect(event: ConnectEvent):
-            global live_start_time
+            global live_start_time, last_tiktok_activity
+            last_tiktok_activity = time.time()
             live_start_time = time.time()
             print(f"[TikTok] Conectado exitosamente. Start time: {live_start_time}")
             
@@ -452,6 +482,10 @@ async def connect_tiktok(req: TikTokConnectRequest):
 
         @client.on(CommentEvent)
         async def on_comment(event: CommentEvent):
+            global last_tiktok_activity
+            last_tiktok_activity = time.time()
+            if is_duplicate(event, "comment"):
+                return
             # TC-19: Print de PII removido
             clean_msg = is_valid_and_clean_message(event.comment)
             clean_uname = is_valid_and_clean_message(event.user.nickname) or "Usuario"
@@ -518,6 +552,10 @@ async def connect_tiktok(req: TikTokConnectRequest):
 
         @client.on(GiftEvent)
         async def on_gift(event: GiftEvent):
+            global last_tiktok_activity
+            last_tiktok_activity = time.time()
+            if is_duplicate(event, "gift"):
+                return
             try:
                 img_url = None
                 try:
@@ -567,6 +605,36 @@ async def connect_tiktok(req: TikTokConnectRequest):
     except Exception as e:
         return {"status": "error", "message": "No se pudo enlazar el directo. Inténtalo de nuevo."}
 
+
+watchdog_task_ref = None
+
+async def connection_watchdog(username: str):
+    global active_tiktok_client, last_tiktok_activity
+    while True:
+        await asyncio.sleep(10)
+        if active_tiktok_client and getattr(active_tiktok_client, 'connected', False):
+            # Si lleva más de 120 segundos sin un evento (Ping, Mensaje, Regalo)
+            if time.time() - last_tiktok_activity > 120:
+                print("[Watchdog] Conexión zombi detectada (>120s sin actividad). Reconectando silenciosamente...")
+                try:
+                    await active_tiktok_client.disconnect()
+                except:
+                    pass
+                active_tiktok_client = None
+                # Reconectar automáticamente
+                await _internal_connect_tiktok(username)
+                break # terminamos este ciclo porque _internal_connect_tiktok creará un nuevo watchdog
+
+@app.post("/api/tiktok/connect", dependencies=[Depends(verify_token)])
+async def connect_tiktok(req: TikTokConnectRequest):
+    global watchdog_task_ref
+    if watchdog_task_ref and not watchdog_task_ref.done():
+        watchdog_task_ref.cancel()
+    
+    res = await _internal_connect_tiktok(req.username)
+    watchdog_task_ref = asyncio.create_task(connection_watchdog(req.username))
+    return res
+
 @app.post("/api/tiktok/disconnect", dependencies=[Depends(verify_token)])
 async def disconnect_tiktok():
     global active_tiktok_client
@@ -601,6 +669,19 @@ def set_tts_state(state: TTSState):
     tts_global_enabled = state.enabled
     tts_required_gift = state.required_gift if state.required_gift else "All"
     return {"status": "ok", "enabled": tts_global_enabled, "required_gift": tts_required_gift}
+
+class VoiceSessionRequest(BaseModel):
+    token: str = ""
+    region: str = "eastus"
+    expiresIn: int = 0
+
+@app.post("/api/tts/session", dependencies=[Depends(verify_token)])
+def set_voice_session(req: VoiceSessionRequest):
+    if req.region != "eastus" or len(req.token) > 20000 or not 0 <= req.expiresIn <= 600:
+        raise HTTPException(status_code=400, detail="Autorización de voz inválida.")
+    import tts_engine
+    tts_engine.set_voice_session(req.token, req.region, req.expiresIn)
+    return {"status": "ok"}
 
 class TTSTestRequest(BaseModel):
     text: str

@@ -18,6 +18,7 @@ VOICES = ('es-MX-DaliaNeural', 'es-MX-JorgeNeural', 'es-ES-ElviraNeural', 'es-ES
 
 class VoiceSelectionTests(unittest.TestCase):
     def synthesize(self, voice, rate, volume):
+        engine.set_voice_session('test-token', 'eastus', 540)
         captured = {}
         config = SimpleNamespace(set_speech_synthesis_output_format=lambda value: None)
         result = SimpleNamespace(reason=engine.speechsdk.ResultReason.SynthesizingAudioCompleted)

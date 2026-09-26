@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, session, shell, powerSaveBlocker } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -64,11 +64,10 @@ async function startLocalServer() {
 
 function spawnBackend() {
   if (app.isPackaged) {
-    const pythonExe = path.join(getBackendDir(), 'python', 'python.exe');
-    const scriptPath = path.join(getBackendDir(), 'app.py');
+    const exePath = path.join(getBackendDir(), 'app.exe');
     
-    if (fs.existsSync(pythonExe) && fs.existsSync(scriptPath)) {
-      backendProcess = spawn(pythonExe, [scriptPath], {
+    if (fs.existsSync(exePath)) {
+      backendProcess = spawn(exePath, [], {
         cwd: getBackendDir(),
         env: { ...process.env, TALKING_CROW_DATA_DIR: getBackendDataDir(), TALKING_CROW_PORT: '8763', PYTHONUNBUFFERED: '1' },
         detached: false, // We want it to be a child process
@@ -82,7 +81,7 @@ function spawnBackend() {
       });
       backendProcess.on('error', (err) => {
           const { dialog } = require('electron');
-          dialog.showErrorBox('Error al Arrancar', 'No se pudo iniciar python.exe:\n' + err.message);
+          dialog.showErrorBox('Error al Arrancar', 'No se pudo iniciar app.exe:\n' + err.message);
       });
       backendProcess.on('exit', (code) => {
           if (!cleanupStarted && code !== 0 && code !== null) {
@@ -140,6 +139,7 @@ function createWindow() {
     backgroundColor: '#050505',
     title: 'Talking Cro.ow',
     webPreferences: {
+      backgroundThrottling: false,
       nodeIntegration: false,
       contextIsolation: true,
       webviewTag: false,
@@ -177,6 +177,7 @@ function createWindow() {
           height: 700,
           userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
           webPreferences: {
+      backgroundThrottling: false,
             nodeIntegration: false,
             contextIsolation: true
           }
@@ -236,6 +237,7 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(async () => {
+  powerSaveBlocker.start('prevent-app-suspension');
     await startLocalServer();
     spawnBackend();
     createWindow();
@@ -307,6 +309,7 @@ ipcMain.on('open-secondary-window', (event, route) => {
     backgroundColor: '#050505',
     title: allowedSecondaryRoutes.get(route),
     webPreferences: {
+      backgroundThrottling: false,
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')

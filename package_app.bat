@@ -1,40 +1,13 @@
 @echo off
-title Empaquetar Talking Crow (Setup.exe)
-echo ==========================================================
-echo 1. Empaquetando Backend de Python (PyInstaller)...
-echo ==========================================================
-cd backend
-call build_backend.bat
-if %errorlevel% neq 0 (
-    echo Error empaquetando el backend.
-    pause
-    exit /b %errorlevel%
-)
-cd ..
-
-echo.
-echo ==========================================================
-echo 2. Empaquetando Frontend (Electron Builder)...
-echo ==========================================================
+setlocal
+cd /d "%~dp0"
+call backend\build_backend.bat
+if errorlevel 1 exit /b 1
 cd frontend
 call npm run build
-if %errorlevel% neq 0 (
-    echo Error compilando el frontend Vite.
-    pause
-    exit /b %errorlevel%
-)
-
-call npm run electron:build
-if %errorlevel% neq 0 (
-    echo Error empaquetando con Electron Builder.
-    pause
-    exit /b %errorlevel%
-)
-cd ..
-
-echo.
-echo ==========================================================
-echo EXITO!
-echo El instalador final esta en:
-echo frontend\dist_electron\Talking_Cro.ow_1.0.0.exe
-echo ==========================================================
+if errorlevel 1 exit /b 1
+for /f "delims=" %%I in ('node -p "require('./package.json').version"') do set APP_VERSION=%%I
+call npx electron-builder --win --publish never --config.directories.output=dist_electron/%APP_VERSION%
+if errorlevel 1 exit /b 1
+echo Instalador generado en frontend\dist_electron\%APP_VERSION%
+exit /b 0
