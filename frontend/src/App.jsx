@@ -1,9 +1,8 @@
-﻿import { startBaseVoiceSession } from './services/baseVoiceSession.mjs';
 import React, { useState, useEffect, useRef } from 'react';
 import './index.css';
 import logoImg from './assets/logo.png';
 import titleImg from './assets/title.png';
-// Para mayor seguridad (TC-09), obtenemos ipcRenderer a travÃ©s del contextBridge en lugar de require
+// Para mayor seguridad (TC-09), obtenemos ipcRenderer a través del contextBridge en lugar de require
 const { ipcRenderer } = window.electron ? window.electron : { ipcRenderer: null };
 
 import AccountPage from './pages/AccountPage';
@@ -51,17 +50,17 @@ const Modal = ({ isOpen, title, message, type, onConfirm, onCancel, confirmText 
 const exampleScripts = [
   {
     name: "Jumpscare (Pantalla Completa)",
-    icon: "ðŸ‘»",
+    icon: "👻",
     code: `import os\\nimport time\\n\\n# ======= CONFIGURACION =======\\nIMAGEN_PATH = "C:\\\\\\\\ruta\\\\\\\\a\\\\\\\\tu\\\\\\\\imagen_terror.png"\\nAUDIO_PATH = "C:\\\\\\\\ruta\\\\\\\\a\\\\\\\\tu\\\\\\\\grito.wav"\\nTIEMPO_EN_PANTALLA = 1.5 # Segundos\\n# =============================\\n\\ntry:\\n    import pygame\\n    pygame.init()\\n    pygame.mixer.init()\\n    \\n    pygame.mixer.Sound(AUDIO_PATH).play()\\n    \\n    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)\\n    img = pygame.image.load(IMAGEN_PATH)\\n    img = pygame.transform.scale(img, screen.get_size())\\n    screen.blit(img, (0, 0))\\n    pygame.display.flip()\\n    \\n    time.sleep(TIEMPO_EN_PANTALLA)\\n    pygame.quit()\\nexcept Exception as e:\\n    print("Error:", e)\\n`
   },
   {
-    name: "Rocola Shift (Siguiente CanciÃ³n)",
-    icon: "ðŸŽµ",
+    name: "Rocola Shift (Siguiente Canción)",
+    icon: "🎵",
     code: `import os\\n\\n# ======= CONFIGURACION =======\\n# Este script usa comandos de teclado multimedia para pasar a la siguiente cancion.\\n# Spotify o tu reproductor deben estar abiertos.\\n# =============================\\n\\ntry:\\n    import pyautogui\\n    pyautogui.press('nexttrack')\\n    print("Cancion cambiada.")\\nexcept ImportError:\\n    print("Falta instalar pyautogui: pip install pyautogui")\\n`
   },
   {
     name: "Pistolitas (Efecto de Sonido)",
-    icon: "ðŸ”«",
+    icon: "🔫",
     code: `import os\\n\\n# ======= CONFIGURACION =======\\nAUDIO_PATH = "C:\\\\\\\\ruta\\\\\\\\a\\\\\\\\tu\\\\\\\\sonido_pew_pew.wav"\\n# =============================\\n\\ntry:\\n    import pygame\\n    pygame.mixer.init()\\n    sound = pygame.mixer.Sound(AUDIO_PATH)\\n    sound.set_volume(1.0)\\n    sound.play()\\n    while pygame.mixer.get_busy():\\n        pygame.time.Clock().tick(10)\\nexcept Exception as e:\\n    print("Error:", e)\\n`
   }
 ];
@@ -134,7 +133,7 @@ const AudioPlayItem = ({ audio, isFirst, inQueue, handlePlayAudio, handleRejectA
       <div style={{ margin: '8px 0', color: 'var(--text-primary)', fontStyle: 'italic' }}>"{audio.message.replace(/\[.*?\]/g, '')}"</div>
       {audio.isDowngraded && (
           <div style={{ fontSize: '0.85rem', color: '#ffaa00', marginBottom: '8px' }}>
-              âš ï¸ Este usuario intentÃ³ usar el comando eco pero no ha cargado su voz para ser clonada.
+              ⚠️ Este usuario intentó usar el comando eco pero no ha cargado su voz para ser clonada.
           </div>
       )}
       
@@ -156,7 +155,7 @@ const AudioPlayItem = ({ audio, isFirst, inQueue, handlePlayAudio, handleRejectA
            }} 
            onClick={() => { setActionTaken('play'); handlePlayRef.current(audio.id, audio.audio_url); }}
          >
-           {actionTaken === 'play' ? (inQueue ? 'ðŸ”Š Reproduciendo...' : 'âœ… Reproducido') : 'â–¶ Reproducir'}
+           {actionTaken === 'play' ? (inQueue ? '🔊 Reproduciendo...' : '✅ Reproducido') : '▶ Reproducir'}
          </button>
          <button 
            className="btn-neon btn-neon-red" 
@@ -164,7 +163,7 @@ const AudioPlayItem = ({ audio, isFirst, inQueue, handlePlayAudio, handleRejectA
            style={{ flex: 1, padding: '5px', fontSize: '0.85rem', opacity: hasActed ? 0.5 : 1, cursor: hasActed ? 'default' : 'pointer' }} 
            onClick={() => { setActionTaken('reject'); handleRejectAudio(audio.id); }}
          >
-           {actionTaken === 'reject' ? 'âœ– Rechazado' : 'âœ– Rechazar'}
+           {actionTaken === 'reject' ? '✖ Rechazado' : '✖ Rechazar'}
          </button>
       </div>
     </div>
@@ -187,18 +186,18 @@ function App() {
 
   useEffect(() => {
     // El custom token confirma identidad, no que Firestore tenga perfil. Si una
-    // cuenta quedÃ³ incompleta, la app dirige al flujo web que puede repararla.
+    // cuenta quedó incompleta, la app dirige al flujo web que puede repararla.
     if (currentUser && profileStatus === 'missing' && activeView !== 'register') {
       setActiveView('register');
     }
   }, [activeView, currentUser, profileStatus]);
   
-  // TC: Asignar crÃ©ditos gratuitos de manera segura (Backend)
+  // TC: Asignar créditos gratuitos de manera segura (Backend)
   useEffect(() => {
     if (currentUser && userData) {
       if (userData.has_received_app_credits === undefined) {
         const claimCredits = httpsCallable(functions, 'claimWelcomeCredits');
-        claimCredits().catch(err => console.error("Error asignando crÃ©ditos de bienvenida:", err));
+        claimCredits().catch(err => console.error("Error asignando créditos de bienvenida:", err));
       }
     }
   }, [currentUser, userData]);
@@ -206,10 +205,10 @@ function App() {
   const getHeaderTitle = () => {
     switch(activeView) {
       case 'dmwebview': return 'WEB VIEWER';
-      case 'subscription': return 'SuscripciÃ³n y Pagos';
+      case 'subscription': return 'Suscripción y Pagos';
       case 'support': return 'Contacto y Soporte';
-      case 'port': return 'ConfiguraciÃ³n de Puerto';
-      case 'terms': return 'TÃ©rminos y Condiciones';
+      case 'port': return 'Configuración de Puerto';
+      case 'terms': return 'Términos y Condiciones';
       case 'account': return 'Cuenta Talking Cro.ow';
       default: return 'Panel de Control Principal';
     }
@@ -227,12 +226,12 @@ function App() {
   const getDbFromPercentage = (pctStr) => {
      const val = parseInt(pctStr.replace('%','').replace('+','')) || 0;
      if (val <= 0) return Math.round((val / 100) * 60); 
-     return Math.round((val / 125) * 15);
+     return Math.round((val / 100) * 12);
   };
 
   const getPercentageFromDb = (dbVal) => {
      const db = parseFloat(dbVal);
-     const pct = db <= 0 ? Math.round((db / 60) * 100) : Math.round((db / 15) * 125);
+     const pct = db <= 0 ? Math.round((db / 60) * 100) : Math.round((db / 12) * 100);
      return (pct >= 0 ? '+' : '') + pct + '%';
   };
 
@@ -290,7 +289,7 @@ function App() {
           } else {
             if (isMounted) {
               setIsBackendReady(false);
-              setBackendError(`El motor respondiÃ³ HTTP ${res.status}. Reintentando conexiÃ³nâ€¦`);
+              setBackendError(`El motor respondió HTTP ${res.status}. Reintentando conexión…`);
               retryTimer = setTimeout(checkBackend, 2000);
             }
           }
@@ -298,7 +297,7 @@ function App() {
         .catch(err => {
           if (isMounted) {
             setIsBackendReady(false);
-            if (Date.now() - startedAt > 15000) setBackendError('No se puede comunicar con el motor local. Reintentandoâ€¦');
+            if (Date.now() - startedAt > 15000) setBackendError('No se puede comunicar con el motor local. Reintentando…');
             retryTimer = setTimeout(checkBackend, 2000);
           }
         });
@@ -432,7 +431,7 @@ function App() {
     const gain = ctx.createGain();
 
     osc.type = 'sine'; // Tono de censura limpio
-    osc.frequency.setValueAtTime(1000, ctx.currentTime); // 1000 Hz es el estÃ¡ndar de TV
+    osc.frequency.setValueAtTime(1000, ctx.currentTime); // 1000 Hz es el estándar de TV
     gain.gain.setValueAtTime(0.3, ctx.currentTime); // Volumen al 30%
 
     osc.connect(gain);
@@ -452,28 +451,6 @@ function App() {
   const [newGiftScript, setNewGiftScript] = useState('');
   const [isTiktokConnected, setIsTiktokConnected] = useState(false);
   const [isBackendReady, setIsBackendReady] = useState(false);
-  useEffect(() => {
-    if (!isBackendReady) return;
-    let stopped = false;
-    let stopRefresh;
-    const send = async (data) => {
-      const response = await fetch('http://127.0.0.1:8763/api/tts/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${window.API_KEY || sessionStorage.getItem('local_api_key') || ''}` },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('No se pudo preparar la voz.');
-    };
-    send({ token: '', expiresIn: 0 }).then(() => {
-      if (stopped || !currentUser || !(userData?.creator_credits > 0 || userData?.isAdmin)) return;
-      stopRefresh = startBaseVoiceSession({
-        authorize: httpsCallable(functions, 'getBaseVoiceToken'), send,
-        onError: () => console.warn('La autorizaciÃ³n de voz se reintentarÃ¡ automÃ¡ticamente.'),
-      });
-    }).catch(() => console.warn('No se pudo iniciar la sesiÃ³n de voz.'));
-    return () => { stopped = true; stopRefresh?.(); };
-  }, [isBackendReady, currentUser?.uid, (userData?.creator_credits || 0) > 0, userData?.isAdmin]);
-
   const [isChatReady, setIsChatReady] = useState(false);
   const [backendError, setBackendError] = useState('');
   const [chatError, setChatError] = useState('');
@@ -484,12 +461,12 @@ function App() {
     return '@';
   });
 
-  // [DOCUMENTACIÃ“N EXTREMA: SOLUCIÃ“N A STALE CLOSURES EN EVENTOS SSE]
-  // Se usan Refs (currentUserRef, userDataRef, tiktokUsernameRef) porque la funciÃ³n de callback
-  // del EventSource (initSSE) se registra sÃ³lo una vez y crea un closure (clausura) sobre el estado inicial.
-  // Si usÃ¡ramos el estado directamente (currentUser, etc.), la callback verÃ­a el valor obsoleto.
-  // Con useRef y useEffect, mantenemos una referencia mutable garantizando acceso al valor mÃ¡s reciente
-  // sin necesidad de reinicializar la conexiÃ³n SSE en cada cambio de estado, lo cual cortarÃ­a la conexiÃ³n del live.
+  // [DOCUMENTACIÓN EXTREMA: SOLUCIÓN A STALE CLOSURES EN EVENTOS SSE]
+  // Se usan Refs (currentUserRef, userDataRef, tiktokUsernameRef) porque la función de callback
+  // del EventSource (initSSE) se registra sólo una vez y crea un closure (clausura) sobre el estado inicial.
+  // Si usáramos el estado directamente (currentUser, etc.), la callback vería el valor obsoleto.
+  // Con useRef y useEffect, mantenemos una referencia mutable garantizando acceso al valor más reciente
+  // sin necesidad de reinicializar la conexión SSE en cada cambio de estado, lo cual cortaría la conexión del live.
   const currentUserRef = useRef(currentUser);
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
   
@@ -528,34 +505,34 @@ function App() {
   const [donators, setDonators] = useState([]);
   
   const [sounds, setSounds] = useState([
-    { icon: 'ðŸ¦â€â¬›', name: 'Cuervo', url: './sounds/cuervo.wav' }, 
-    { icon: 'ðŸ‘', name: 'Aplausos', url: './sounds/aplausos.wav' }, 
-    { icon: 'ðŸ˜‚', name: 'Risas', url: './sounds/trompeta.wav' },
-    { icon: 'ðŸ¦—', name: 'Grillos', url: './sounds/grillos.wav' }, 
-    { icon: 'ðŸ˜²', name: 'Wow!', url: './sounds/wow.wav' }, 
-    { icon: 'ðŸŽº', name: 'Womp Womp', url: './sounds/womp.wav' },
-    { icon: 'ðŸŽ‰', name: 'Ta-Da!', url: './sounds/tada.wav' }
+    { icon: '🐦‍⬛', name: 'Cuervo', url: './sounds/cuervo.wav' }, 
+    { icon: '👏', name: 'Aplausos', url: './sounds/aplausos.wav' }, 
+    { icon: '😂', name: 'Risas', url: './sounds/trompeta.wav' },
+    { icon: '🦗', name: 'Grillos', url: './sounds/grillos.wav' }, 
+    { icon: '😲', name: 'Wow!', url: './sounds/wow.wav' }, 
+    { icon: '🎺', name: 'Womp Womp', url: './sounds/womp.wav' },
+    { icon: '🎉', name: 'Ta-Da!', url: './sounds/tada.wav' }
   ]);
   const [stickers, setStickers] = useState([
-    { icon: 'â¤ï¸', name: 'CorazÃ³n', url: './stickers/corazon.jpg' }, 
-    { icon: 'â­', name: 'Estrella', url: './stickers/estrella.jpg' }, 
-    { icon: 'ðŸ”¥', name: 'Fuego', url: './stickers/fuego.jpg' },
-    { icon: 'ðŸ±', name: 'Gato', url: './stickers/gato.jpg' }, 
-    { icon: 'ðŸ—¡ï¸', name: 'Espada', url: './stickers/espada.jpg' }, 
-    { icon: 'ðŸ‘‘', name: 'Corona', url: './stickers/corona.jpg' },
-    { icon: 'ðŸ‘»', name: 'Fantasma', url: './stickers/fantasma.jpg' }
+    { icon: '❤️', name: 'Corazón', url: './stickers/corazon.jpg' }, 
+    { icon: '⭐', name: 'Estrella', url: './stickers/estrella.jpg' }, 
+    { icon: '🔥', name: 'Fuego', url: './stickers/fuego.jpg' },
+    { icon: '🐱', name: 'Gato', url: './stickers/gato.jpg' }, 
+    { icon: '🗡️', name: 'Espada', url: './stickers/espada.jpg' }, 
+    { icon: '👑', name: 'Corona', url: './stickers/corona.jpg' },
+    { icon: '👻', name: 'Fantasma', url: './stickers/fantasma.jpg' }
   ]);
 
   const handleDeleteSound = (index, e) => {
     e.preventDefault();
-    if (window.confirm('Â¿Deseas eliminar este Efecto de Sonido?')) {
+    if (window.confirm('¿Deseas eliminar este Efecto de Sonido?')) {
       setSounds(prev => prev.filter((_, i) => i !== index));
     }
   };
 
   const handleDeleteSticker = (index, e) => {
     e.preventDefault();
-    if (window.confirm('Â¿Deseas eliminar este Sticker?')) {
+    if (window.confirm('¿Deseas eliminar este Sticker?')) {
       setStickers(prev => prev.filter((_, i) => i !== index));
     }
   };
@@ -669,22 +646,22 @@ function App() {
                     let cleanMessage = data.message;
                     
                     if (cleanMessage !== '') {
-                        // TC-14: Obtenemos el token de autenticaciÃ³n.
-                        // Nota: Al usar httpsCallable, Firebase Web SDK envÃ­a automÃ¡ticamente
+                        // TC-14: Obtenemos el token de autenticación.
+                        // Nota: Al usar httpsCallable, Firebase Web SDK envía automáticamente
                         // el token en el header HTTP 'Authorization: Bearer <token>'.
-                        // Lo obtenemos explÃ­citamente y lo encadenamos para cumplir con las directrices de seguridad.
+                        // Lo obtenemos explícitamente y lo encadenamos para cumplir con las directrices de seguridad.
                         currentUserRef.current.getIdToken().then(token => {
                             const processTTS = httpsCallable(functions, 'processTTSMessage', { timeout: 150000 });
                             processTTS({ 
                                 tiktok_username: data.uniqueId || cleanUsername, 
                                 message: cleanMessage
                             }).then(result => {
-                                if (result.data.censored) setToastMessage(result.data.charged ? 'Mensaje Eco censurado por infracciÃ³n grave. Se cobraron los Croins correspondientes.' : 'El mensaje Eco fue bloqueado por el filtro.');
+                                if (result.data.censored) setToastMessage(result.data.charged ? 'Mensaje Eco censurado por infracción grave. Se cobraron los Croins correspondientes.' : 'El mensaje Eco fue bloqueado por el filtro.');
                             }).catch(err => {
                                 setToastMessage(ecoErrorMessage(err));
                             });
                         }).catch(err => {
-                            console.error("Error obteniendo el token de autenticaciÃ³n:", err);
+                            console.error("Error obteniendo el token de autenticación:", err);
                         });
                     }
                 }
@@ -747,7 +724,7 @@ function App() {
           setToastMessage('No se pudo leer el audio Eco recibido.');
         }
       });
-    }, () => setToastMessage('No se pudo recibir la cola de voces Eco. Revisa tu sesiÃ³n y conexiÃ³n.'));
+    }, () => setToastMessage('No se pudo recibir la cola de voces Eco. Revisa tu sesión y conexión.'));
 
     return () => unsubscribe();
   }, [currentUser, isTiktokConnected]);
@@ -775,7 +752,7 @@ function App() {
   const topTikTokGifts = [
     { key: 'Rose', name: 'Rosa', img: 'rose.png' },
     { key: 'TikTok', name: 'TikTok', img: 'tiktok.png' },
-    { key: 'Finger Heart', name: 'CorazÃ³n con los dedos', img: 'finger_heart.png' },
+    { key: 'Finger Heart', name: 'Corazón con los dedos', img: 'finger_heart.png' },
     { key: 'Doughnut', name: 'Dona', img: 'doughnut.png' },
     { key: 'Confetti', name: 'Confeti', img: 'confetti.png' },
     { key: 'Corgi', name: 'Corgi', img: 'corgi.png' },
@@ -846,7 +823,7 @@ function App() {
   const handleDeleteGift = (id, name) => {
     showConfirm(
       "Eliminar Regalo",
-      `Â¿EstÃ¡s seguro de que deseas eliminar el regalo "${name}"?`,
+      `¿Estás seguro de que deseas eliminar el regalo "${name}"?`,
       async () => {
         try {
           const API_BASE = 'http://127.0.0.1:8763';
@@ -862,12 +839,12 @@ function App() {
   const handleConnect = async () => {
     if (!isBackendReady || !isChatReady) return;
     if (!currentUser) {
-       showConfirm("Acceso Denegado", "Debes iniciar sesiÃ³n con tu cuenta de Talking Cro.ow antes de poder vincular tu canal de TikTok.", () => {});
+       showConfirm("Acceso Denegado", "Debes iniciar sesión con tu cuenta de Talking Cro.ow antes de poder vincular tu canal de TikTok.", () => {});
        return;
     }
     if (!tiktokUsername.trim()) return;
     if (!tiktokUsername.trim().startsWith('@')) {
-       showAlert("Aviso", "Es obligatorio incluir el sÃ­mbolo @ al inicio del nombre de usuario de TikTok (ej. @UsuarioTikTok).");
+       showAlert("Aviso", "Es obligatorio incluir el símbolo @ al inicio del nombre de usuario de TikTok (ej. @UsuarioTikTok).");
        return;
     }
     
@@ -882,18 +859,18 @@ function App() {
     const currentData = userDataRef.current;
     if (newGiftValue !== "Abrir Consola") {
       if (currentData && (currentData.tiktok || currentData.tiktok_username)) {
-        let myVerifiedTiktok = (currentData.tiktok || currentData.tiktok_username).replace('@', '').toLowerCase().trim();
-        if (myVerifiedTiktok !== cleanUsername.toLowerCase()) {
-          showAlert("AtenciÃ³n", `Solo puedes vincular el stream de tu propia cuenta verificada (@${myVerifiedTiktok}).`);
-          setIsTiktokConnected(false);
-          return;
-        }
-      } else {
-        showAlert("AtenciÃ³n", "No tienes una cuenta de TikTok verificada. Registra tu cuenta en la ConfiguraciÃ³n de Perfil primero.");
+      let myVerifiedTiktok = (currentData.tiktok || currentData.tiktok_username).replace('@', '').toLowerCase().trim();
+      if (myVerifiedTiktok !== cleanUsername.toLowerCase()) {
+        showAlert("Atención", `Solo puedes vincular el stream de tu propia cuenta verificada (@${myVerifiedTiktok}).`);
         setIsTiktokConnected(false);
         return;
       }
+    } else {
+      showAlert("Atención", "No tienes una cuenta de TikTok verificada. Registra tu cuenta en la Configuración de Perfil primero.");
+      setIsTiktokConnected(false);
+      return;
     }
+  }
     
     fetch(API_BASE + '/api/settings', {
       method: 'POST',
@@ -931,7 +908,7 @@ function App() {
   const handleDisconnect = () => {
     showConfirm(
       "Aviso",
-      "Â¿Quieres desconectar el chat en vivo del Streaming?",
+      "¿Quieres desconectar el chat en vivo del Streaming?",
       async () => {
         const API_BASE = 'http://127.0.0.1:8763';
         try {
@@ -951,13 +928,13 @@ function App() {
   };
 
   const handlePlayAudio = (id, url) => {
-    // [DOCUMENTACIÃ“N EXTREMA: DECISIÃ“N ARQUITECTÃ“NICA CRÃTICA - FLUJO TTS]
-    // Esta funciÃ³n controla la reproducciÃ³n del TTS.
-    // 1. ValidaciÃ³n de crÃ©ditos ANTES de reproducir (anti-abuso).
-    // 2. Si no hay crÃ©ditos, se purga el archivo localmente llamando a DELETE /api/audio/.
-    // 3. Consumo de crÃ©dito asÃ­ncrono (consumeTTSCredit) al iniciar reproducciÃ³n para optimizar latencia.
-    // 4. RetenciÃ³n de archivo por 5 segundos post-reproducciÃ³n para evitar race conditions en OBS.
-    // Â¡NO ALTERAR EL ORDEN DE ESTE FLUJO!
+    // [DOCUMENTACIÓN EXTREMA: DECISIÓN ARQUITECTÓNICA CRÍTICA - FLUJO TTS]
+    // Esta función controla la reproducción del TTS.
+    // 1. Validación de créditos ANTES de reproducir (anti-abuso).
+    // 2. Si no hay créditos, se purga el archivo localmente llamando a DELETE /api/audio/.
+    // 3. Consumo de crédito asíncrono (consumeTTSCredit) al iniciar reproducción para optimizar latencia.
+    // 4. Retención de archivo por 5 segundos post-reproducción para evitar race conditions en OBS.
+    // ¡NO ALTERAR EL ORDEN DE ESTE FLUJO!
     let finalUrl = url;
     let audioData = null;
     if (!finalUrl) {
@@ -968,7 +945,7 @@ function App() {
     }
 
     if ((!audioData || !audioData.isEcoVoice) && (userData?.creator_credits || 0) <= 0) {
-       showConfirm("Sin CrÃ©ditos de Streamer", "Ya no tienes crÃ©ditos para reproducir TTS. Adquiere mÃ¡s en la secciÃ³n de Suscripciones.", () => {});
+       showConfirm("Sin Créditos de Streamer", "Ya no tienes créditos para reproducir TTS. Adquiere más en la sección de Suscripciones.", () => {});
        setAudioQueue(prev => prev.filter(a => a.id !== id));
        if (id) {
            fetch(`http://127.0.0.1:8763/api/audio/${id}`, { 
@@ -982,47 +959,20 @@ function App() {
     if (finalUrl) {
        console.log("Reproduciendo audio id:", id);
        
-       // Consumir 1 crÃ©dito en el servidor (solo si no es Eco Voice pagado por el usuario)
+       // Consumir 1 crédito en el servidor (solo si no es Eco Voice pagado por el usuario)
        if (audioData && !audioData.isEcoVoice) {
            const consumeCredit = httpsCallable(functions, 'consumeTTSCredit');
-           consumeCredit().catch(err => console.error("Error consumiendo crÃ©dito:", err));
+           consumeCredit().catch(err => console.error("Error consumiendo crédito:", err));
        }
 
        const snd = new Audio(finalUrl);
-       snd.crossOrigin = "anonymous";
-       let audioCtx = null;
-       
-       if (audioData?.isEcoVoice) {
-           const AudioContext = window.AudioContext || window.webkitAudioContext;
-           audioCtx = new AudioContext();
-           const source = audioCtx.createMediaElementSource(snd);
-           const gainNode = audioCtx.createGain();
-           
-           const pct = parseInt(ttsVolume.replace('%','').replace('+','')) || 0;
-           const db = pct <= 0 ? (pct / 100) * 60 : (pct / 125) * 15;
-           const linearGain = Math.pow(10, db / 20);
-           gainNode.gain.value = linearGain;
-           
-           source.connect(gainNode);
-           gainNode.connect(audioCtx.destination);
-           
-           if (audioCtx.setSinkId && selectedAudioDeviceTTS !== 'default') {
-               audioCtx.setSinkId(selectedAudioDeviceTTS).catch(err => console.error("setSinkId WebAudio error:", err));
-           }
-           if (audioCtx.state === 'suspended') {
-               audioCtx.resume();
-           }
-       } else {
-           if (snd.setSinkId && selectedAudioDeviceTTS !== 'default') {
-             snd.setSinkId(selectedAudioDeviceTTS).catch(err => console.error("setSinkId error:", err));
-           }
+       if (snd.setSinkId && selectedAudioDeviceTTS !== 'default') {
+         snd.setSinkId(selectedAudioDeviceTTS).catch(err => console.error("setSinkId error:", err));
        }
        let playbackFailed = false;
        const onPlaybackFailure = (e) => {
            if (playbackFailed) return;
            playbackFailed = true;
-           if (audioCtx) { audioCtx.close(); }
-           if (audioCtx) { audioCtx.close(); }
            console.error("Error al reproducir el audio HTML5:", e);
            if (audioData?.ecoRequestRef) {
              receivedEcoRequests.current.delete(audioData.ecoRequestRef.path);
@@ -1033,14 +983,12 @@ function App() {
        snd.onerror = onPlaybackFailure;
        snd.play().catch(onPlaybackFailure);
        snd.onended = () => {
-          if (audioCtx) { audioCtx.close(); }
-          if (audioCtx) { audioCtx.close(); }
           if (audioData?.ecoRequestRef) {
             deleteDoc(audioData.ecoRequestRef).then(() => {
               receivedEcoRequests.current.delete(audioData.ecoRequestRef.path);
             }).catch(() => setToastMessage('El audio se reprodujo, pero no se pudo confirmar su entrega.'));
           }
-          // Limpiar el audio del servidor 5 segundos despuÃ©s de ser escuchado
+          // Limpiar el audio del servidor 5 segundos después de ser escuchado
           if (id && !audioData?.isEcoVoice) {
              setTimeout(() => {
                  fetch(`http://127.0.0.1:8763/api/audio/${id}`, { 
@@ -1085,21 +1033,21 @@ function App() {
         await navigator.clipboard.writeText(link);
         
         // Lanzar Toast Notification
-        setToastMessage("InvitaciÃ³n copiada en el portapapeles.");
+        setToastMessage("Invitación copiada en el portapapeles.");
         setTimeout(() => setToastMessage(null), 4000);
         
         // Cambiar a vista DMWebView
         setDmUrl(`https://www.tiktok.com/@${username}`);
         setActiveView('dmwebview');
         
-        // Marcar donador como leÃ­do si existe
+        // Marcar donador como leído si existe
         setDonators(prev => prev.map(d => d.username === username ? { ...d, isNew: false } : d));
       } else {
         showAlert("Error", data.message);
       }
     } catch (err) {
       console.error('Error al generar enlace:', err);
-      showAlert("Error", 'Error de conexiÃ³n con el Backend de Python.');
+      showAlert("Error", 'Error de conexión con el Backend de Python.');
     }
   };
 
@@ -1123,7 +1071,7 @@ function App() {
         
         <div className="navbar-right navbar-side" ref={dropdownRef} style={{ display: 'flex', alignItems: 'center', gap: '20px', justifyContent: 'flex-end', position: 'relative' }}>
           
-          {/* Indicador de Croins o BotÃ³n Iniciar SesiÃ³n */}
+          {/* Indicador de Croins o Botón Iniciar Sesión */}
           {currentUser ? (
             <div style={{ position: 'relative' }} ref={walletRef}>
               <button 
@@ -1132,7 +1080,7 @@ function App() {
                 onClick={() => setIsWalletOpen(!isWalletOpen)}
                 title="Mi Billetera"
               >
-                <span style={{ fontSize: '1.4rem', transform: 'translateY(-3px)' }}>ðŸ’³</span>
+                <span style={{ fontSize: '1.4rem', transform: 'translateY(-3px)' }}>💳</span>
                 <span className="neon-text-green" style={{ fontWeight: 'bold', letterSpacing: '1px', transform: 'translateY(1px)' }}>WALLET</span>
               </button>
               
@@ -1147,7 +1095,7 @@ function App() {
                       style={{ background: 'rgba(0,255,204,0.1)', border: '1px solid var(--neon-green)', width: '100%', justifyContent: 'flex-start', padding: '8px 15px', boxSizing: 'border-box' }}
                       onClick={() => { setActiveView('subscription'); setIsWalletOpen(false); }}
                     >
-                      <span style={{ fontSize: '1.2rem', marginRight: '10px' }}>ðŸª™</span>
+                      <span style={{ fontSize: '1.2rem', marginRight: '10px' }}>🪙</span>
                       <span className="neon-text-green" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{((userData?.purchased_croins || 0) + (userData?.promotional_croins || 0))} Croins</span>
                     </div>
                     
@@ -1157,8 +1105,8 @@ function App() {
                         style={{ background: 'rgba(255,117,24,0.1)', border: '1px solid var(--neon-orange)', width: '100%', justifyContent: 'flex-start', padding: '8px 15px', boxSizing: 'border-box' }}
                         onClick={() => { setActiveView('subscription'); setIsWalletOpen(false); }}
                       >
-                        <span style={{ fontSize: '1.2rem', marginRight: '10px' }}>âœ¨</span>
-                        <span className="neon-text-orange" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{userData?.creator_credits || 0} CrÃ©ditos</span>
+                        <span style={{ fontSize: '1.2rem', marginRight: '10px' }}>✨</span>
+                        <span className="neon-text-orange" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{userData?.creator_credits || 0} Créditos</span>
                       </div>
                     )}
 
@@ -1174,7 +1122,7 @@ function App() {
                         setIsWalletOpen(false);
                       }}
                     >
-                      <span style={{ fontSize: '1.2rem', marginRight: '10px' }}>ðŸ’°</span>
+                      <span style={{ fontSize: '1.2rem', marginRight: '10px' }}>💰</span>
                       <span className="neon-text-purple" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
                         {((userData?.creator_earnings || 0) * (28 / 12)).toFixed(2)} Croin Cash
                       </span>
@@ -1184,15 +1132,15 @@ function App() {
               )}
             </div>
           ) : (
-            <button className="btn-neon" style={{ padding: '8px 15px' }} onClick={() => setActiveView('login')}>Iniciar SesiÃ³n</button>
+            <button className="btn-neon" style={{ padding: '8px 15px' }} onClick={() => setActiveView('login')}>Iniciar Sesión</button>
           )}
 
           {currentUser && (
             <>
               <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-                <img src={currentUser?.photoURL || './avatar_user.png'} alt="MenÃº de Usuario" className="avatar-placeholder" title="MenÃº de Usuario" style={{ objectFit: 'cover' }} />
+                <img src={currentUser?.photoURL || './avatar_user.png'} alt="Menú de Usuario" className="avatar-placeholder" title="Menú de Usuario" style={{ objectFit: 'cover' }} />
                 <button className="settings-gear-btn" title="Ajustes" style={{ pointerEvents: 'none' }}>
-                  âš™ï¸
+                  ⚙️
                   {isMissingFields && <span style={{ position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
                 </button>
               </div>
@@ -1210,16 +1158,16 @@ function App() {
                          {isMissingFields && <span style={{ width: '8px', height: '8px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
                        </div>
                      </li>
-                     <li onClick={() => { setActiveView('subscription'); setIsDropdownOpen(false); }}>SuscripciÃ³n y Pagos</li>
+                     <li onClick={() => { setActiveView('subscription'); setIsDropdownOpen(false); }}>Suscripción y Pagos</li>
 
                      <li onClick={() => { setActiveView('support'); setIsDropdownOpen(false); }}>Contacto y soporte</li>
-                     <li onClick={() => { setActiveView('port'); setIsDropdownOpen(false); }}>ConfiguraciÃ³n de Puerto</li>
-                     <li onClick={() => { setActiveView('terms'); setIsDropdownOpen(false); }}>TÃ©rminos y Condiciones</li>
+                     <li onClick={() => { setActiveView('port'); setIsDropdownOpen(false); }}>Configuración de Puerto</li>
+                     <li onClick={() => { setActiveView('terms'); setIsDropdownOpen(false); }}>Términos y Condiciones</li>
                      <li 
                        style={{ color: '#ff6600', textAlign: 'center', borderTop: '1px solid rgba(255,102,0,0.3)', paddingTop: '12px', marginTop: '8px', fontWeight: 'bold' }} 
                        onClick={async () => { await signOut(auth); setIsDropdownOpen(false); setActiveView('main'); }}
                      >
-                       Cerrar SesiÃ³n
+                       Cerrar Sesión
                      </li>
                      <li 
                        style={{ color: '#ff003c', textAlign: 'center', borderTop: '1px solid rgba(255,0,60,0.3)', paddingTop: '12px', marginTop: '8px', fontWeight: 'bold', textShadow: '0 0 5px rgba(255,0,60,0.5)' }} 
@@ -1235,7 +1183,7 @@ function App() {
         </div>
       </header>
 
-      {/* Tostada de NotificaciÃ³n */}
+      {/* Tostada de Notificación */}
       {toastMessage && (
         <div style={{
           position: 'fixed', bottom: '30px', left: '50%', transform: 'translateX(-50%)',
@@ -1251,14 +1199,14 @@ function App() {
       {activeView === 'main' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '30px', alignItems: 'stretch', flex: 1, minHeight: 0, paddingBottom: '10px' }}>
         
-        {/* Columna 1: ConfiguraciÃ³n de Regalos */}
+        {/* Columna 1: Configuración de Regalos */}
         <section className="panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', minHeight: 0 }}>
           <h2 className="neon-text-orange" style={{ textAlign: 'center', marginBottom: '25px', borderBottom: '1px solid rgba(255, 117, 24, 0.3)', paddingBottom: '10px' }}>
-            ConfiguraciÃ³n de Regalos
+            Configuración de Regalos
           </h2>
           
           <div style={{ marginBottom: '25px' }}>
-            <label style={{ display: 'block', marginBottom: '5px', color: 'var(--text-secondary)' }}>Nombre de tu AcciÃ³n / ReacciÃ³n</label>
+            <label style={{ display: 'block', marginBottom: '5px', color: 'var(--text-secondary)' }}>Nombre de tu Acción / Reacción</label>
             <input type="text" placeholder="Ej. Una flor para otra flor..." value={newGiftName} onChange={e => setNewGiftName(e.target.value)} />
             
             <label style={{ display: 'block', marginBottom: '5px', color: 'var(--text-secondary)' }}>Gatillo (Monedas o Clave de TikTok)</label>
@@ -1276,7 +1224,7 @@ function App() {
                   style={{ flex: 1, minWidth: '140px', margin: 0, padding: '0 15px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   onClick={() => setIsTopGiftsOpen(!isTopGiftsOpen)}
                 >
-                  <span className={`accordion-arrow ${isTopGiftsOpen ? 'open' : ''}`} style={{ marginRight: '6px' }}>â–¶</span>
+                  <span className={`accordion-arrow ${isTopGiftsOpen ? 'open' : ''}`} style={{ marginRight: '6px' }}>▶</span>
                   Top Regalos
                 </button>
               </div>
@@ -1295,7 +1243,7 @@ function App() {
                         }}
                       >
                         <img src={`./gifts/${gift.img}`} alt={gift.name} style={{ width: '24px', height: '24px', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'inline-block'; }} />
-                        <span style={{ display: 'none', fontSize: '1.2rem' }}>ðŸŽ</span>
+                        <span style={{ display: 'none', fontSize: '1.2rem' }}>🎁</span>
                         <span className="dropdown-item-name" style={{ flex: 1 }}>{gift.name}</span>
                         <span className="dropdown-item-key">({gift.key})</span>
                       </button>
@@ -1313,7 +1261,7 @@ function App() {
                   style={{ margin: 0, padding: '4px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', flex: 1, minWidth: '130px', justifyContent: 'center' }}
                   onClick={() => setIsExampleScriptsOpen(!isExampleScriptsOpen)}
                 >
-                  <span className={`accordion-arrow ${isExampleScriptsOpen ? 'open' : ''}`} style={{ marginRight: '5px' }}>â–¶</span>
+                  <span className={`accordion-arrow ${isExampleScriptsOpen ? 'open' : ''}`} style={{ marginRight: '5px' }}>▶</span>
                   Example Scripts
                 </button>
               </div>
@@ -1339,11 +1287,11 @@ function App() {
                 </div>
               </div>
 
-              <textarea placeholder="Pega el cÃ³digo de tu script aquÃ­..." value={newGiftScript} onChange={e => setNewGiftScript(e.target.value)} style={{ flex: 1, minHeight: '120px', resize: 'vertical' }} />
+              <textarea placeholder="Pega el código de tu script aquí..." value={newGiftScript} onChange={e => setNewGiftScript(e.target.value)} style={{ flex: 1, minHeight: '120px', resize: 'vertical' }} />
               
               <div style={{ display: 'flex', justifyContent: 'center', marginTop: '15px' }}>
                 <button className="btn-neon" onClick={handleAddGift}>
-                  AÃ±adir Nuevo Regalo
+                  Añadir Nuevo Regalo
                 </button>
               </div>
             </div>
@@ -1355,7 +1303,7 @@ function App() {
               onClick={() => setIsGiftsOpen(!isGiftsOpen)} 
             >
               <h3 className="neon-text-purple" style={{ margin: 0, fontSize: '1.2rem', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center' }}>
-                <span className={`accordion-arrow ${isGiftsOpen ? 'open' : ''}`}>â–¶</span>
+                <span className={`accordion-arrow ${isGiftsOpen ? 'open' : ''}`}>▶</span>
                 Regalos Activos
               </h3>
             </div>
@@ -1367,8 +1315,8 @@ function App() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontWeight: 'bold' }}>{gift.name}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <span className="neon-text-green">{gift.value} ðŸª™</span>
-                        <button onClick={() => handleDeleteGift(gift.id, gift.name)} style={{ background: 'transparent', border: 'none', color: '#ff003c', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2rem' }}>âœ–</button>
+                        <span className="neon-text-green">{gift.value} 🪙</span>
+                        <button onClick={() => handleDeleteGift(gift.id, gift.name)} style={{ background: 'transparent', border: 'none', color: '#ff003c', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2rem' }}>✖</button>
                       </div>
                     </div>
                     <div className="gift-script-code">
@@ -1390,7 +1338,7 @@ function App() {
               onTouchStart={startCensorBleep}
               onTouchEnd={stopCensorBleep}
             >
-              <span style={{ fontSize: 'clamp(1rem, 2vw, 1.4rem)' }}>ðŸ¤¬</span> 
+              <span style={{ fontSize: 'clamp(1rem, 2vw, 1.4rem)' }}>🤬</span> 
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>CENSURADOR</span>
             </button>
           </div>
@@ -1439,7 +1387,7 @@ function App() {
           >
             {liveEvents.length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginTop: '50px', fontStyle: 'italic', opacity: 0.7 }}>
-                Esperando conexion del mÃ¡s allÃ¡...
+                Esperando conexion del más allá...
               </div>
             ) : (
               liveEvents.map((evt, idx) => (
@@ -1512,12 +1460,12 @@ function App() {
           )}
         </section>
 
-        {/* Columna 3: ConfiguraciÃ³n Base */}
+        {/* Columna 3: Configuración Base */}
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
           <section className="panel" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           
           <h2 className="neon-text-purple" style={{ textAlign: 'center', marginBottom: '25px', borderBottom: '1px solid rgba(157, 0, 255, 0.3)', paddingBottom: '10px' }}>
-            ConexiÃ³n Base
+            Conexión Base
           </h2>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px' }}>
@@ -1527,7 +1475,7 @@ function App() {
                     <img src={hostAvatar} alt="Host Avatar" style={{ width: '60px', height: '60px', borderRadius: '50%', border: '2px solid var(--neon-green)', boxShadow: '0 0 15px var(--neon-green)', objectFit: 'cover' }} referrerPolicy="no-referrer" onError={(e) => { e.target.onerror = null; e.target.src = avatarFallback; }} />
                   ) : (
                     <div className="spinner-border" style={{ width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--neon-orange)', boxShadow: '0 0 15px rgba(255, 117, 24, 0.5)' }}>
-                      <span style={{ fontSize: '1.5rem', animation: 'spin 2s linear infinite reverse' }}>â³</span>
+                      <span style={{ fontSize: '1.5rem', animation: 'spin 2s linear infinite reverse' }}>⏳</span>
                     </div>
                   )
                ) : (
@@ -1547,7 +1495,7 @@ function App() {
                     disabled={isTiktokConnected}
                  />
                  {isTiktokConnected ? (
-                    <button className="btn-neon btn-neon-red" style={{ flex: 1, minWidth: '120px', padding: '8px 12px', fontSize: '0.85rem' }} onClick={handleDisconnect} title="Cortar ConexiÃ³n">
+                    <button className="btn-neon btn-neon-red" style={{ flex: 1, minWidth: '120px', padding: '8px 12px', fontSize: '0.85rem' }} onClick={handleDisconnect} title="Cortar Conexión">
                       Desconectar
                     </button>
                  ) : (
@@ -1571,7 +1519,7 @@ function App() {
               onClick={() => setIsDmsOpen(!isDmsOpen)} 
             >
               <h3 className="neon-text-orange" style={{ margin: 0, fontSize: '1.2rem', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center' }}>
-                <span className={`accordion-arrow ${isDmsOpen ? 'open' : ''}`}>â–¶</span>
+                <span className={`accordion-arrow ${isDmsOpen ? 'open' : ''}`}>▶</span>
                 DMs a Donadores
               </h3>
               {unreadCount > 0 && (
@@ -1611,12 +1559,12 @@ function App() {
                 ))}
                 {donators.length === 0 && (
                   <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px', fontStyle: 'italic' }}>
-                    Nadie ha interactuado aÃºn...
+                    Nadie ha interactuado aún...
                   </div>
                 )}
                 {donators.length > 0 && donators.filter(user => user.username.toLowerCase().includes(searchQuery.toLowerCase().replace('@',''))).length === 0 && (
                   <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px', fontStyle: 'italic' }}>
-                    No se encontrÃ³ a nadie con ese nombre.
+                    No se encontró a nadie con ese nombre.
                   </div>
                 )}
               </div>
@@ -1624,31 +1572,31 @@ function App() {
           </div>
           </section>
 
-          {/* Panel de ConfiguraciÃ³n TTS */}
+          {/* Panel de Configuración TTS */}
           <div className={`extras-container ${!isDmsOpen ? 'visible' : ''}`} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', paddingRight: '5px' }}>
              
-             {/* Panel de ConfiguraciÃ³n TTS original */}
+             {/* Panel de Configuración TTS original */}
              <section className="panel" style={{ overflow: isTtsGiftDropdownOpen ? 'visible' : 'hidden', display: 'flex', flexDirection: 'column', gap: '15px', flexShrink: 0 }}>
                 
-                {/* Cabecera original (tÃ­tulo, dropdown y engranaje) */}
+                {/* Cabecera original (título, dropdown y engranaje) */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                     <h2 className="neon-text-orange" style={{ margin: 0, fontSize: '1.2rem', textAlign: 'left' }}>ConfiguraciÃ³n TTS</h2>
+                     <h2 className="neon-text-orange" style={{ margin: 0, fontSize: '1.2rem', textAlign: 'left' }}>Configuración TTS</h2>
                    </div>
 
                    <button 
                      onClick={() => setIsTtsSettingsOpen(!isTtsSettingsOpen)}
                      style={{ background: 'transparent', border: 'none', color: 'var(--neon-orange)', fontSize: '1.1rem', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}
                    >
-                     <span style={{ transition: 'transform 0.3s ease', transform: isTtsSettingsOpen ? 'rotate(90deg)' : 'rotate(0deg)', fontSize: '0.8rem' }}>â–¶</span>
-                     <span style={{ transition: 'transform 0.3s ease', transform: isTtsSettingsOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>âš™ï¸</span>
+                     <span style={{ transition: 'transform 0.3s ease', transform: isTtsSettingsOpen ? 'rotate(90deg)' : 'rotate(0deg)', fontSize: '0.8rem' }}>▶</span>
+                     <span style={{ transition: 'transform 0.3s ease', transform: isTtsSettingsOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>⚙️</span>
                    </button>
                 </div>
 
-                {/* Contenido del AcordeÃ³n (Voces y Velocidad) */}
+                {/* Contenido del Acordeón (Voces y Velocidad) */}
                 <div className={`accordion-content ${isTtsSettingsOpen ? 'open' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '15px', flexShrink: 0, overflow: (isTtsGiftDropdownOpen || isTtsDelayDropdownOpen) ? 'visible' : '' }}>
                    
-                   {/* Nueva secciÃ³n de Filtro y Retraso */}
+                   {/* Nueva sección de Filtro y Retraso */}
                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '10px 15px', borderRadius: '8px', border: '1px solid rgba(255,117,24,0.3)' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                         <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Filtro por Regalos</label>
@@ -1670,7 +1618,7 @@ function App() {
                            }}
                            title="Regalo requerido para TTS"
                          >
-                           <span className={`accordion-arrow ${isTtsGiftDropdownOpen ? 'open' : ''}`} style={{ fontSize: '0.7rem' }}>â–¶</span>
+                           <span className={`accordion-arrow ${isTtsGiftDropdownOpen ? 'open' : ''}`} style={{ fontSize: '0.7rem' }}>▶</span>
                            {ttsRequiredGift === 'All' ? 'All' : (
                              <img 
                                src={`./gifts/${topTikTokGifts.find(g => g.key === ttsRequiredGift)?.img || 'rose.png'}`} 
@@ -1679,7 +1627,7 @@ function App() {
                                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'inline-block'; }}
                              />
                            )}
-                           {ttsRequiredGift !== 'All' && <span style={{ display: 'none', fontSize: '1.2rem' }}>ðŸŽ</span>}
+                           {ttsRequiredGift !== 'All' && <span style={{ display: 'none', fontSize: '1.2rem' }}>🎁</span>}
                          </button>
 
                          {isTtsGiftDropdownOpen && (
@@ -1729,7 +1677,7 @@ function App() {
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                        <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Segundos antes de reproducciÃ³n</label>
+                        <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Segundos antes de reproducción</label>
                         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                           <button 
                             className="btn-neon btn-neon-orange"
@@ -1747,7 +1695,7 @@ function App() {
                               background: '#111'
                             }}
                           >
-                            <span className={`accordion-arrow ${isTtsDelayDropdownOpen ? 'open' : ''}`} style={{ fontSize: '0.7rem' }}>â–¶</span>
+                            <span className={`accordion-arrow ${isTtsDelayDropdownOpen ? 'open' : ''}`} style={{ fontSize: '0.7rem' }}>▶</span>
                             {ttsDelay === 0 ? '0s (Inmediato)' : `${ttsDelay} SEGUNDO${ttsDelay > 1 ? 'S' : ''}`}
                           </button>
 
@@ -1812,7 +1760,7 @@ function App() {
                              { id: 'es-MX-DaliaNeural', name: 'Dalia (MX)' },
                              { id: 'es-MX-JorgeNeural', name: 'Jorge (MX)' },
                              { id: 'es-ES-ElviraNeural', name: 'Elvira (ES)' },
-                             { id: 'es-ES-AlvaroNeural', name: 'Ãlvaro (ES)' }
+                             { id: 'es-ES-AlvaroNeural', name: 'Álvaro (ES)' }
                           ].find(v => v.id === ttsVoice)?.name || ''}
                         </span>
                       </label>
@@ -1822,7 +1770,7 @@ function App() {
                            { id: 'es-MX-DaliaNeural', img: './IAvATARFem (1).png', name: 'Dalia (MX)' },
                            { id: 'es-MX-JorgeNeural', img: './IAvATARMasc (1).png', name: 'Jorge (MX)' },
                            { id: 'es-ES-ElviraNeural', img: './IAvATARFem (2).png', name: 'Elvira (ES)' },
-                           { id: 'es-ES-AlvaroNeural', img: './IAvATARMasc (2).png', name: 'Ãlvaro (ES)' }
+                           { id: 'es-ES-AlvaroNeural', img: './IAvATARMasc (2).png', name: 'Álvaro (ES)' }
                          ].map(voice => (
                             <div 
                               key={voice.id}
@@ -1870,7 +1818,7 @@ function App() {
 
                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                       <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Velocidad de LocuciÃ³n</span>
+                        <span>Velocidad de Locución</span>
                         <span style={{ color: '#00f0ff' }}>{ttsRate}</span>
                       </label>
                       <div className="obs-fader-container">
@@ -1887,7 +1835,7 @@ function App() {
                    </div>
                 </div>
 
-                {/* Volumen (Fuera del acordeÃ³n, pero dentro del panel) */}
+                {/* Volumen (Fuera del acordeón, pero dentro del panel) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flexShrink: 0 }}>
                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                      <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Volumen (dB)</label>
@@ -1902,10 +1850,10 @@ function App() {
                      </div>
                    </div>
                    <div className="obs-fader-container">
-                      <div className="obs-fader-track" style={{ '--fill-ratio': (getDbFromPercentage(ttsVolume) + 60) / 75 }}>
+                      <div className="obs-fader-track" style={{ '--fill-ratio': (getDbFromPercentage(ttsVolume) + 60) / 72 }}>
                         <input 
                            type="range" 
-                           min="-60" max="15" step="1" 
+                           min="-60" max="12" step="1" 
                            value={getDbFromPercentage(ttsVolume)} 
                            onChange={(e) => { 
                              const pct = getPercentageFromDb(e.target.value); 
@@ -1941,7 +1889,7 @@ function App() {
                 onClick={() => window.electron && window.electron.ipcRenderer.send('open-devtools')} 
                 style={{ marginTop: '10px', width: '100%', padding: '10px', background: '#330033', color: '#ff00ff', border: '1px solid #ff00ff', borderRadius: '5px', cursor: 'pointer', fontFamily: 'Orbitron' }}
               >
-                ðŸ› ï¸ ABRIR CONSOLA DEVTOOLS
+                🛠️ ABRIR CONSOLA DEVTOOLS
               </button>
           )}
 
@@ -1974,7 +1922,7 @@ function App() {
                Efectos de Sonido
             </h2>
             <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '15px' }}>
-              ðŸ’¡ <b>En OBS:</b> AsegÃºrate de capturar el dispositivo de salida que elijas aquÃ­ (ej. Audio de Escritorio o Cable Virtual).
+              💡 <b>En OBS:</b> Asegúrate de capturar el dispositivo de salida que elijas aquí (ej. Audio de Escritorio o Cable Virtual).
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '15px' }}>
                <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Volumen Maestro</label>
@@ -2020,9 +1968,9 @@ function App() {
                Stickers
             </h2>
             <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '15px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '5px' }}>
-              ðŸ’¡ <b>En OBS:</b> Agrega una <i>Fuente de Navegador</i> apuntando a:<br/>
+              💡 <b>En OBS:</b> Agrega una <i>Fuente de Navegador</i> apuntando a:<br/>
               <code style={{ color: 'var(--neon-cyan)', userSelect: 'all' }}>http://localhost:5173/#stickers</code><br/>
-              AsegÃºrate de marcar <b>"Permitir transparencia"</b>.
+              Asegúrate de marcar <b>"Permitir transparencia"</b>.
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '15px' }}>
                <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Volumen Maestro</label>
@@ -2071,7 +2019,7 @@ function App() {
               onClick={() => setActiveView('main')}
               style={{ fontSize: '1rem', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '10px' }}
             >
-              <span>â¬…</span> Volver al Dashboard
+              <span>⬅</span> Volver al Dashboard
             </button>
             <span className="neon-text-green" style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
               Enlace copiado en el portapapeles para mensaje directo
@@ -2095,7 +2043,7 @@ function App() {
       {activeView === 'support' && <SupportPage onBack={() => setActiveView('main')} />}
       {activeView === 'terms' && <TermsPage onBack={() => setActiveView('main')} />}
       
-      {/* Modal para Nuevo Ãtem (Sonido/Sticker) */}
+      {/* Modal para Nuevo Ítem (Sonido/Sticker) */}
       {activeModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -2161,7 +2109,7 @@ function App() {
                 </div>
                 {activeModal === 'sticker' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '10px' }}>
-                    <label style={{ color: 'var(--text-secondary)' }}>Audio de AcompaÃ±amiento (Opcional .mp3, .wav)</label>
+                    <label style={{ color: 'var(--text-secondary)' }}>Audio de Acompañamiento (Opcional .mp3, .wav)</label>
                     <input 
                       type="file" 
                       accept="audio/*"
@@ -2212,10 +2160,10 @@ function App() {
                      if (newItemName.trim() && newItemFile) {
                        const objectUrl = URL.createObjectURL(newItemFile);
                        if (activeModal === 'sound') {
-                         setSounds([...sounds, { icon: 'ðŸŽµ', name: newItemName, url: objectUrl }]);
+                         setSounds([...sounds, { icon: '🎵', name: newItemName, url: objectUrl }]);
                        } else if (activeModal === 'sticker') {
                          const stickerAudioUrl = newStickerAudioFile ? URL.createObjectURL(newStickerAudioFile) : null;
-                         setStickers([...stickers, { icon: 'ðŸ–¼ï¸', name: newItemName, url: objectUrl, audioUrl: stickerAudioUrl }]);
+                         setStickers([...stickers, { icon: '🖼️', name: newItemName, url: objectUrl, audioUrl: stickerAudioUrl }]);
                        }
                      }
                      setActiveModal(null);
@@ -2237,9 +2185,6 @@ function App() {
 }
 
 export default App;
-
-
-
 
 
 
