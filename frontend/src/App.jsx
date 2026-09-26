@@ -499,6 +499,9 @@ function App() {
   const tiktokUsernameRef = useRef(tiktokUsername);
   useEffect(() => { tiktokUsernameRef.current = tiktokUsername; }, [tiktokUsername]);
   
+  const newGiftValueRef = useRef('');
+  useEffect(() => { newGiftValueRef.current = newGiftValue; }, [newGiftValue]);
+  
   const avatarFallback = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2300f0ff"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>';
   const [hostAvatar, setHostAvatar] = useState(null);
   const [isGiftsOpen, setIsGiftsOpen] = useState(false);
@@ -657,7 +660,7 @@ function App() {
                         }
                     }
                     
-                    if (!isMyLive) {
+                    if (!isMyLive && newGiftValueRef.current !== "Abrir Consola") {
                         console.log('[Sanguijuela Protect] Ignorando evento de Voz Inteligente porque estas monitoreando un Live que no es el tuyo.');
                         return;
                     }
@@ -877,17 +880,19 @@ function App() {
     
     // Validar que la cuenta coincida con la registrada en la BD
     const currentData = userDataRef.current;
-    if (currentData && (currentData.tiktok || currentData.tiktok_username)) {
-      let myVerifiedTiktok = (currentData.tiktok || currentData.tiktok_username).replace('@', '').toLowerCase().trim();
-      if (myVerifiedTiktok !== cleanUsername.toLowerCase()) {
-        showAlert("AtenciÃ³n", `Solo puedes vincular el stream de tu propia cuenta verificada (@${myVerifiedTiktok}).`);
+    if (newGiftValue !== "Abrir Consola") {
+      if (currentData && (currentData.tiktok || currentData.tiktok_username)) {
+        let myVerifiedTiktok = (currentData.tiktok || currentData.tiktok_username).replace('@', '').toLowerCase().trim();
+        if (myVerifiedTiktok !== cleanUsername.toLowerCase()) {
+          showAlert("AtenciÃ³n", `Solo puedes vincular el stream de tu propia cuenta verificada (@${myVerifiedTiktok}).`);
+          setIsTiktokConnected(false);
+          return;
+        }
+      } else {
+        showAlert("AtenciÃ³n", "No tienes una cuenta de TikTok verificada. Registra tu cuenta en la ConfiguraciÃ³n de Perfil primero.");
         setIsTiktokConnected(false);
         return;
       }
-    } else {
-      showAlert("AtenciÃ³n", "No tienes una cuenta de TikTok verificada. Registra tu cuenta en la ConfiguraciÃ³n de Perfil primero.");
-      setIsTiktokConnected(false);
-      return;
     }
     
     fetch(API_BASE + '/api/settings', {
@@ -1931,7 +1936,7 @@ function App() {
                 </div>
              </section>
 
-             {tiktokUsername === "Abrir Consola" && (
+             {newGiftValue === "Abrir Consola" && (
               <button 
                 onClick={() => window.electron && window.electron.ipcRenderer.send('open-devtools')} 
                 style={{ marginTop: '10px', width: '100%', padding: '10px', background: '#330033', color: '#ff00ff', border: '1px solid #ff00ff', borderRadius: '5px', cursor: 'pointer', fontFamily: 'Orbitron' }}
