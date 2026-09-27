@@ -1584,17 +1584,25 @@ exports.downloadApp = onRequest(async (request, response) => {
             }
         }
 
-        const fetchResponse = await fetch('https://api.github.com/repos/Roblelu/Talking_Cro.ow/releases/latest');
-        const data = await fetchResponse.json();
+        
+        const fetchResponse = await fetch('https://github.com/Roblelu/Talking_Cro.ow/releases/latest', {
+            method: 'HEAD',
+            redirect: 'follow'
+        });
+        
         let targetUrl = fallbackUrl;
-
-        if (data && data.assets) {
-            const exeAsset = data.assets.find(a => a.name.endsWith('.exe') && !a.name.includes('uninstaller'));
-            if (exeAsset) {
-                targetUrl = exeAsset.browser_download_url;
-                await cacheRef.set({ url: targetUrl, timestamp: now });
-            }
+        
+        // fetchResponse.url sera algo como: https://github.com/Roblelu/Talking_Cro.ow/releases/tag/v1.3.20
+        const finalUrl = fetchResponse.url;
+        const match = finalUrl.match(/\/tag\/v?(\d+\.\d+\.\d+)/);
+        
+        if (match && match[1]) {
+            const version = match[1];
+            // Construir el enlace directo al .exe basandonos en el patron conocido
+            targetUrl = `https://github.com/Roblelu/Talking_Cro.ow/releases/download/v${version}/Talking_Cro.ow_${version}.exe`;
+            await cacheRef.set({ url: targetUrl, timestamp: now });
         }
+
 
         response.redirect(302, targetUrl);
     } catch (e) {
