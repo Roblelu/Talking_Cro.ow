@@ -284,6 +284,12 @@ async def tts_worker_loop():
             print(f"Error en TTS Worker: {e}")
             await asyncio.sleep(1)
 
+@app.post("/api/tts/token", dependencies=[Depends(verify_token)])
+def update_tts_token(data: TTSAuthToken):
+    if hasattr(tts_engine, 'tts_engine'):
+        tts_engine.tts_engine.update_token(data.token)
+    return {"status": "ok"}
+
 @app.get("/api/gifts", dependencies=[Depends(verify_token)])
 def get_gifts():
     conn = database.get_db_connection()

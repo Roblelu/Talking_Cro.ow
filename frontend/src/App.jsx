@@ -729,6 +729,44 @@ function App() {
     return () => unsubscribe();
   }, [currentUser, isTiktokConnected]);
 
+
+  // === Sincronizacion del Bot Azure Cloud ===
+  useEffect(() => {
+    if (!currentUser || !isTiktokConnected) return;
+
+    let isMounted = true;
+    let syncTimer;
+
+    const syncAzureToken = async () => {
+      try {
+        const { httpsCallable } = await import('firebase/functions');
+        const getToken = httpsCallable(functions, 'getBaseVoiceToken');
+        const res = await getToken();
+        if (isMounted && res.data && res.data.token) {
+          // Enviar token al backend de Python
+          fetch('http://127.0.0.1:8763/api/tts/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: res.data.token })
+          }).catch(e => console.error("Error sincronizando token con Python:", e));
+        }
+      } catch (err) {
+        console.error("Error pidiendo Azure Token a Firebase:", err);
+      }
+      if (isMounted) {
+        // Renovar cada 8 minutos (480,000 ms) porque expira en 9
+        syncTimer = setTimeout(syncAzureToken, 480000);
+      }
+    };
+
+    syncAzureToken();
+
+    return () => {
+      isMounted = false;
+      if (syncTimer) clearTimeout(syncTimer);
+    };
+  }, [currentUser, isTiktokConnected]);
+
   useEffect(() => {
     if (isAutoScroll && chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;

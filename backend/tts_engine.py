@@ -38,8 +38,11 @@ try:
 except:
     pass
 
-def _synthesize_sync(text, out_path, voice, rate, volume):
-    speech_config = speechsdk.SpeechConfig(subscription=AZURE_SPEECH_KEY, region=AZURE_SPEECH_REGION)
+def _synthesize_sync(text, out_path, voice, rate, volume, azure_token=None):
+    if azure_token:
+        speech_config = speechsdk.SpeechConfig(auth_token=azure_token, region=AZURE_SPEECH_REGION)
+    else:
+        speech_config = speechsdk.SpeechConfig(subscription=AZURE_SPEECH_KEY, region=AZURE_SPEECH_REGION)
     # The SDK snapshots SpeechConfig when the synthesizer is constructed.
     # Set both voice and locale before constructing it, including default prosody.
     locale = '-'.join(voice.split('-')[:2])
@@ -77,8 +80,13 @@ class TTSEngine:
     """
     def __init__(self):
         self.is_loaded = False
+        self.azure_token = None
         self.voice = "es-MX-DaliaNeural" 
         print(f"[Motor de Voz] Inicializando motor oficial Azure Cognitive Services... Voz: {self.voice}")
+
+    def update_token(self, token):
+        self.azure_token = token
+        print("[Motor de Voz Azure] Token actualizado desde Firebase.")
 
     def load(self):
         if not self.is_loaded:
@@ -128,7 +136,7 @@ class TTSEngine:
         try:
             safe_print = f"[Motor de Voz] Sintetizando con Azure: {text[:30]}... ({voice}, {rate}, {volume})".encode('cp1252', 'replace').decode('cp1252')
             print(safe_print)
-            await asyncio.to_thread(_synthesize_sync, text, out_path, voice, rate, volume)
+            await asyncio.to_thread(_synthesize_sync, text, out_path, voice, rate, volume, self.azure_token)
             print(f"[Motor de Voz] Síntesis exitosa: {out_path}")
             return f"{token}.mp3"
         except Exception as e:
