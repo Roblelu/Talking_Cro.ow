@@ -27,6 +27,17 @@ import azure.cognitiveservices.speech as speechsdk
 AZURE_SPEECH_KEY = os.getenv("AZURE_SPEECH_KEY", "")
 AZURE_SPEECH_REGION = os.getenv("AZURE_SPEECH_REGION", "eastus")
 
+# Intento de leer la llave desde el archivo local seguro
+try:
+    import json
+    local_cfg = os.path.join(get_data_dir(), "local_config.json")
+    if os.path.exists(local_cfg):
+        with open(local_cfg, "r") as f:
+            j = json.load(f)
+            AZURE_SPEECH_KEY = j.get("azure_speech_key", AZURE_SPEECH_KEY)
+except:
+    pass
+
 def _synthesize_sync(text, out_path, voice, rate, volume):
     speech_config = speechsdk.SpeechConfig(subscription=AZURE_SPEECH_KEY, region=AZURE_SPEECH_REGION)
     # The SDK snapshots SpeechConfig when the synthesizer is constructed.
