@@ -1,0 +1,81 @@
+<?xml version='1.0' encoding='utf8'?>
+<nuitka-compilation-report nuitka_version="4.2" nuitka_commercial_version="not installed" mode="onefile" completion="exception">
+  <exception exception_type="PermissionError" exception_value="[WinError 32] El proceso no tiene acceso al archivo porque está siendo utilizado por otro proceso: 'dist\\app.build\\module.EulerApiSdk.models.webcast_feed_response_stream_url_live_core_sdk_data.c'">
+Traceback (most recent call last):
+  File "C:\Users\cnkrx\OneDrive\Escritorio\Hevel World\Patiidu\Talking Crow\backend\venv\Lib\site-packages\nuitka\MainControl.py", line 1456, in main
+    _main()
+  File "C:\Users\cnkrx\OneDrive\Escritorio\Hevel World\Patiidu\Talking Crow\backend\venv\Lib\site-packages\nuitka\MainControl.py", line 1273, in _main
+    main_module = _createMainModule()
+                  ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\cnkrx\OneDrive\Escritorio\Hevel World\Patiidu\Talking Crow\backend\venv\Lib\site-packages\nuitka\MainControl.py", line 291, in _createMainModule
+    cleanSconsDirectory(source_dir)
+  File "C:\Users\cnkrx\OneDrive\Escritorio\Hevel World\Patiidu\Talking Crow\backend\venv\Lib\site-packages\nuitka\build\SconsInterface.py", line 700, in cleanSconsDirectory
+    check(path)
+  File "C:\Users\cnkrx\OneDrive\Escritorio\Hevel World\Patiidu\Talking Crow\backend\venv\Lib\site-packages\nuitka\build\SconsInterface.py", line 696, in check
+    deleteFile(path, must_exist=True)
+  File "C:\Users\cnkrx\OneDrive\Escritorio\Hevel World\Patiidu\Talking Crow\backend\venv\Lib\site-packages\nuitka\utils\FileOperations.py", line 886, in deleteFile
+    os.unlink(path)
+PermissionError: [WinError 32] El proceso no tiene acceso al archivo porque está siendo utilizado por otro proceso: 'dist\\app.build\\module.EulerApiSdk.models.webcast_feed_response_stream_url_live_core_sdk_data.c'
+</exception>
+  <scons_environment c_compiler="MSVC" the_cc_name="cl" the_compiler="cl" />
+  <performance>
+    <memory_usage name="after_launch" value="40742912" />
+  </performance>
+  <data_composer blob_size="None" />
+  <performance-totals>
+    <optimization-time pass="all" time="0.0000" module_count="0" />
+    <code-generation-time time="0.0000" module_count="0" />
+  </performance-totals>
+  <python_binary filename="app.dll" backend_resource_mode="coff_obj" reproducible="no" />
+  <onefile_binary filename="app.exe" onefile_resource_mode="coff_obj" reproducible="no" />
+  <command_line>
+    <option value="--onefile" />
+    <option value="--assume-yes-for-downloads" />
+    <option value="--windows-disable-console" />
+    <option value="--output-dir=dist" />
+    <option value="--output-filename=app.exe" />
+    <option value="--include-package=fastapi" />
+    <option value="--include-package=TikTokLive" />
+    <option value="--include-package=pydantic" />
+    <option value="--include-package=azure" />
+    <option value="--include-package=uvicorn" />
+    <option value="--include-package=httpx" />
+    <option value="--include-package=requests" />
+    <option value="--include-package=sqlite3" />
+    <option value="app.py" />
+  </command_line>
+  <plugins>
+    <plugin name="anti-bloat" user_enabled="no" />
+    <plugin name="data-files" user_enabled="no" />
+    <plugin name="delvewheel" user_enabled="no" />
+    <plugin name="dll-files" user_enabled="no" />
+    <plugin name="gevent" user_enabled="no" />
+    <plugin name="gi" user_enabled="no" />
+    <plugin name="glfw" user_enabled="no" />
+    <plugin name="implicit-imports" user_enabled="no" />
+    <plugin name="kivy" user_enabled="no" />
+    <plugin name="matplotlib" user_enabled="no" />
+    <plugin name="multiprocessing" user_enabled="no" />
+    <plugin name="options-nanny" user_enabled="no" />
+    <plugin name="pbr-compat" user_enabled="no" />
+    <plugin name="pkg-resources" user_enabled="no" />
+    <plugin name="playwright" user_enabled="no" />
+    <plugin name="pywebview" user_enabled="no" />
+    <plugin name="spacy" user_enabled="no" />
+    <plugin name="torch-jit" user_enabled="no" />
+    <plugin name="transformers" user_enabled="no" />
+  </plugins>
+  <onefile cache_mode="temporary" unpack_dir="{TEMP}\onefile_{PID}_{TIME_US}_{RANDOM}" />
+  <distributions />
+  <python python_exe="${sys.prefix}\Scripts\python.exe" python_flavor="CPython Official" python_version="3.11.9" os_name="Windows" os_release="11" arch_name="x86_64" filesystem_encoding="utf-8">
+    <search_path>
+      <path value="${cwd}" />
+      <path value="${sys.real_prefix}\DLLs" />
+      <path value="${sys.real_prefix}\Lib" />
+      <path value="${sys.real_prefix}" />
+      <path value="${sys.prefix}" />
+      <path value="${sys.prefix}\Lib\site-packages" />
+    </search_path>
+  </python>
+  <output run_filename="${cwd}\dist\app.exe" />
+</nuitka-compilation-report>

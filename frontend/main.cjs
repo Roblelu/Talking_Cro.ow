@@ -64,9 +64,19 @@ async function startLocalServer() {
 
 function spawnBackend() {
   if (app.isPackaged) {
-    const exePath = path.join(getBackendDir(), 'app.exe');
+    const exePath = path.join(getBackendDir(), 'tc_engine.exe');
     
     if (fs.existsSync(exePath)) {
+      
+      // LOGGING SYSTEM
+      const logPath = path.join(getBackendDataDir(), 'engine_crash.log');
+      fs.writeFileSync(logPath, '--- INIT ENGINE ---\n', { flag: 'w' });
+
+      // Kill any previous zombies by exact name
+      if (process.platform === 'win32') {
+        require('child_process').execSync('taskkill /F /IM tc_engine.exe', { stdio: 'ignore' });
+      }
+
       backendProcess = spawn(exePath, [], {
         cwd: getBackendDir(),
         env: { ...process.env, TALKING_CROW_DATA_DIR: getBackendDataDir(), TALKING_CROW_PORT: '8763', PYTHONUNBUFFERED: '1' },
@@ -74,14 +84,19 @@ function spawnBackend() {
         windowsHide: true,
       });
       let errorLog = "";
-      backendProcess.stdout.on('data', (data) => console.log(`[Backend]: ${data}`));
+      backendProcess.stdout.on('data', (data) => {
+          fs.appendFileSync(logPath, `[OUT]: ${data}\n`);
+          console.log(`[Backend]: ${data}`);
+      });
       backendProcess.stderr.on('data', (data) => {
+          fs.appendFileSync(logPath, `[ERR]: ${data}\n`);
           console.error(`[Backend ERR]: ${data}`);
           errorLog += data.toString();
       });
       backendProcess.on('error', (err) => {
+          fs.appendFileSync(logPath, `[CRASH]: ${err.message}\n`);
           const { dialog } = require('electron');
-          dialog.showErrorBox('Error al Arrancar', 'No se pudo iniciar app.exe:\n' + err.message);
+          dialog.showErrorBox('Error al Arrancar', 'No se pudo iniciar tc_engine.exe:\n' + err.message);
       });
       backendProcess.on('exit', (code) => {
           if (!cleanupStarted && code !== 0 && code !== null) {

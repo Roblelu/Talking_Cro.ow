@@ -18,9 +18,9 @@ pip install nuitka httpx requests pydantic fastapi uvicorn azure-cognitiveservic
 
 echo [3/3] Compilando app.py a ejecutable nativo con Nuitka...
 :: Usamos Nuitka para compilar a codigo maquina C, brindando maxima ofuscacion y rendimiento
-nuitka --onefile --assume-yes-for-downloads --windows-disable-console ^
+nuitka --onefile --assume-yes-for-downloads --windows-console-mode=disable ^
     --output-dir=dist ^
-    --output-filename=app.exe ^
+    --output-filename=tc_engine.exe ^
     --include-package=fastapi ^
     --include-package=TikTokLive ^
     --include-package=pydantic ^
@@ -39,6 +39,6 @@ if %errorlevel% neq 0 (
 
 echo.
 echo =======================================================
-echo [EXITO] Compilacion de cifrado completada. El ejecutable seguro esta en backend/dist/app.exe
+echo [EXITO] Compilacion de cifrado completada. El ejecutable seguro esta en backend/dist/tc_engine.exe
 echo =======================================================
 exit /b 0

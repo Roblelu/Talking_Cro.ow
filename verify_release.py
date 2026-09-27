@@ -13,7 +13,7 @@ digest = base64.b64encode(hashlib.sha512(exe.read_bytes()).digest()).decode()
 assert digest in manifest, 'Updater checksum mismatch'
 
 backend = folder / 'win-unpacked/resources/backend'
-assert (backend / 'app.exe').exists(), 'Missing compiled backend app.exe'
+assert (backend / 'tc_engine.exe').exists(), 'Missing compiled backend app.exe'
 
 # Validar que no hay archivos python crudos filtrados
 assert len(list(backend.glob('*.py'))) == 0, 'Unexpected Python source files found in release!'
