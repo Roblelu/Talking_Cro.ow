@@ -74,7 +74,7 @@ function spawnBackend() {
 
       // Kill any previous zombies by exact name
       if (process.platform === 'win32') {
-        require('child_process').execSync('taskkill /F /IM tc_engine.exe', { stdio: 'ignore' });
+        try { require('child_process').execSync('taskkill /F /IM tc_engine.exe', { stdio: 'ignore' }); } catch (e) {}
       }
 
       backendProcess = spawn(exePath, [], {
