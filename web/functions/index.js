@@ -25,6 +25,7 @@ admin.auth = () => getAuth();
 let _db;
 const db = new Proxy({}, {
     get: (target, prop) => {
+        if (typeof prop === 'symbol' || prop === 'then' || prop === 'inspect') return undefined;
         if (!_db) _db = getFirestore();
         return typeof _db[prop] === 'function' ? _db[prop].bind(_db) : _db[prop];
     }
