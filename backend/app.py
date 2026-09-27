@@ -414,7 +414,7 @@ async def _internal_connect_tiktok(username: str):
             print("[Sistema] Solicitando clave de firma segura a Web API...")
             # En lugar de hacer una petición insegura a la nube por una llave estática,
             # la leemos desde el config local o entorno.
-            stream_key = config_data.get("stream_key", "")
+            stream_key = local_config_data.get("stream_key", "")
             WebDefaults.tiktok_sign_api_key = stream_key or None
             print("[Sistema] Clave de firma obtenida de la nube exitosamente.")
         except Exception as e:
