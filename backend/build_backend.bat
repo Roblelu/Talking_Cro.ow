@@ -25,6 +25,7 @@ nuitka --onefile --assume-yes-for-downloads --windows-console-mode=disable ^
     --include-package=TikTokLive ^
     --include-package=pydantic ^
     --include-package=azure ^
+    --include-package=edge_tts ^
     --include-package=uvicorn ^
     --include-package=httpx ^
     --include-package=requests ^

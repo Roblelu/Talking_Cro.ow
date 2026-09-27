@@ -548,7 +548,8 @@ async def _internal_connect_tiktok(username: str):
                             await tts_queue.put((event.user.nickname, text_to_speak))
                             tts_allowed_users.discard(event.user.nickname)
                 else:
-                    print(f"[Filtro] Mensaje silenciado (Basura/Profanidad): {event.comment}")
+                    safe_msg = event.comment.encode('cp1252', 'replace').decode('cp1252')
+                    print(f"[Filtro] Mensaje silenciado (Basura/Profanidad): {safe_msg}")
 
         @client.on(GiftEvent)
         async def on_gift(event: GiftEvent):
