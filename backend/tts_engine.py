@@ -115,7 +115,8 @@ class TTSEngine:
         out_path = os.path.join(audio_dir, f"{token}.mp3")
         
         try:
-            print(f"[Motor de Voz] Sintetizando con Azure: {text[:30]}... ({voice}, {rate}, {volume})")
+            safe_print = f"[Motor de Voz] Sintetizando con Azure: {text[:30]}... ({voice}, {rate}, {volume})".encode('cp1252', 'replace').decode('cp1252')
+            print(safe_print)
             await asyncio.to_thread(_synthesize_sync, text, out_path, voice, rate, volume)
             print(f"[Motor de Voz] Síntesis exitosa: {out_path}")
             return f"{token}.mp3"
