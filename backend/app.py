@@ -548,12 +548,24 @@ async def _internal_connect_tiktok(username: str):
                     else:
                         text_to_speak = clean_msg
 
-                    if tts_required_gift == "All":
-                        await tts_queue.put((event.user.nickname, text_to_speak))
-                    else:
-                        if event.user.nickname in tts_allowed_users:
+                    # --- FILTRO IA GEMINI PARA TTS GLOBAL ---
+                    try:
+                        url = 'https://us-central1-talking-crow.cloudfunctions.net/filterTTSMessage'
+                        payload = {'data': {'text': text_to_speak, 'secret': 'CROW_MODERATION_SECRET_2024'}}
+                        async with httpx.AsyncClient() as c:
+                            r = await c.post(url, json=payload, timeout=3.5)
+                            if r.status_code == 200:
+                                text_to_speak = r.json().get('result', {}).get('clean_message', text_to_speak)
+                    except Exception as e:
+                        print(f"[Gemini Fallo - Usando original] {e}")
+
+                    if text_to_speak:
+                        if tts_required_gift == "All":
                             await tts_queue.put((event.user.nickname, text_to_speak))
-                            tts_allowed_users.discard(event.user.nickname)
+                        else:
+                            if event.user.nickname in tts_allowed_users:
+                                await tts_queue.put((event.user.nickname, text_to_speak))
+                                tts_allowed_users.discard(event.user.nickname)
                 else:
                     safe_msg = event.comment.encode('cp1252', 'replace').decode('cp1252')
                     print(f"[Filtro] Mensaje silenciado (Basura/Profanidad): {safe_msg}")
