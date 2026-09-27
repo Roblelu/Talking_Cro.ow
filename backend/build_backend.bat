@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 setlocal
 cd /d "%~dp0"
 echo =======================================================
@@ -18,7 +18,7 @@ pip install nuitka httpx requests pydantic fastapi uvicorn azure-cognitiveservic
 
 echo [3/3] Compilando app.py a ejecutable nativo con Nuitka...
 :: Usamos Nuitka para compilar a codigo maquina C, brindando maxima ofuscacion y rendimiento
-nuitka --onefile --assume-yes-for-downloads ^
+nuitka --onefile --assume-yes-for-downloads --windows-disable-console ^
     --output-dir=dist ^
     --output-filename=app.exe ^
     --include-package=fastapi ^
