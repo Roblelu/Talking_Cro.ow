@@ -355,7 +355,7 @@ function App() {
     const cleanUsername = tiktokUsername.replace('@', '').trim() ;
     fetch(API_BASE + '/api/settings', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${window.API_KEY || sessionStorage.getItem('local_api_key') || ''}` },
       body: JSON.stringify({ 
          tiktok_username: cleanUsername, 
          base_audio_path: '',
@@ -874,7 +874,7 @@ function App() {
     
     fetch(API_BASE + '/api/settings', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${window.API_KEY || sessionStorage.getItem('local_api_key') || ''}` },
       body: JSON.stringify({ tiktok_username: cleanUsername, base_audio_path: '', tts_voice: ttsVoice, tts_rate: ttsRate, tts_volume: ttsVolume, tts_read_username: ttsReadUsername ? 1 : 0, tts_delay: ttsDelay })
     }).catch(e => console.log(e));
     
