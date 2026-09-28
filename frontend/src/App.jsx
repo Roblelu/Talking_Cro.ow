@@ -207,6 +207,7 @@ function App() {
       case 'dmwebview': return 'WEB VIEWER';
       case 'subscription': return 'Suscripción y Pagos';
       case 'support': return 'Contacto y Soporte';
+      case 'history': return 'Historial de Sesiones';
       case 'port': return 'Configuración de Puerto';
       case 'terms': return 'Términos y Condiciones';
       case 'account': return 'Cuenta Talking Cro.ow';
@@ -487,6 +488,11 @@ function App() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isDmsOpen, setIsDmsOpen] = useState(false);
   const [liveEvents, setLiveEvents] = useState([]);
+
+  const [showSessionSummary, setShowSessionSummary] = useState(false);
+  const [currentSessionData, setCurrentSessionData] = useState(null);
+  const sessionEcoCount = useRef(0);
+
   const [isTtsLiveEnabled, setIsTtsLiveEnabled] = useState(false);
   const [ttsRequiredGift, setTtsRequiredGift] = useState('All');
   const [isTtsGiftDropdownOpen, setIsTtsGiftDropdownOpen] = useState(false);
@@ -1092,6 +1098,7 @@ function App() {
   return (
     <div style={{ padding: hashRoute ? '10px' : '30px', maxWidth: '1600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: hashRoute ? '10px' : '30px', height: '100vh', boxSizing: 'border-box', background: hashRoute ? '#050505' : 'transparent' }}>
       <Modal {...modalConfig} />
+        {showSessionSummary && <SessionSummaryModal session={currentSessionData} onClose={() => setShowSessionSummary(false)} />}
       
       {!hashRoute && (
         <>
@@ -1196,7 +1203,8 @@ function App() {
                          {isMissingFields && <span style={{ width: '8px', height: '8px', backgroundColor: '#ff003c', borderRadius: '50%', boxShadow: '0 0 8px #ff003c', animation: 'pulse 1.5s infinite' }}></span>}
                        </div>
                      </li>
-                     <li onClick={() => { setActiveView('subscription'); setIsDropdownOpen(false); }}>Suscripción y Pagos</li>
+                                          <li onClick={() => { setActiveView('history'); setIsDropdownOpen(false); }}>Historial de Sesiones</li>
+                       <li onClick={() => { setActiveView('subscription'); setIsDropdownOpen(false); }}>Suscripción y Pagos</li>
 
                      <li onClick={() => { setActiveView('support'); setIsDropdownOpen(false); }}>Contacto y soporte</li>
                      <li onClick={() => { setActiveView('port'); setIsDropdownOpen(false); }}>Configuración de Puerto</li>
