@@ -956,7 +956,10 @@ function App() {
       async () => {
         const API_BASE = 'http://127.0.0.1:8763';
         try {
-            await fetch(API_BASE + '/api/tiktok/disconnect', { method: 'POST' });
+            await fetch(API_BASE + '/api/tiktok/disconnect', { 
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${window.API_KEY || ''}` }
+            });
         } catch(e) {}
         setIsTiktokConnected(false);
         setHostAvatar(null);
@@ -1838,6 +1841,7 @@ function App() {
                                   if (data.audio_url) {
                                     const token = window.API_KEY || sessionStorage.getItem('local_api_key') || '';
                                     const audio = new Audio(`${API_BASE}${data.audio_url}?token=${token}`);
+                                    audio.volume = Math.max(0, Math.min(1, parseFloat((ttsVolume || "0").toString().replace('+', '').replace('%', '')) / 100));
                                     if (audio.setSinkId && selectedAudioDeviceTTS !== 'default') {
                                       audio.setSinkId(selectedAudioDeviceTTS).catch(err => console.error("setSinkId error:", err));
                                     }

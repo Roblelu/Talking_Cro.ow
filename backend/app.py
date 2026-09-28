@@ -179,6 +179,21 @@ async def lifespan_context(app: FastAPI):
     worker_task.cancel()
     cleanup_task.cancel()
 
+
+class SessionStats:
+    def __init__(self):
+        import time
+        self.connected_at = time.time()
+        self.room_create_time = None
+        self.chatters = {}
+        self.gifters = {}
+        self.gifts_list = []
+        self.tts_normal_count = 0
+        self.censored_count = 0
+        self.peak_viewers = 0
+
+current_session_stats = None
+
 app = FastAPI(title="Talking Cro.ow API", lifespan=lifespan_context)
 """
  * Propósito: Almacenar tickets temporales de un solo uso para conexiones SSE.
@@ -281,9 +296,7 @@ async def tts_worker_loop():
             ))
             
             global current_session_stats
-            if current_session_stats:
-                current_session_stats.tts_normal_count += 1
-
+            if current_session_stats: current_session_stats.tts_normal_count += 1
             tts_queue.task_done()
         except Exception as e:
             print(f"Error en TTS Worker: {e}")
@@ -414,7 +427,8 @@ async def _internal_connect_tiktok(username: str):
     Los eventos recibidos son procesados, limpiados (anti-spam/profanidad) y transmitidos 
     al cliente web mediante eventos SSE.
     """
-    global active_tiktok_client, tiktok_task, live_start_time
+    global active_tiktok_client, tiktok_task, live_start_time, current_session_stats
+    current_session_stats = SessionStats()
     
     if active_tiktok_client:
         try:
@@ -449,40 +463,24 @@ async def _internal_connect_tiktok(username: str):
             return None
 
         import time
-        
-class SessionStats:
-    def __init__(self):
-        import time
-        self.connected_at = time.time()
-        self.room_create_time = None
-        self.chatters = {}
-        self.gifters = {}
-        self.gifts_list = []
-        self.tts_normal_count = 0
-        self.censored_count = 0
-        self.peak_viewers = 0
-
-current_session_stats = None
-
-live_start_time = 0
+        live_start_time = 0
         
         @client.on(ConnectEvent)
         async def on_connect(event: ConnectEvent):
-            global live_start_time, last_tiktok_activity, current_session_stats
-        current_session_stats = SessionStats()
+            global live_start_time, last_tiktok_activity
             last_tiktok_activity = time.time()
             live_start_time = time.time()
             print(f"[TikTok] Conectado exitosamente. Start time: {live_start_time}")
-            try:
-                if hasattr(client, "room_info") and "create_time" in client.room_info:
-                    current_session_stats.room_create_time = int(client.room_info["create_time"])
-            except:
-                pass
             
             await broadcast_event(LiveEvent(type="connection", username="Sistema", message=f"Conectado a la sala de @{req.username}"))
             
             try:
                 avatar = None
+                try:
+                    if hasattr(client, 'room_info') and 'create_time' in client.room_info:
+                        current_session_stats.room_create_time = int(client.room_info['create_time'])
+                except:
+                    pass
                 if hasattr(client, 'room_info') and isinstance(client.room_info, dict):
                     url_list = client.room_info.get('owner', {}).get('avatar_thumb', {}).get('url_list', [])
                     if url_list and len(url_list) > 0:
@@ -516,27 +514,12 @@ live_start_time = 0
                 if elapsed >= 2400:
                     print("[TikTok] +40 mins alcanzados. Enviando señal de validación al frontend.")
                     await broadcast_event(LiveEvent(type="system_action", action="register_stream_day", message="Día válido de transmisión"))
-                
-class SessionStats:
-    def __init__(self):
-        import time
-        self.connected_at = time.time()
-        self.room_create_time = None
-        self.chatters = {}
-        self.gifters = {}
-        self.gifts_list = []
-        self.tts_normal_count = 0
-        self.censored_count = 0
-        self.peak_viewers = 0
-
-current_session_stats = None
-
-live_start_time = 0
+                live_start_time = 0
                 
             await broadcast_event(LiveEvent(type="connection", username="Sistema", message="Desconectado del directo"))
 
 
-        
+
         try:
             import TikTokLive.events
             @client.on(TikTokLive.events.RoomUserSeqEvent)
@@ -544,15 +527,11 @@ live_start_time = 0
                 global current_session_stats
                 if current_session_stats:
                     try:
-                        viewers = getattr(event, "total_user", 0)
-                        if not viewers:
-                            viewers = getattr(event, "viewer_count", 0)
+                        viewers = getattr(event, 'total_user', getattr(event, 'viewer_count', 0))
                         if viewers > current_session_stats.peak_viewers:
                             current_session_stats.peak_viewers = viewers
-                    except:
-                        pass
-        except Exception as e:
-            print("[Warning] No se pudo cargar RoomUserSeqEvent", e)
+                    except: pass
+        except: pass
 
         @client.on(CommentEvent)
         async def on_comment(event: CommentEvent):
@@ -561,13 +540,11 @@ live_start_time = 0
             if is_duplicate(event, "comment"):
                 return
             # TC-19: Print de PII removido
-            
-            if current_session_stats:
-                uid = getattr(event.user, "unique_id", "Desconocido")
-                current_session_stats.chatters[uid] = current_session_stats.chatters.get(uid, 0) + 1
-
             clean_msg = is_valid_and_clean_message(event.comment)
             clean_uname = is_valid_and_clean_message(event.user.nickname) or "Usuario"
+            if current_session_stats:
+                uid = getattr(event.user, 'unique_id', 'Desconocido')
+                current_session_stats.chatters[uid] = current_session_stats.chatters.get(uid, 0) + 1
             
             await broadcast_event(LiveEvent(
                 type="chat", 
@@ -607,12 +584,7 @@ live_start_time = 0
 
             global tts_global_enabled, tts_queue, tts_required_gift, tts_allowed_users
             if tts_global_enabled and tts_queue is not None:
-                
-            if current_session_stats:
-                uid = getattr(event.user, "unique_id", "Desconocido")
-                current_session_stats.chatters[uid] = current_session_stats.chatters.get(uid, 0) + 1
-
-            clean_msg = is_valid_and_clean_message(event.comment)
+                clean_msg = is_valid_and_clean_message(event.comment)
                 if clean_msg:
                     conn = database.get_db_connection()
                     db_settings = conn.execute("SELECT tts_read_username, tts_delay FROM settings LIMIT 1").fetchone()
@@ -645,10 +617,10 @@ live_start_time = 0
                                 tts_allowed_users.discard(event.user.nickname)
                 else:
                     safe_msg = event.comment.encode('cp1252', 'replace').decode('cp1252')
-                    print(f"[Filtro] Mensaje silenciado (Basura/Profanidad): {safe_msg}")
+                    
                     if current_session_stats:
                         current_session_stats.censored_count += 1
-
+                    print(f"[Filtro] Mensaje silenciado (Basura/Profanidad): {safe_msg}")
 
         @client.on(GiftEvent)
         async def on_gift(event: GiftEvent):
@@ -657,27 +629,24 @@ live_start_time = 0
             if is_duplicate(event, "gift"):
                 return
             try:
-                
-            if current_session_stats:
-                uid = getattr(event.user, "unique_id", "Desconocido")
-                d = getattr(event.gift, "diamond_count", 0)
-                c = getattr(event, 'repeat_count', 1)
-                val = d * c
-                current_session_stats.gifters[uid] = current_session_stats.gifters.get(uid, 0) + val
-                
-                rel = time.time() - (current_session_stats.room_create_time or current_session_stats.connected_at)
-                m, s = divmod(int(rel), 60)
-                h, m = divmod(m, 60)
-                time_str = f"{h:02d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
-                
-                current_session_stats.gifts_list.append({
-                    "username": uid,
-                    "gift_name": event.gift.name,
-                    "amount": val,
-                    "time_str": time_str
-                })
-
                 img_url = None
+                if current_session_stats:
+                    uid = getattr(event.user, 'unique_id', 'Desconocido')
+                    d = getattr(event.gift, 'diamond_count', 0)
+                    c = getattr(event, 'repeat_count', 1)
+                    val = d * c
+                    current_session_stats.gifters[uid] = current_session_stats.gifters.get(uid, 0) + val
+                    import time
+                    rel = time.time() - (current_session_stats.room_create_time or current_session_stats.connected_at)
+                    m, s = divmod(int(rel), 60)
+                    h, m = divmod(m, 60)
+                    time_str = f"{h:02d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
+                    current_session_stats.gifts_list.append({
+                        'username': uid,
+                        'gift_name': event.gift.name,
+                        'amount': val,
+                        'time_str': time_str
+                    })
                 try:
                     if hasattr(event.gift, "image") and hasattr(event.gift.image, "url_list") and len(event.gift.image.url_list) > 0:
                         img_url = event.gift.image.url_list[0]
